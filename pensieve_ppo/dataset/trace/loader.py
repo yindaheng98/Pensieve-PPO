@@ -18,6 +18,7 @@ def load_trace(trace_folder: str) -> TraceData:
     Returns:
         TraceData object containing all loaded traces
     """
+    # https://github.com/yindaheng98/Pensieve-PPO/blob/6c5b77b01086b696b0832e832a9824a120356176/src/load_trace.py#L7
     cooked_files = sorted(os.listdir(trace_folder))
     if not cooked_files:
         raise ValueError(f"No valid trace files found in {trace_folder}")
