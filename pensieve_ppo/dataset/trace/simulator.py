@@ -43,7 +43,7 @@ class TraceSimulator:
 
     # ==================== Core Methods ====================
 
-    def reset(self, trace_idx: int = 0) -> None:
+    def reset(self) -> None:
         """Reset the simulator state.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L31-L39
@@ -54,7 +54,7 @@ class TraceSimulator:
         self.buffer_size = 0
 
         # pick a random trace file
-        self.trace_idx = trace_idx
+        self.trace_idx = 0
         self.cooked_time = self.all_cooked_time[self.trace_idx]
         self.cooked_bw = self.all_cooked_bw[self.trace_idx]
 
