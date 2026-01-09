@@ -2,5 +2,6 @@
 
 from .abc import TraceData
 from .loader import load_trace
+from .simulator import TraceSimulator
 
-__all__ = ['load_trace', 'TraceData']
+__all__ = ['load_trace', 'TraceData', 'TraceSimulator']

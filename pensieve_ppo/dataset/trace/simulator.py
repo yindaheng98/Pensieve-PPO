@@ -2,8 +2,7 @@
 
 import math
 
-from .abc import NetworkSimulator
-from ..dataset import TraceData
+from .abc import TraceData
 
 
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L3
@@ -17,7 +16,7 @@ PACKET_PAYLOAD_PORTION = 0.95
 LINK_RTT = 80  # millisec
 
 
-class BaseNetworkSimulator(NetworkSimulator):
+class TraceSimulator:
     """Base network simulator without noise or random trace selection.
 
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L21
