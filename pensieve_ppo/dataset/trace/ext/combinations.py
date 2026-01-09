@@ -8,11 +8,15 @@ from .noise import NoiseTraceSimulator, NOISE_LOW, NOISE_HIGH
 from .random import RandomTraceSimulator
 
 
+# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L6
+RANDOM_SEED = 42
+
+
 def create_train_simulator(
     trace_data: TraceData,
     noise_low: float = NOISE_LOW,
     noise_high: float = NOISE_HIGH,
-    random_seed: Optional[int] = None,
+    random_seed: Optional[int] = RANDOM_SEED,
 ) -> TraceSimulator:
     """Create a TraceSimulator configured for training.
 
