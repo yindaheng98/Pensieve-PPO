@@ -59,12 +59,10 @@ class RandomTraceSimulator(TraceSimulatorWrapper):
     def on_video_finished(self) -> None:
         """Handle video end with random trace selection.
 
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L145
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L145-L153
         """
         super().on_video_finished()
 
-        # Then select a new random trace and randomize start point
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L145
         # pick a random trace file
         self.trace_idx = self.rng.randint(len(self.all_cooked_time))
         self.cooked_time = self.all_cooked_time[self.trace_idx]
