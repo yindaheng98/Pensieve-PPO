@@ -19,7 +19,7 @@ class VideoPlayer:
             video_data: Loaded video chunk size data
         """
         self._video_data = video_data
-        self.video_chunk_counter = 0
+        self.reset()
 
     def reset(self) -> None:
         """Reset the video playback position to the beginning.
