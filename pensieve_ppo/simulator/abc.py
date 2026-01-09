@@ -1,8 +1,10 @@
-"""Abstract network simulator and related data structures."""
+"""Simulator that combines VideoPlayer and TraceSimulator."""
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List
+
+from ..dataset.video.player import VideoPlayer
+from ..dataset.trace.simulator import TraceSimulator
 
 
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L3
@@ -15,8 +17,8 @@ class StepResult:
 
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L159
     """
-    delay: float                        # Download delay in seconds
-    sleep_time: float                   # Sleep time in seconds (when buffer is full)
+    delay: float                        # Download delay in milliseconds
+    sleep_time: float                   # Sleep time in milliseconds (when buffer is full)
     buffer_size: float                  # Current buffer size in seconds
     rebuffer: float                     # Rebuffering time in seconds
     video_chunk_size: int               # Size of downloaded chunk in bytes
@@ -25,109 +27,58 @@ class StepResult:
     video_chunk_remain: int             # Number of remaining chunks
 
 
-class NetworkSimulator(ABC):
-    """Abstract base class for network simulators.
+class Simulator:
+    """Simulator that combines VideoPlayer and TraceSimulator.
 
-    The `step` method orchestrates these abstract methods in order:
-    1. `get_chunk_size` - Get chunk size for requested quality
-    2. `download_chunk` - Simulate network transmission
-    3. `update_buffer` - Update playback buffer after download
-    4. `drain_buffer_overflow` - Handle buffer overflow by sleeping
-    5. `advance_video` - Move to next chunk, handle video end
-    6. `get_next_chunk_sizes` - Get sizes for next chunk
+    https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L18
 
-    Subclasses must implement all abstract methods and properties.
+    The `step` method orchestrates these components in order:
+    1. `video_player.get_chunk_size` - Get chunk size for requested quality
+    2. `trace_simulator.download_chunk` - Simulate network transmission
+    3. `trace_simulator.update_buffer` - Update playback buffer after download
+    4. `trace_simulator.drain_buffer_overflow` - Handle buffer overflow by sleeping
+    5. `video_player.advance` - Move to next chunk
+    6. `trace_simulator.on_video_finished` - Handle video end (if needed)
+    7. `video_player.get_next_chunk_sizes` - Get sizes for next chunk
     """
 
-    # ==================== Abstract Methods ====================
+    def __init__(
+        self,
+        video_player: VideoPlayer,
+        trace_simulator: TraceSimulator,
+    ):
+        """Initialize the simulator.
 
-    @abstractmethod
-    def reset(self, trace_idx: Optional[int] = None) -> None:
+        Args:
+            video_player: VideoPlayer instance for managing video playback
+            trace_simulator: TraceSimulator instance for network simulation
+        """
+        self.video_player = video_player
+        self.trace_simulator = trace_simulator
+
+    @property
+    def buffer_size(self) -> float:
+        """Current buffer size in milliseconds."""
+        return self.trace_simulator.buffer_size
+
+    @property
+    def trace_idx(self) -> int:
+        """Current trace index being used."""
+        return self.trace_simulator.trace_idx
+
+    def reset(self) -> None:
         """Reset the simulator state.
 
-        Args:
-            trace_idx: Optional trace index to use. If None, use default behavior.
-        """
-        pass
-
-    @abstractmethod
-    def get_chunk_size(self, quality: int) -> int:
-        """Get the size of current chunk at given quality level.
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L31
 
         Args:
-            quality: Bitrate level (0 to num_bitrates-1)
-
-        Returns:
-            Chunk size in bytes
+            trace_idx: Trace index to use.
         """
-        pass
-
-    @abstractmethod
-    def get_next_chunk_sizes(self) -> List[int]:
-        """Get sizes of next chunk at all quality levels.
-
-        Returns:
-            List of chunk sizes in bytes for each bitrate level
-        """
-        pass
-
-    @abstractmethod
-    def download_chunk(self, chunk_size: int) -> float:
-        """Simulate downloading a video chunk over the network.
-
-        This method simulates network transmission delay based on
-        bandwidth traces and chunk size.
-
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L59
-
-        Args:
-            chunk_size: Size of chunk to download in bytes
-
-        Returns:
-            Download delay in milliseconds
-        """
-        pass
-
-    @abstractmethod
-    def update_buffer(self, delay_ms: float) -> float:
-        """Update playback buffer after chunk download.
-
-        Calculates rebuffer (stall) time and updates buffer state:
-        - Rebuffer = max(delay - buffer, 0)
-        - Buffer = max(buffer - delay, 0) + chunk_duration
-
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L89
-
-        Args:
-            delay_ms: Download delay in milliseconds
-
-        Returns:
-            Rebuffer (stall) time in milliseconds
-        """
-        pass
-
-    @abstractmethod
-    def drain_buffer_overflow(self) -> float:
-        """Drain excess buffer when it exceeds the maximum threshold.
-
-        When buffer exceeds the limit, the client sleeps to drain it.
-        This also advances the trace playback position.
-
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L99
-
-        Returns:
-            Sleep time in milliseconds
-        """
-        pass
-
-    # ==================== Concrete Step Method ====================
+        self.video_player.reset()
+        self.trace_simulator.reset()
 
     def step(self, quality: int) -> StepResult:
         """Simulate downloading a video chunk at given quality level.
-
-        This method orchestrates the simulation by calling abstract methods
-        in sequence. Override the individual abstract methods to customize
-        behavior rather than overriding this method.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L48
 
@@ -137,37 +88,51 @@ class NetworkSimulator(ABC):
         Returns:
             StepResult containing simulation results
         """
-        assert 0 <= quality < self.num_bitrates
+        assert quality >= 0
+        assert quality < self.video_player.num_bitrates
 
-        # 1. Get chunk size for requested quality
-        chunk_size = self.get_chunk_size(quality)
+        video_chunk_size = self.video_player.get_chunk_size(quality)
 
         # 2. Simulate network download
-        delay_ms = self.download_chunk(chunk_size)
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L55-L87
+        delay = self.trace_simulator.download_chunk(video_chunk_size)
 
         # 3. Update playback buffer (compute rebuffer and update buffer)
-        rebuffer_ms = self.update_buffer(delay_ms)
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L89-L96
+        rebuf = self.trace_simulator.update_buffer(delay)
 
         # 4. Handle buffer overflow (sleep if buffer too full)
-        sleep_ms = self.drain_buffer_overflow()
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L99-L123
+        sleep_time = self.trace_simulator.drain_buffer_overflow()
 
-        # Save buffer size for return (after all updates)
-        buffer_ms = self.buffer_size_ms
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L125-L129
+        # the "last buffer size" return to the controller
+        # Note: in old version of dash the lowest buffer is 0.
+        # In the new version the buffer always have at least
+        # one chunk of video
+        return_buffer_size = self.trace_simulator.buffer_size
 
-        # 5. Advance to next chunk (handle video end)
-        end_of_video, remaining_chunks = self.advance_video()
+        # 5. Advance to next chunk
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L131
+        end_of_video, video_chunk_remain = self.video_player.advance()
 
-        # 6. Get next chunk sizes
-        next_chunk_sizes = self.get_next_chunk_sizes()
+        # 6. Handle video end if needed
+        if end_of_video:
+            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L138
+            self.video_player.reset()
+            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L137-L150
+            self.trace_simulator.on_video_finished()
 
-        # Convert milliseconds to seconds for StepResult
+        # 7. Get next chunk sizes
+        next_video_chunk_sizes = self.video_player.get_next_chunk_sizes()
+
         return StepResult(
-            delay=delay_ms / MILLISECONDS_IN_SECOND,
-            sleep_time=sleep_ms / MILLISECONDS_IN_SECOND,
-            buffer_size=buffer_ms / MILLISECONDS_IN_SECOND,
-            rebuffer=rebuffer_ms / MILLISECONDS_IN_SECOND,
-            video_chunk_size=chunk_size,
-            next_video_chunk_sizes=next_chunk_sizes,
+            delay=delay,
+            sleep_time=sleep_time,
+            buffer_size=return_buffer_size / MILLISECONDS_IN_SECOND,
+            rebuffer=rebuf / MILLISECONDS_IN_SECOND,
+            video_chunk_size=video_chunk_size,
+            next_video_chunk_sizes=next_video_chunk_sizes,
             end_of_video=end_of_video,
-            video_chunk_remain=remaining_chunks,
+            video_chunk_remain=video_chunk_remain,
         )

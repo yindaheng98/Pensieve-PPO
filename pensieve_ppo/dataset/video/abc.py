@@ -20,4 +20,5 @@ class VideoData:
 
     def get_next_chunk_sizes(self, chunk_idx: int) -> List[int]:
         """Get sizes of next chunk for all bitrate levels."""
-        return [self.video_size[i][chunk_idx] for i in range(self.bitrate_levels)]
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L152-L154
+        return [self.get_chunk_size(i, chunk_idx) for i in range(self.bitrate_levels)]

@@ -24,7 +24,7 @@ class VideoPlayer:
     def reset(self) -> None:
         """Reset the video playback position to the beginning.
 
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L27
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L138
         """
         self.video_chunk_counter = 0
 
@@ -44,7 +44,7 @@ class VideoPlayer:
     def get_next_chunk_sizes(self) -> List[int]:
         """Get sizes of next chunk at all quality levels.
 
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L155
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L152-L154
 
         Returns:
             List of chunk sizes in bytes for each bitrate level
