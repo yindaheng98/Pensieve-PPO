@@ -47,7 +47,7 @@ class BaseNetworkSimulator(NetworkSimulator):
     def reset(self, trace_idx: int = 0) -> None:
         """Reset the simulator state.
 
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L31
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L31-L39
 
         Args:
             trace_idx: Trace index to use. If None, keeps current trace.
@@ -68,7 +68,7 @@ class BaseNetworkSimulator(NetworkSimulator):
     def download_chunk(self, video_chunk_size: int) -> float:
         """Simulate downloading a video chunk over the network.
 
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L55
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L55-L87
 
         Args:
             video_chunk_size: Size of chunk to download in bytes
@@ -115,7 +115,7 @@ class BaseNetworkSimulator(NetworkSimulator):
     def update_buffer(self, delay: float) -> float:
         """Update playback buffer after chunk download.
 
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L89
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L89-L96
 
         Args:
             delay: Download delay in milliseconds
@@ -137,7 +137,7 @@ class BaseNetworkSimulator(NetworkSimulator):
     def drain_buffer_overflow(self) -> float:
         """Drain excess buffer when it exceeds the maximum threshold.
 
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L99
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L99-L123
 
         Returns:
             Sleep time in milliseconds
@@ -174,7 +174,7 @@ class BaseNetworkSimulator(NetworkSimulator):
     def on_video_finished(self) -> None:
         """Handle end of video by moving to next trace.
 
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L135
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L137-L150
         """
         self.buffer_size = 0
 
