@@ -1,80 +1,65 @@
-"""TraceSimulator wrapper for modifying simulation behavior."""
+"""TraceSimulator wrapper for modifying simulation behavior.
 
-from typing import Protocol, runtime_checkable
+Design principles:
+    - Subclasses use `super().method()` to call the wrapped simulator's method
+    - Subclasses use `self.unwrapped` to access state variables on the base TraceSimulator
+    - The wrapped simulator is private (`__base`) to enforce this pattern
+"""
 
-from .simulator import TraceSimulator
+from .simulator import AbstractTraceSimulator, TraceSimulator
 
 
-@runtime_checkable
-class SimulatorProtocol(Protocol):
-    """Protocol defining the minimal simulator interface.
+class TraceSimulatorWrapper(AbstractTraceSimulator):
+    """Base wrapper class for modifying TraceSimulator behavior.
 
-    This is the public API that external code should depend on.
+    Usage pattern for subclasses:
+        - Override methods and call `super().method()` for delegation
+        - Access state variables via `self.unwrapped.attribute`
+
+    Example:
+        class NoiseWrapper(TraceSimulatorWrapper):
+            def download_chunk(self, video_chunk_size: int) -> float:
+                delay = super().download_chunk(video_chunk_size)
+                return delay * self.rng.uniform(0.9, 1.1)
     """
 
-    def reset(self) -> None:
-        """Reset the simulator state."""
-        ...
-
-    def download_chunk(self, video_chunk_size: int) -> float:
-        """Simulate downloading a video chunk. Returns delay in ms."""
-        ...
-
-    def update_buffer(self, delay: float) -> float:
-        """Update playback buffer. Returns rebuffer time in ms."""
-        ...
-
-    def drain_buffer_overflow(self) -> float:
-        """Drain excess buffer. Returns sleep time in ms."""
-        ...
-
-    def on_video_finished(self) -> None:
-        """Handle end of video."""
-        ...
-
-
-class TraceSimulatorWrapper:
-    """Base wrapper class using composition with explicit delegation.
-
-    Subclasses can override methods to modify simulation behavior.
-    Only exposes the minimal public API defined by SimulatorProtocol.
-    """
-
-    def __init__(self, base_simulator: SimulatorProtocol):
+    def __init__(self, base: AbstractTraceSimulator):
         """Initialize the wrapper.
 
         Args:
-            base_simulator: The simulator to wrap (TraceSimulator or another wrapper)
+            base: The simulator to wrap (TraceSimulator or another wrapper)
         """
-        self.base_simulator = base_simulator
-
-    # ==================== Wrapper-specific ====================
+        self.__base = base
 
     @property
     def unwrapped(self) -> TraceSimulator:
-        """Get the underlying unwrapped TraceSimulator."""
-        if isinstance(self.base_simulator, TraceSimulatorWrapper):
-            return self.base_simulator.unwrapped
-        return self.base_simulator  # type: ignore[return-value]
+        """Get the underlying TraceSimulator for accessing state variables.
 
-    # ==================== Public API (SimulatorProtocol) ====================
+        All state (buffer_size, trace_idx, etc.) lives on the unwrapped simulator.
+        """
+        if isinstance(self.__base, TraceSimulatorWrapper):
+            return self.__base.unwrapped
+        # __base is TraceSimulator
+        return self.__base  # type: ignore[return-value]
+
+    # ==================== Delegated methods (use super() in subclasses) ====================
 
     def reset(self) -> None:
         """Reset the simulator state."""
-        self.base_simulator.reset()
+        self.__base.reset()
 
     def download_chunk(self, video_chunk_size: int) -> float:
         """Simulate downloading a video chunk. Returns delay in ms."""
-        return self.base_simulator.download_chunk(video_chunk_size)
+        return self.__base.download_chunk(video_chunk_size)
 
     def update_buffer(self, delay: float) -> float:
         """Update playback buffer. Returns rebuffer time in ms."""
-        return self.base_simulator.update_buffer(delay)
+        return self.__base.update_buffer(delay)
 
     def drain_buffer_overflow(self) -> float:
         """Drain excess buffer. Returns sleep time in ms."""
-        return self.base_simulator.drain_buffer_overflow()
+        return self.__base.drain_buffer_overflow()
 
     def on_video_finished(self) -> None:
         """Handle end of video."""
-        self.base_simulator.on_video_finished()
+        self.__base.on_video_finished()
