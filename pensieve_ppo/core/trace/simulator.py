@@ -41,7 +41,7 @@ class TraceSimulator(AbstractTraceSimulator):
         # Initialize with first trace
         self.reset()
 
-    # ==================== Core Methods ====================
+    # ==================== Methods for reset ====================
 
     def reset(self) -> None:
         """Reset the simulator state.
@@ -63,6 +63,27 @@ class TraceSimulator(AbstractTraceSimulator):
         # note: trace file starts with time 0
         self.mahimahi_ptr = 1
         self.last_mahimahi_time = self.cooked_time[self.mahimahi_ptr - 1]
+
+    def on_video_finished(self) -> None:
+        """Handle end of video by moving to next trace.
+
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L137-L150
+        """
+        self.buffer_size = 0
+
+        self.trace_idx += 1
+        if self.trace_idx >= len(self.all_cooked_time):
+            self.trace_idx = 0
+
+        self.cooked_time = self.all_cooked_time[self.trace_idx]
+        self.cooked_bw = self.all_cooked_bw[self.trace_idx]
+
+        # randomize the start point of the video
+        # note: trace file starts with time 0
+        self.mahimahi_ptr = self.mahimahi_start_ptr
+        self.last_mahimahi_time = self.cooked_time[self.mahimahi_ptr - 1]
+
+    # ==================== Methods for runtime ====================
 
     def download_chunk(self, video_chunk_size: int) -> float:
         """Simulate downloading a video chunk over the network.
@@ -169,22 +190,3 @@ class TraceSimulator(AbstractTraceSimulator):
                     self.last_mahimahi_time = 0
 
         return sleep_time
-
-    def on_video_finished(self) -> None:
-        """Handle end of video by moving to next trace.
-
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L137-L150
-        """
-        self.buffer_size = 0
-
-        self.trace_idx += 1
-        if self.trace_idx >= len(self.all_cooked_time):
-            self.trace_idx = 0
-
-        self.cooked_time = self.all_cooked_time[self.trace_idx]
-        self.cooked_bw = self.all_cooked_bw[self.trace_idx]
-
-        # randomize the start point of the video
-        # note: trace file starts with time 0
-        self.mahimahi_ptr = self.mahimahi_start_ptr
-        self.last_mahimahi_time = self.cooked_time[self.mahimahi_ptr - 1]

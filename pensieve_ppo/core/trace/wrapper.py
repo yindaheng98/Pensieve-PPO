@@ -6,7 +6,8 @@ Design principles:
     - The wrapped simulator is private (`__base`) to enforce this pattern
 """
 
-from .simulator import AbstractTraceSimulator, TraceSimulator
+from .abc import AbstractTraceSimulator
+from .simulator import TraceSimulator
 
 
 class TraceSimulatorWrapper(AbstractTraceSimulator):

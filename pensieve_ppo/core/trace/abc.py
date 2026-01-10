@@ -1,4 +1,4 @@
-"""Network trace data class."""
+"""Network trace data classes and abstract simulator interface."""
 
 from typing import List, Tuple
 from dataclasses import dataclass
@@ -23,6 +23,20 @@ class TraceData:
         )
 
 
+@dataclass
+class TraceSimulateResult:
+    """Result of a single simulation step.
+
+    Attributes:
+        delay: Download delay in milliseconds
+        rebuf: Rebuffer (stall) time in milliseconds
+        sleep_time: Time spent sleeping due to buffer overflow in milliseconds
+    """
+    delay: float
+    rebuf: float
+    sleep_time: float
+
+
 class AbstractTraceSimulator(ABC):
     """Abstract base class defining the TraceSimulator interface.
 
@@ -30,10 +44,19 @@ class AbstractTraceSimulator(ABC):
     inherit from this class to ensure a consistent interface.
     """
 
+    # ==================== Methods for reset ====================
+
     @abstractmethod
     def reset(self) -> None:
         """Reset the simulator state."""
         ...
+
+    @abstractmethod
+    def on_video_finished(self) -> None:
+        """Handle end of video."""
+        ...
+
+    # ==================== Methods for runtime ====================
 
     @abstractmethod
     def download_chunk(self, video_chunk_size: int) -> float:
@@ -68,7 +91,38 @@ class AbstractTraceSimulator(ABC):
         """
         ...
 
-    @abstractmethod
-    def on_video_finished(self) -> None:
-        """Handle end of video."""
-        ...
+    # ==================== Step method ====================
+
+    def step(self, video_chunk_size: int) -> TraceSimulateResult:
+        """Execute one simulation step: download chunk and update buffer.
+
+        This method orchestrates the simulation by calling the abstract methods
+        in the correct order. The simulation flow is:
+            1. (External) Select video chunk quality/size based on policy
+            2. Simulate network download -> delay
+            3. Update playback buffer -> rebuf
+            4. Handle buffer overflow -> sleep_time
+
+        Args:
+            video_chunk_size: Size of the video chunk to download in bytes
+
+        Returns:
+            TraceSimulateResult containing delay, rebuf, and sleep_time
+        """
+        # 1. Simulate network download
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L55-L87
+        delay = self.download_chunk(video_chunk_size)
+
+        # 2. Update playback buffer (compute rebuffer and add new chunk)
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L89-L96
+        rebuf = self.update_buffer(delay)
+
+        # 3. Handle buffer overflow (sleep if buffer exceeds threshold)
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L99-L123
+        sleep_time = self.drain_buffer_overflow()
+
+        return TraceSimulateResult(
+            delay=delay,
+            rebuf=rebuf,
+            sleep_time=sleep_time,
+        )
