@@ -12,10 +12,12 @@ class TraceSimulateResult:
         delay: Download delay in milliseconds
         rebuf: Rebuffer (stall) time in milliseconds
         sleep_time: Time spent sleeping due to buffer overflow in milliseconds
+        buffer_size: Current buffer size in milliseconds
     """
     delay: float
     rebuf: float
     sleep_time: float
+    buffer_size: float
 
 
 class AbstractTraceSimulator(ABC):
@@ -72,6 +74,15 @@ class AbstractTraceSimulator(ABC):
         """
         ...
 
+    @abstractmethod
+    def get_buffer_size(self) -> float:
+        """Get the current buffer size in milliseconds.
+
+        Returns:
+            Current buffer size in milliseconds
+        """
+        ...
+
     # ==================== Step method ====================
 
     def step(self, video_chunk_size: int) -> TraceSimulateResult:
@@ -102,8 +113,16 @@ class AbstractTraceSimulator(ABC):
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L99-L123
         sleep_time = self.drain_buffer_overflow()
 
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L125-L129
+        # the "last buffer size" return to the controller
+        # Note: in old version of dash the lowest buffer is 0.
+        # In the new version the buffer always have at least
+        # one chunk of video
+        return_buffer_size = self.get_buffer_size()
+
         return TraceSimulateResult(
             delay=delay,
             rebuf=rebuf,
             sleep_time=sleep_time,
+            buffer_size=return_buffer_size,
         )

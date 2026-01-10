@@ -94,23 +94,14 @@ class Simulator:
         video_chunk_size = self.video_player.get_chunk_size(quality)
 
         # 2. Simulate network download
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L55-L87
-        delay = self.trace_simulator.download_chunk(video_chunk_size)
-
         # 3. Update playback buffer (compute rebuffer and update buffer)
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L89-L96
-        rebuf = self.trace_simulator.update_buffer(delay)
-
         # 4. Handle buffer overflow (sleep if buffer too full)
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L99-L123
-        sleep_time = self.trace_simulator.drain_buffer_overflow()
-
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L125-L129
-        # the "last buffer size" return to the controller
-        # Note: in old version of dash the lowest buffer is 0.
-        # In the new version the buffer always have at least
-        # one chunk of video
-        return_buffer_size = self.trace_simulator.buffer_size
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L55-L129
+        result = self.trace_simulator.step(video_chunk_size)
+        delay = result.delay
+        rebuf = result.rebuf
+        sleep_time = result.sleep_time
+        return_buffer_size = result.buffer_size
 
         # 5. Advance to next chunk
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L131
