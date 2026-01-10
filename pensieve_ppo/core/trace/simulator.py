@@ -191,3 +191,11 @@ class TraceSimulator(AbstractTraceSimulator):
                     self.last_mahimahi_time = 0
 
         return sleep_time
+
+    def get_buffer_size(self) -> float:
+        """Get the current buffer size in milliseconds.
+
+        Returns:
+            Current buffer size in milliseconds
+        """
+        return self.buffer_size

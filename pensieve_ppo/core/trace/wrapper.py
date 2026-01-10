@@ -64,3 +64,11 @@ class TraceSimulatorWrapper(AbstractTraceSimulator):
     def drain_buffer_overflow(self) -> float:
         """Drain excess buffer. Returns sleep time in ms."""
         return self.__base.drain_buffer_overflow()
+
+    def get_buffer_size(self) -> float:
+        """Get the current buffer size in milliseconds.
+
+        Returns:
+            Current buffer size in milliseconds
+        """
+        return self.__base.get_buffer_size()
