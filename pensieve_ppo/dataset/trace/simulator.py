@@ -39,7 +39,7 @@ class TraceSimulator:
         self.all_cooked_bw = trace_data.all_cooked_bw
 
         # Initialize with first trace
-        self.reset(trace_idx=0)
+        self.reset()
 
     # ==================== Core Methods ====================
 
