@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from typing import List
 
-from ..dataset.video.player import VideoPlayer
-from ..dataset.trace.simulator import TraceSimulator
+from ..core.video.player import VideoPlayer
+from ..core.trace.simulator import TraceSimulator
 
 
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L3
