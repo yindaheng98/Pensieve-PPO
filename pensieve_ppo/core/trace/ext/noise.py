@@ -42,9 +42,16 @@ class NoiseTraceSimulator(TraceSimulatorWrapper):
         self.noise_high = noise_high
         self.seed(random_seed)
 
-    def seed(self, seed: Optional[int]) -> None:
-        """Set random seed for noise generation."""
-        self.rng = np.random.RandomState(seed)
+    def seed(self, seed: Optional[int] = None) -> None:
+        """Set random seed for noise generation.
+
+        Args:
+            seed: Random seed. If None, uses global np.random module.
+        """
+        if seed is None:
+            self.rng = np.random
+        else:
+            self.rng = np.random.RandomState(seed)
 
     def download_chunk(self, video_chunk_size: int) -> float:
         """Simulate downloading with multiplicative noise on delay.

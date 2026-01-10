@@ -34,9 +34,16 @@ class RandomTraceSimulator(TraceSimulatorWrapper):
         # Apply random initialization to the base simulator
         self._apply_random_init()
 
-    def seed(self, seed: Optional[int]) -> None:
-        """Set random seed for trace selection."""
-        self.rng = np.random.RandomState(seed)
+    def seed(self, seed: Optional[int] = None) -> None:
+        """Set random seed for trace selection.
+
+        Args:
+            seed: Random seed. If None, uses global np.random module.
+        """
+        if seed is None:
+            self.rng = np.random
+        else:
+            self.rng = np.random.RandomState(seed)
 
     def _apply_random_init(self) -> None:
         """Apply random trace selection to the base simulator.
