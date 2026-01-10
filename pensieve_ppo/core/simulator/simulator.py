@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import List
 
 from ..video.player import VideoPlayer
-from ..trace.simulator import AbstractTraceSimulator
+from ..trace.abc import AbstractTraceSimulator
 
 
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L3
@@ -33,13 +33,11 @@ class Simulator:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L18
 
     The `step` method orchestrates these components in order:
-    1. `video_player.get_chunk_size` - Get chunk size for requested quality
-    2. `trace_simulator.download_chunk` - Simulate network transmission
-    3. `trace_simulator.update_buffer` - Update playback buffer after download
-    4. `trace_simulator.drain_buffer_overflow` - Handle buffer overflow by sleeping
-    5. `video_player.advance` - Move to next chunk
-    6. `trace_simulator.on_video_finished` - Handle video end (if needed)
-    7. `video_player.get_next_chunk_sizes` - Get sizes for next chunk
+        1. video_player.get_chunk_size - Get chunk size for requested quality
+        2. trace_simulator.step - Simulate network download, update buffer, handle overflow
+        3. video_player.advance - Move to next chunk
+        4. trace_simulator.on_video_finished - Handle video end (if needed)
+        5. video_player.get_next_chunk_sizes - Get sizes for next chunk
     """
 
     def __init__(
@@ -60,9 +58,6 @@ class Simulator:
         """Reset the simulator state.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L31
-
-        Args:
-            trace_idx: Trace index to use.
         """
         self.video_player.reset()
         self.trace_simulator.reset()
@@ -81,11 +76,10 @@ class Simulator:
         assert quality >= 0
         assert quality < self.video_player.num_bitrates
 
+        # 1. Get chunk size for requested quality
         video_chunk_size = self.video_player.get_chunk_size(quality)
 
-        # 2. Simulate network download
-        # 3. Update playback buffer (compute rebuffer and update buffer)
-        # 4. Handle buffer overflow (sleep if buffer too full)
+        # 2. Simulate network download, update buffer, handle overflow
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L55-L129
         result = self.trace_simulator.step(video_chunk_size)
         delay = result.delay
@@ -93,18 +87,17 @@ class Simulator:
         sleep_time = result.sleep_time
         return_buffer_size = result.buffer_size
 
-        # 5. Advance to next chunk
+        # 3. Advance to next chunk
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L131
         end_of_video, video_chunk_remain = self.video_player.advance()
 
-        # 6. Handle video end if needed
+        # 4. Handle video end if needed
         if end_of_video:
-            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L138
             self.video_player.reset()
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L137-L150
             self.trace_simulator.on_video_finished()
 
-        # 7. Get next chunk sizes
+        # 5. Get next chunk sizes
         next_video_chunk_sizes = self.video_player.get_next_chunk_sizes()
 
         return StepResult(
