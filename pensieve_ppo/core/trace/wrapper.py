@@ -49,6 +49,10 @@ class TraceSimulatorWrapper(AbstractTraceSimulator):
         """Reset the simulator state."""
         self.__base.reset()
 
+    def on_video_finished(self) -> None:
+        """Handle end of video."""
+        self.__base.on_video_finished()
+
     def download_chunk(self, video_chunk_size: int) -> float:
         """Simulate downloading a video chunk. Returns delay in ms."""
         return self.__base.download_chunk(video_chunk_size)
@@ -60,7 +64,3 @@ class TraceSimulatorWrapper(AbstractTraceSimulator):
     def drain_buffer_overflow(self) -> float:
         """Drain excess buffer. Returns sleep time in ms."""
         return self.__base.drain_buffer_overflow()
-
-    def on_video_finished(self) -> None:
-        """Handle end of video."""
-        self.__base.on_video_finished()
