@@ -1,6 +1,6 @@
 """Simulator modules."""
 
-from .abc import Simulator, StepResult
+from .simulator import Simulator, StepResult
 
 __all__ = [
     'Simulator',

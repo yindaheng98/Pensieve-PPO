@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import List
 
 from ..video.player import VideoPlayer
-from ..trace.simulator import TraceSimulator
+from ..trace.simulator import AbstractTraceSimulator
 
 
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L3
@@ -45,7 +45,7 @@ class Simulator:
     def __init__(
         self,
         video_player: VideoPlayer,
-        trace_simulator: TraceSimulator,
+        trace_simulator: AbstractTraceSimulator,
     ):
         """Initialize the simulator.
 
@@ -55,16 +55,6 @@ class Simulator:
         """
         self.video_player = video_player
         self.trace_simulator = trace_simulator
-
-    @property
-    def buffer_size(self) -> float:
-        """Current buffer size in milliseconds."""
-        return self.trace_simulator.buffer_size
-
-    @property
-    def trace_idx(self) -> int:
-        """Current trace index being used."""
-        return self.trace_simulator.trace_idx
 
     def reset(self) -> None:
         """Reset the simulator state.
