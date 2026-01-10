@@ -28,16 +28,33 @@ class TraceSimulator(AbstractTraceSimulator):
     def __init__(
         self,
         trace_data: TraceData,
+        video_chunk_len: float = VIDEO_CHUNK_LEN,
+        buffer_thresh: float = BUFFER_THRESH,
+        drain_buffer_sleep_time: float = DRAIN_BUFFER_SLEEP_TIME,
+        packet_payload_portion: float = PACKET_PAYLOAD_PORTION,
+        link_rtt: float = LINK_RTT,
     ):
         """Initialize the network simulator.
 
         Args:
             trace_data: Loaded network trace data
+            video_chunk_len: Video chunk length in milliseconds (default: 4000.0)
+            buffer_thresh: Maximum buffer limit in milliseconds (default: 60000.0)
+            drain_buffer_sleep_time: Sleep time when draining buffer in milliseconds (default: 500.0)
+            packet_payload_portion: Portion of packet that is payload (default: 0.95)
+            link_rtt: Link round-trip time in milliseconds (default: 80)
         """
         assert len(trace_data.all_cooked_time) == len(trace_data.all_cooked_bw)
 
         self.all_cooked_time = trace_data.all_cooked_time
         self.all_cooked_bw = trace_data.all_cooked_bw
+
+        # Store simulation parameters
+        self.video_chunk_len = video_chunk_len
+        self.buffer_thresh = buffer_thresh
+        self.drain_buffer_sleep_time = drain_buffer_sleep_time
+        self.packet_payload_portion = packet_payload_portion
+        self.link_rtt = link_rtt
 
         # Initialize with first trace
         self.reset()
@@ -107,12 +124,12 @@ class TraceSimulator(AbstractTraceSimulator):
             duration = self.cooked_time[self.mahimahi_ptr] \
                 - self.last_mahimahi_time
 
-            packet_payload = throughput * duration * PACKET_PAYLOAD_PORTION
+            packet_payload = throughput * duration * self.packet_payload_portion
 
             if video_chunk_counter_sent + packet_payload > video_chunk_size:
 
                 fractional_time = (video_chunk_size - video_chunk_counter_sent) / \
-                    throughput / PACKET_PAYLOAD_PORTION
+                    throughput / self.packet_payload_portion
                 delay += fractional_time
                 self.last_mahimahi_time += fractional_time
                 break
@@ -129,7 +146,7 @@ class TraceSimulator(AbstractTraceSimulator):
                 self.last_mahimahi_time = 0
 
         delay *= MILLISECONDS_IN_SECOND
-        delay += LINK_RTT
+        delay += self.link_rtt
 
         return delay
 
@@ -151,7 +168,7 @@ class TraceSimulator(AbstractTraceSimulator):
         self.buffer_size = max(self.buffer_size - delay, 0.0)
 
         # add in the new chunk
-        self.buffer_size += VIDEO_CHUNK_LEN
+        self.buffer_size += self.video_chunk_len
 
         return rebuf
 
@@ -165,13 +182,13 @@ class TraceSimulator(AbstractTraceSimulator):
         """
         # sleep if buffer gets too large
         sleep_time = 0
-        if self.buffer_size > BUFFER_THRESH:
+        if self.buffer_size > self.buffer_thresh:
             # exceed the buffer limit
             # we need to skip some network bandwidth here
             # but do not add up the delay
-            drain_buffer_time = self.buffer_size - BUFFER_THRESH
-            sleep_time = math.ceil(drain_buffer_time / DRAIN_BUFFER_SLEEP_TIME) * \
-                DRAIN_BUFFER_SLEEP_TIME
+            drain_buffer_time = self.buffer_size - self.buffer_thresh
+            sleep_time = math.ceil(drain_buffer_time / self.drain_buffer_sleep_time) * \
+                self.drain_buffer_sleep_time
             self.buffer_size -= sleep_time
 
             while True:
