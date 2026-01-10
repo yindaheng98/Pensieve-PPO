@@ -1,4 +1,13 @@
-"""Simulator that combines VideoPlayer and TraceSimulator."""
+"""Simulator that combines VideoPlayer and TraceSimulator.
+
+Time Unit Convention:
+=====================
+- Internal calculations (from TraceSimulator): MILLISECONDS
+- StepResult output: delay/sleep_time in MILLISECONDS, buffer_size/rebuffer in SECONDS
+
+This module converts internal millisecond values to seconds for buffer_size and rebuffer
+in the StepResult, while keeping delay and sleep_time in milliseconds for compatibility.
+"""
 
 from dataclasses import dataclass
 from typing import List
@@ -16,13 +25,19 @@ class StepResult:
     """Result of a single simulation step.
 
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L159
+
+    Time Unit Notes:
+    - delay: [millisec] download time including RTT
+    - sleep_time: [millisec] time spent waiting when buffer is full
+    - buffer_size: [sec] current playback buffer (converted from internal millisec)
+    - rebuffer: [sec] stall/rebuffering time (converted from internal millisec)
     """
-    delay: float                        # Download delay in milliseconds
-    sleep_time: float                   # Sleep time in milliseconds (when buffer is full)
-    buffer_size: float                  # Current buffer size in seconds
-    rebuffer: float                     # Rebuffering time in seconds
-    video_chunk_size: int               # Size of downloaded chunk in bytes
-    next_video_chunk_sizes: List[int]   # Sizes of next chunk at each bitrate
+    delay: float                        # [millisec] Download delay
+    sleep_time: float                   # [millisec] Sleep time (when buffer is full)
+    buffer_size: float                  # [sec] Current buffer size
+    rebuffer: float                     # [sec] Rebuffering/stall time
+    video_chunk_size: int               # [bytes] Size of downloaded chunk
+    next_video_chunk_sizes: List[int]   # [bytes] Sizes of next chunk at each bitrate
     end_of_video: bool                  # Whether video has ended
     video_chunk_remain: int             # Number of remaining chunks
 
@@ -72,6 +87,8 @@ class Simulator:
 
         Returns:
             StepResult containing simulation results
+            - delay, sleep_time: in milliseconds
+            - buffer_size, rebuffer: converted to seconds
         """
         assert quality >= 0
         assert quality < self.video_player.num_bitrates
@@ -98,15 +115,15 @@ class Simulator:
             self.trace_simulator.on_video_finished()
 
         # 5. Get next chunk sizes
-        next_video_chunk_sizes = self.video_player.get_next_chunk_sizes()
+        next_video_chunk_sizes = self.video_player.get_next_chunk_sizes()  # [bytes]
 
         return StepResult(
-            delay=delay,
-            sleep_time=sleep_time,
-            buffer_size=return_buffer_size / MILLISECONDS_IN_SECOND,
-            rebuffer=rebuf / MILLISECONDS_IN_SECOND,
-            video_chunk_size=video_chunk_size,
-            next_video_chunk_sizes=next_video_chunk_sizes,
+            delay=delay,                                            # [millisec] - keep as is
+            sleep_time=sleep_time,                                  # [millisec] - keep as is
+            buffer_size=return_buffer_size / MILLISECONDS_IN_SECOND,  # [millisec] -> [sec]
+            rebuffer=rebuf / MILLISECONDS_IN_SECOND,                  # [millisec] -> [sec]
+            video_chunk_size=video_chunk_size,                      # [bytes]
+            next_video_chunk_sizes=next_video_chunk_sizes,          # [bytes]
             end_of_video=end_of_video,
             video_chunk_remain=video_chunk_remain,
         )

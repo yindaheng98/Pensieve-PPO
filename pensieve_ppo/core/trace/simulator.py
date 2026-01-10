@@ -1,4 +1,14 @@
-"""Base network simulator implementation."""
+"""Base network simulator implementation.
+
+Time Unit Convention:
+=====================
+- Trace data (cooked_time, last_mahimahi_time): SECONDS
+- Buffer and delay values (buffer_size, delay, rebuf, sleep_time): MILLISECONDS
+- All parameters (video_chunk_len, buffer_thresh, drain_buffer_sleep_time, link_rtt): MILLISECONDS
+
+The trace files store timestamps in seconds, but all internal buffer/delay
+calculations use milliseconds for consistency with the original Pensieve implementation.
+"""
 
 import math
 
