@@ -3,7 +3,7 @@
 from typing import Optional
 
 from ..simulator import TraceSimulator
-from ..abc import TraceData
+from ..data import TraceData
 from .noise import NoiseTraceSimulator, NOISE_LOW, NOISE_HIGH
 from .random import RandomTraceSimulator
 
