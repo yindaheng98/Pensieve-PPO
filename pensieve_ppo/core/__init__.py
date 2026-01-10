@@ -1,6 +1,12 @@
-"""Dataset loading modules."""
+"""Pensieve PPO core modules."""
 
-from .trace import load_trace, TraceData, TraceSimulator
-from .video import load_video_size, VideoData, VideoPlayer
+from . import simulator
+from . import trace
+from . import video
 
-__all__ = ['load_trace', 'load_video_size', 'TraceData', 'TraceSimulator', 'VideoData', 'VideoPlayer']
+__all__ = [
+    # Submodules
+    'simulator',
+    'trace',
+    'video',
+]
