@@ -1,11 +1,14 @@
 """Video chunk size data loader."""
 
+from typing import Optional
+
 from .data import VideoData
 
 
 def load_video_size(
     video_size_file_prefix: str,
-    bitrate_levels: int = 6
+    bitrate_levels: int = 6,
+    max_chunks: Optional[int] = None,
 ) -> VideoData:
     """
     Load video chunk sizes for all bitrate levels.
@@ -19,6 +22,8 @@ def load_video_size(
         video_size_file_prefix: Path prefix for video size files
                                (e.g., './envivio/video_size_')
         bitrate_levels: Number of bitrate levels (default: 6)
+        max_chunks: Maximum number of chunks to load. If specified, truncates
+                   the loaded data to this limit. If None, load all chunks.
 
     Returns:
         VideoData object containing chunk sizes for all bitrates
@@ -32,6 +37,14 @@ def load_video_size(
                 video_size[bitrate].append(int(line.split()[0]))
 
     num_chunks = min([len(video_size[bitrate]) for bitrate in range(bitrate_levels)])
+
+    # Truncate to max_chunks if specified
+    if max_chunks is not None:
+        num_chunks = min(max_chunks, num_chunks)
+
+    for bitrate in range(bitrate_levels):
+        video_size[bitrate] = video_size[bitrate][:num_chunks]
+
     return VideoData(
         video_size=video_size,
         bitrate_levels=bitrate_levels,
