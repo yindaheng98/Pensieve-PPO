@@ -32,11 +32,6 @@ class SimulatorProtocol(Protocol):
         """Handle end of video."""
         ...
 
-    @property
-    def trace_idx(self) -> int:
-        """Current trace index (used for logging/identification)."""
-        ...
-
 
 class TraceSimulatorWrapper:
     """Base wrapper class using composition with explicit delegation.
@@ -51,21 +46,16 @@ class TraceSimulatorWrapper:
         Args:
             base_simulator: The simulator to wrap (TraceSimulator or another wrapper)
         """
-        self._base = base_simulator
+        self.base_simulator = base_simulator
 
     # ==================== Wrapper-specific ====================
 
     @property
-    def base_simulator(self) -> TraceSimulator:
-        """Get the underlying base TraceSimulator."""
-        return self._base  # type: ignore[return-value]
-
-    @property
     def unwrapped(self) -> TraceSimulator:
         """Get the underlying unwrapped TraceSimulator."""
-        if isinstance(self._base, TraceSimulatorWrapper):
-            return self._base.unwrapped
-        return self._base  # type: ignore[return-value]
+        if isinstance(self.base_simulator, TraceSimulatorWrapper):
+            return self.base_simulator.unwrapped
+        return self.base_simulator  # type: ignore[return-value]
 
     # ==================== Public API (SimulatorProtocol) ====================
 
@@ -88,8 +78,3 @@ class TraceSimulatorWrapper:
     def on_video_finished(self) -> None:
         """Handle end of video."""
         self.base_simulator.on_video_finished()
-
-    @property
-    def trace_idx(self) -> int:
-        """Current trace index (read-only, used for logging)."""
-        return self.base_simulator.trace_idx

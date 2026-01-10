@@ -58,7 +58,7 @@ class NoiseTraceSimulator(TraceSimulatorWrapper):
             Download delay in milliseconds (with noise applied)
         """
         # Get base delay from wrapped simulator
-        delay = self.base_simulator.download_chunk(video_chunk_size)
+        delay = super().download_chunk(video_chunk_size)
 
         # Add multiplicative noise to delay
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L92

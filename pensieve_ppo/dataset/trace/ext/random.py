@@ -45,15 +45,17 @@ class RandomTraceSimulator(TraceSimulatorWrapper):
             trace_idx: If provided, use this trace. Otherwise, select randomly.
         """
         super().reset()
+        rng = self.rng
+        self = self.unwrapped
 
         # pick a random trace file
-        self.trace_idx = self.rng.randint(len(self.all_cooked_time))
+        self.trace_idx = rng.randint(len(self.all_cooked_time))
         self.cooked_time = self.all_cooked_time[self.trace_idx]
         self.cooked_bw = self.all_cooked_bw[self.trace_idx]
 
         # randomize the start point of the trace
         # note: trace file starts with time 0
-        self.mahimahi_ptr = self.rng.randint(1, len(self.cooked_bw))
+        self.mahimahi_ptr = rng.randint(1, len(self.cooked_bw))
         self.last_mahimahi_time = self.cooked_time[self.mahimahi_ptr - 1]
 
     def on_video_finished(self) -> None:
@@ -62,13 +64,15 @@ class RandomTraceSimulator(TraceSimulatorWrapper):
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L145-L153
         """
         super().on_video_finished()
+        rng = self.rng
+        self = self.unwrapped
 
         # pick a random trace file
-        self.trace_idx = self.rng.randint(len(self.all_cooked_time))
+        self.trace_idx = rng.randint(len(self.all_cooked_time))
         self.cooked_time = self.all_cooked_time[self.trace_idx]
         self.cooked_bw = self.all_cooked_bw[self.trace_idx]
 
         # randomize the start point of the video
         # note: trace file starts with time 0
-        self.mahimahi_ptr = self.rng.randint(1, len(self.cooked_bw))
+        self.mahimahi_ptr = rng.randint(1, len(self.cooked_bw))
         self.last_mahimahi_time = self.cooked_time[self.mahimahi_ptr - 1]
