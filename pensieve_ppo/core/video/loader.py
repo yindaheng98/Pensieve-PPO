@@ -1,6 +1,6 @@
 """Video chunk size data loader."""
 
-from .abc import VideoData
+from .data import VideoData
 
 
 def load_video_size(

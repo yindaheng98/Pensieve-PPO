@@ -2,7 +2,8 @@
 
 import math
 
-from .abc import TraceData, AbstractTraceSimulator
+from .data import TraceData
+from .abc import AbstractTraceSimulator
 
 
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L3

@@ -2,7 +2,7 @@
 
 from typing import List, Tuple
 
-from .abc import VideoData
+from .data import VideoData
 
 
 class VideoPlayer:

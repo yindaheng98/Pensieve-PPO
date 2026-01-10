@@ -1,7 +1,7 @@
 """Network trace data loader."""
 
 import os
-from .abc import TraceData
+from .data import TraceData
 
 
 def load_trace(trace_folder: str) -> TraceData:

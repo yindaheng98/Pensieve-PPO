@@ -1,9 +1,18 @@
 """Trace data loading module."""
 
-from .abc import TraceData
+from .data import TraceData
 from .loader import load_trace
+from .abc import TraceSimulateResult, AbstractTraceSimulator
 from .simulator import TraceSimulator
 from .wrapper import TraceSimulatorWrapper
 from . import ext
 
-__all__ = ['load_trace', 'TraceData', 'TraceSimulator', 'TraceSimulatorWrapper', 'ext']
+__all__ = [
+    'TraceData',
+    'load_trace',
+    'TraceSimulateResult',
+    'AbstractTraceSimulator',
+    'TraceSimulator',
+    'TraceSimulatorWrapper',
+    'ext'
+]
