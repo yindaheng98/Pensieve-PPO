@@ -14,9 +14,6 @@ import numpy as np
 from gymnasium import spaces
 
 from ..core.simulator import Simulator
-from ..core.trace import TraceData, TraceSimulator, load_trace
-from ..core.trace.ext import create_train_simulator, create_test_simulator
-from ..core.video import VideoData, VideoPlayer, load_video_size
 
 
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L8
@@ -38,7 +35,6 @@ SMOOTH_PENALTY = 1.0  # penalty for bitrate changes
 
 # Default values
 DEFAULT_QUALITY = 1  # default video quality without agent
-RANDOM_SEED = 42
 
 
 class ABREnv(gym.Env):
@@ -68,10 +64,7 @@ class ABREnv(gym.Env):
 
     def __init__(
         self,
-        trace_folder: str,
-        video_size_file_prefix: str,
-        random_seed: Optional[int] = RANDOM_SEED,
-        train: bool = True,
+        simulator: Simulator,
         video_bit_rate: Optional[np.ndarray] = None,
         rebuf_penalty: float = REBUF_PENALTY,
         smooth_penalty: float = SMOOTH_PENALTY,
@@ -79,41 +72,22 @@ class ABREnv(gym.Env):
         """Initialize the ABR environment.
 
         Args:
-            trace_folder: Path to folder containing network trace files
-            video_size_file_prefix: Path prefix for video size files
-                                   (e.g., './envivio/video_size_')
-            random_seed: Random seed for reproducibility (default: 42)
-            train: If True, use training simulator with noise and random trace
-                   selection. If False, use deterministic test simulator.
+            simulator: Pre-configured Simulator instance (use create_simulator
+                      from pensieve_ppo.core.combinations to create one)
             video_bit_rate: Array of bitrate values in Kbps (default: Pensieve values)
             rebuf_penalty: Penalty coefficient for rebuffering (default: 4.3)
             smooth_penalty: Penalty coefficient for quality changes (default: 1.0)
         """
         super().__init__()
 
+        # Store simulator
+        self.simulator = simulator
+
         # Store reward parameters
         self.rebuf_penalty = rebuf_penalty
         self.smooth_penalty = smooth_penalty
         self.video_bit_rate = video_bit_rate if video_bit_rate is not None else VIDEO_BIT_RATE.copy()
         self.a_dim = len(self.video_bit_rate)
-
-        # Load trace data
-        trace_data = load_trace(trace_folder)
-
-        # Load video data
-        video_data = load_video_size(video_size_file_prefix, bitrate_levels=self.a_dim)
-
-        # Create video player
-        video_player = VideoPlayer(video_data)
-
-        # Create trace simulator based on training mode
-        if train:
-            trace_simulator = create_train_simulator(trace_data, random_seed=random_seed)
-        else:
-            trace_simulator = create_test_simulator(trace_data)
-
-        # Create combined simulator
-        self.simulator = Simulator(video_player, trace_simulator)
 
         # Initialize state
         self.last_bit_rate = DEFAULT_QUALITY
@@ -129,19 +103,6 @@ class ABREnv(gym.Env):
             dtype=np.float32
         )
         self.action_space = spaces.Discrete(self.a_dim)
-
-        # Store random seed
-        self._random_seed = random_seed
-
-    def seed(self, seed: Optional[int] = None) -> None:
-        """Set random seed for the environment.
-
-        Args:
-            seed: Random seed value
-        """
-        if seed is not None:
-            np.random.seed(seed)
-            self._random_seed = seed
 
     def reset(
         self,
@@ -164,9 +125,6 @@ class ABREnv(gym.Env):
 
         if seed is not None:
             np.random.seed(seed)
-
-        # Reset simulator
-        self.simulator.reset()
 
         self.time_stamp = 0
         self.last_bit_rate = DEFAULT_QUALITY
