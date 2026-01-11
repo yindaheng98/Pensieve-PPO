@@ -74,6 +74,7 @@ class ABREnv(gym.Env):
         state_history_len: int = S_LEN,
         buffer_norm_factor: float = BUFFER_NORM_FACTOR,
         total_chunk_cap: float = CHUNK_TIL_VIDEO_END_CAP,
+        initial_bitrate: int = DEFAULT_QUALITY,
     ):
         """Initialize the ABR environment.
 
@@ -86,6 +87,7 @@ class ABREnv(gym.Env):
             state_history_len: Number of past observations to keep in state (default: 8)
             buffer_norm_factor: Normalization factor for buffer size in seconds (default: 10.0)
             total_chunk_cap: Cap value for remaining chunks normalization (default: 48.0)
+            initial_bitrate: Initial bitrate level index on reset (default: 1)
         """
         super().__init__()
 
@@ -103,8 +105,11 @@ class ABREnv(gym.Env):
         self.buffer_norm_factor = buffer_norm_factor
         self.total_chunk_cap = total_chunk_cap
 
+        # Store initial bitrate
+        self.initial_bitrate = initial_bitrate
+
         # Initialize state
-        self.last_bit_rate = DEFAULT_QUALITY
+        self.last_bit_rate = self.initial_bitrate
         self.buffer_size = 0.0
         self.state = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
         self.time_stamp = 0.0
@@ -141,7 +146,7 @@ class ABREnv(gym.Env):
             np.random.seed(seed)
 
         self.time_stamp = 0
-        self.last_bit_rate = DEFAULT_QUALITY
+        self.last_bit_rate = self.initial_bitrate
         self.state = np.zeros((S_INFO, self.state_history_len))
         self.buffer_size = 0.
         bit_rate = self.last_bit_rate
