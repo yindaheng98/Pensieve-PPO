@@ -16,10 +16,13 @@ from gymnasium import spaces
 from ..core.simulator import Simulator
 
 
+# State dimensions
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L8
 S_INFO = 6  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
 S_LEN = 8  # take how many frames in the past
-A_DIM = 6  # number of bitrate levels
+
+# Default bitrate levels
+# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L12
 VIDEO_BIT_RATE = np.array([300., 750., 1200., 1850., 2850., 4300.])  # Kbps
 
 # Normalization constants
@@ -45,19 +48,19 @@ class ABREnv(gym.Env):
     video quality while minimizing rebuffering and bitrate oscillations.
 
     Observation Space:
-        Box(S_INFO, S_LEN) containing:
+        Box(S_INFO, state_history_len) containing:
         - [0, :] Last quality normalized by max quality
-        - [1, :] Buffer size normalized by BUFFER_NORM_FACTOR (10 sec)
+        - [1, :] Buffer size normalized by buffer_norm_factor
         - [2, :] Throughput (chunk_size / delay) in Mbps
-        - [3, :] Delay normalized by BUFFER_NORM_FACTOR (10 sec)
-        - [4, :A_DIM] Next chunk sizes at each bitrate level (in MB)
-        - [5, :] Remaining chunks normalized
+        - [3, :] Delay normalized by buffer_norm_factor
+        - [4, :num_bitrates] Next chunk sizes at each bitrate level (in MB)
+        - [5, :] Remaining chunks normalized by total_chunk_cap
 
     Action Space:
-        Discrete(A_DIM) - select bitrate level (0 to A_DIM-1)
+        Discrete(num_bitrates) - select bitrate level
 
     Reward:
-        quality - REBUF_PENALTY * rebuffer - SMOOTH_PENALTY * |quality_change|
+        quality - rebuf_penalty * rebuffer - smooth_penalty * |quality_change|
     """
 
     metadata = {"render_modes": []}
@@ -68,15 +71,21 @@ class ABREnv(gym.Env):
         video_bit_rate: Optional[np.ndarray] = None,
         rebuf_penalty: float = REBUF_PENALTY,
         smooth_penalty: float = SMOOTH_PENALTY,
+        state_history_len: int = S_LEN,
+        buffer_norm_factor: float = BUFFER_NORM_FACTOR,
+        total_chunk_cap: float = CHUNK_TIL_VIDEO_END_CAP,
     ):
         """Initialize the ABR environment.
 
         Args:
             simulator: Pre-configured Simulator instance (use create_simulator
-                      from pensieve_ppo.core.combinations to create one)
+                      from pensieve_ppo.core to create one)
             video_bit_rate: Array of bitrate values in Kbps (default: Pensieve values)
             rebuf_penalty: Penalty coefficient for rebuffering (default: 4.3)
             smooth_penalty: Penalty coefficient for quality changes (default: 1.0)
+            state_history_len: Number of past observations to keep in state (default: 8)
+            buffer_norm_factor: Normalization factor for buffer size in seconds (default: 10.0)
+            total_chunk_cap: Cap value for remaining chunks normalization (default: 48.0)
         """
         super().__init__()
 
@@ -87,22 +96,27 @@ class ABREnv(gym.Env):
         self.rebuf_penalty = rebuf_penalty
         self.smooth_penalty = smooth_penalty
         self.video_bit_rate = video_bit_rate if video_bit_rate is not None else VIDEO_BIT_RATE.copy()
-        self.a_dim = len(self.video_bit_rate)
+        self.num_bitrates = len(self.video_bit_rate)
+
+        # Store normalization parameters
+        self.state_history_len = state_history_len
+        self.buffer_norm_factor = buffer_norm_factor
+        self.total_chunk_cap = total_chunk_cap
 
         # Initialize state
         self.last_bit_rate = DEFAULT_QUALITY
         self.buffer_size = 0.0
-        self.state = np.zeros((S_INFO, S_LEN), dtype=np.float32)
+        self.state = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
         self.time_stamp = 0.0
 
         # Define observation and action spaces
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(S_INFO, S_LEN),
+            shape=(S_INFO, self.state_history_len),
             dtype=np.float32
         )
-        self.action_space = spaces.Discrete(self.a_dim)
+        self.action_space = spaces.Discrete(self.num_bitrates)
 
     def reset(
         self,
@@ -128,7 +142,7 @@ class ABREnv(gym.Env):
 
         self.time_stamp = 0
         self.last_bit_rate = DEFAULT_QUALITY
-        self.state = np.zeros((S_INFO, S_LEN))
+        self.state = np.zeros((S_INFO, self.state_history_len))
         self.buffer_size = 0.
         bit_rate = self.last_bit_rate
         result = self.simulator.step(bit_rate)
@@ -149,14 +163,14 @@ class ABREnv(gym.Env):
         # this should be S_INFO number of terms
         state[0, -1] = self.video_bit_rate[bit_rate] / \
             float(np.max(self.video_bit_rate))  # last quality
-        state[1, -1] = self.buffer_size / BUFFER_NORM_FACTOR  # 10 sec
+        state[1, -1] = self.buffer_size / self.buffer_norm_factor
         state[2, -1] = float(video_chunk_size) / \
             float(delay) / M_IN_K  # kilo byte / ms
-        state[3, -1] = float(delay) / M_IN_K / BUFFER_NORM_FACTOR  # 10 sec
-        state[4, :self.a_dim] = np.array(
+        state[3, -1] = float(delay) / M_IN_K / self.buffer_norm_factor
+        state[4, :self.num_bitrates] = np.array(
             next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
         state[5, -1] = np.minimum(video_chunk_remain,
-                                  CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
+                                  self.total_chunk_cap) / float(self.total_chunk_cap)
         self.state = state
 
         info = {
@@ -174,7 +188,7 @@ class ABREnv(gym.Env):
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L72-L106
 
         Args:
-            action: Bitrate level to select (0 to A_DIM-1)
+            action: Bitrate level to select (0 to num_bitrates-1)
 
         Returns:
             Tuple of (observation, reward, terminated, truncated, info)
@@ -211,14 +225,14 @@ class ABREnv(gym.Env):
         # this should be S_INFO number of terms
         state[0, -1] = self.video_bit_rate[bit_rate] / \
             float(np.max(self.video_bit_rate))  # last quality
-        state[1, -1] = self.buffer_size / BUFFER_NORM_FACTOR  # 10 sec
+        state[1, -1] = self.buffer_size / self.buffer_norm_factor
         state[2, -1] = float(video_chunk_size) / \
             float(delay) / M_IN_K  # kilo byte / ms
-        state[3, -1] = float(delay) / M_IN_K / BUFFER_NORM_FACTOR  # 10 sec
-        state[4, :self.a_dim] = np.array(
+        state[3, -1] = float(delay) / M_IN_K / self.buffer_norm_factor
+        state[4, :self.num_bitrates] = np.array(
             next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
         state[5, -1] = np.minimum(video_chunk_remain,
-                                  CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
+                                  self.total_chunk_cap) / float(self.total_chunk_cap)
 
         self.state = state
 
