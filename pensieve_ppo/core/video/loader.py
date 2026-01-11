@@ -2,6 +2,8 @@
 
 from typing import Optional
 
+import numpy as np
+
 from .data import VideoData
 
 
@@ -29,24 +31,24 @@ def load_video_size(
         VideoData object containing chunk sizes for all bitrates
     """
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L42
-    video_size = {}
+    video_size_lists = []
     for bitrate in range(bitrate_levels):
-        video_size[bitrate] = []
+        sizes = []
         with open(f"{video_size_file_prefix}{bitrate}", 'r') as f:
             for line in f:
-                video_size[bitrate].append(int(line.split()[0]))
+                sizes.append(int(line.split()[0]))
+        video_size_lists.append(sizes)
 
-    total_chunks = min([len(video_size[bitrate]) for bitrate in range(bitrate_levels)])
+    total_chunks = min(len(sizes) for sizes in video_size_lists)
 
     # Truncate to max_chunks if specified
     if max_chunks is not None:
         total_chunks = min(max_chunks, total_chunks)
 
-    for bitrate in range(bitrate_levels):
-        video_size[bitrate] = video_size[bitrate][:total_chunks]
-
-    return VideoData(
-        video_size=video_size,
-        bitrate_levels=bitrate_levels,
-        total_chunks=total_chunks,
+    # Create matrix: [bitrate_levels, total_chunks]
+    video_size = np.array(
+        [sizes[:total_chunks] for sizes in video_size_lists],
+        dtype=np.int64,
     )
+
+    return VideoData(video_size=video_size)

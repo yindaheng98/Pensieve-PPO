@@ -209,31 +209,30 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
         # Check that VideoData has required attributes
         self.assertTrue(hasattr(video_data, 'video_size'))
         self.assertTrue(hasattr(video_data, 'bitrate_levels'))
-        self.assertTrue(hasattr(video_data, 'num_chunks'))
+        self.assertTrue(hasattr(video_data, 'total_chunks'))
 
         # Check bitrate levels matches src/fixed_env.py BITRATE_LEVELS
         self.assertEqual(video_data.bitrate_levels, BITRATE_LEVELS)
 
-        # Check that video_size dict has all bitrate levels
-        for bitrate in range(BITRATE_LEVELS):
-            self.assertIn(bitrate, video_data.video_size)
+        # Check that video_size matrix has correct shape
+        self.assertEqual(video_data.video_size.shape[0], BITRATE_LEVELS)
+        self.assertEqual(video_data.video_size.shape[1], video_data.total_chunks)
 
-    def test_num_chunks_correct(self):
-        """Test that num_chunks is computed correctly."""
+    def test_total_chunks_correct(self):
+        """Test that total_chunks is computed correctly from matrix shape."""
         video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS)
 
-        # num_chunks should be the minimum across all bitrates
-        expected_num_chunks = min(
-            len(video_data.video_size[b]) for b in range(BITRATE_LEVELS)
-        )
-        self.assertEqual(video_data.num_chunks, expected_num_chunks)
+        # total_chunks should match the second dimension of the matrix
+        self.assertEqual(video_data.total_chunks, video_data.video_size.shape[1])
+        # And should match the original Environment's video_size length
+        self.assertEqual(video_data.total_chunks, len(self.fixed_env.video_size[0]))
 
     def test_get_chunk_size_method(self):
         """Test the get_chunk_size method against Environment.video_size."""
         video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS)
 
         for bitrate in range(BITRATE_LEVELS):
-            for chunk_idx in range(min(10, video_data.num_chunks)):
+            for chunk_idx in range(min(10, video_data.total_chunks)):
                 with self.subTest(bitrate=bitrate, chunk_idx=chunk_idx):
                     self.assertEqual(
                         video_data.get_chunk_size(bitrate, chunk_idx),
@@ -244,7 +243,7 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
         """Test the get_next_chunk_sizes method against Environment.video_size."""
         video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS)
 
-        for chunk_idx in range(min(10, video_data.num_chunks)):
+        for chunk_idx in range(min(10, video_data.total_chunks)):
             with self.subTest(chunk_idx=chunk_idx):
                 sizes = video_data.get_next_chunk_sizes(chunk_idx)
 
@@ -389,11 +388,7 @@ class TestLoaderEdgeCases(unittest.TestCase):
         video_data = load_video_size(VIDEO_SIZE_FILE, 3)
 
         self.assertEqual(video_data.bitrate_levels, 3)
-        self.assertEqual(len(video_data.video_size), 3)
-
-        # Should have keys 0, 1, 2
-        for bitrate in range(3):
-            self.assertIn(bitrate, video_data.video_size)
+        self.assertEqual(video_data.video_size.shape[0], 3)
 
 
 # ==============================================================================
