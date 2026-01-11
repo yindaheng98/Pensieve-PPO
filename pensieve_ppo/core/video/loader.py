@@ -1,5 +1,6 @@
 """Video chunk size data loader."""
 
+import os
 from typing import Optional
 
 import numpy as np
@@ -9,7 +10,7 @@ from .data import VideoData
 
 def load_video_size(
     video_size_file_prefix: str,
-    bitrate_levels: int = 6,
+    bitrate_levels: Optional[int] = None,
     max_chunks: Optional[int] = None,
 ) -> VideoData:
     """
@@ -23,13 +24,24 @@ def load_video_size(
     Args:
         video_size_file_prefix: Path prefix for video size files
                                (e.g., './envivio/video_size_')
-        bitrate_levels: Number of bitrate levels (default: 6)
+        bitrate_levels: Number of bitrate levels. If None, auto-detect by
+                       finding the maximum bitrate level with existing files.
         max_chunks: Maximum number of chunks to load. If specified, truncates
                    the loaded data to this limit. If None, load all chunks.
 
     Returns:
         VideoData object containing chunk sizes for all bitrates
     """
+    # Auto-detect bitrate_levels if not specified
+    if bitrate_levels is None:
+        bitrate_levels = 0
+        while os.path.exists(f"{video_size_file_prefix}{bitrate_levels}"):
+            bitrate_levels += 1
+        if bitrate_levels == 0:
+            raise FileNotFoundError(
+                f"No video size files found with prefix: {video_size_file_prefix}"
+            )
+
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L42
     video_size_lists = []
     for bitrate in range(bitrate_levels):

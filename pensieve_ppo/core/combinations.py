@@ -11,7 +11,7 @@ from .video import VideoPlayer, load_video_size
 def create_simulator(
     trace_folder: str,
     video_size_file_prefix: str,
-    bitrate_levels: int = 6,
+    bitrate_levels: Optional[int] = None,
     max_chunks: Optional[int] = None,
     train: bool = True,
     random_seed: Optional[int] = None,
@@ -22,7 +22,8 @@ def create_simulator(
         trace_folder: Path to folder containing network trace files
         video_size_file_prefix: Path prefix for video size files
                                (e.g., './envivio/video_size_')
-        bitrate_levels: Number of bitrate levels (default: 6)
+        bitrate_levels: Number of bitrate levels. If None, auto-detect by
+                       finding the maximum bitrate level with existing files.
         max_chunks: Maximum number of video chunks to load. If specified,
                    truncates the loaded data to this limit. If None, load all.
         train: If True, use training simulator with noise and random trace
