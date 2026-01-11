@@ -16,7 +16,7 @@ Testing strategy:
 - This accounts for potential differences in random number consumption during init
 """
 
-from pensieve_ppo.combinations import VIDEO_BIT_RATE
+from pensieve_ppo.prepare import VIDEO_BIT_RATE
 from pensieve_ppo.gym import create_env
 import env as src_env
 import unittest
