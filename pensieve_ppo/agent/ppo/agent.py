@@ -38,7 +38,7 @@ class PPOAgent(AbstractAgent):
 
     def __init__(
         self,
-        state_dim: List[int],
+        state_dim: tuple[int, int],
         action_dim: int,
         learning_rate: float = 1e-4,
         gamma: float = GAMMA,

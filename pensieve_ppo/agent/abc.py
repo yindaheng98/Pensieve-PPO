@@ -9,7 +9,7 @@ Reference:
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, List
 
 import numpy as np
 import torch
@@ -30,7 +30,7 @@ class AbstractAgent(ABC):
 
     def __init__(
         self,
-        state_dim: List[int],
+        state_dim: tuple[int, int],
         action_dim: int,
         device: Optional[torch.device] = None,
     ):
@@ -136,3 +136,43 @@ class AbstractAgent(ABC):
             path: Path to load the model from.
         """
         pass
+
+    def select_action(self, state: np.ndarray) -> Tuple[int, np.ndarray]:
+        """Select an action using Gumbel-softmax sampling.
+
+        This implements the action selection strategy used in the original
+        Pensieve-PPO implementation.
+
+        Reference:
+            https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
+
+        Args:
+            state: Input state with shape (s_dim[0], s_dim[1]).
+
+        Returns:
+            Tuple of (selected_action_index, action_probabilities).
+        """
+        action_prob = self.predict(
+            np.reshape(state, (1, self.s_dim[0], self.s_dim[1])))
+
+        # gumbel noise
+        noise = np.random.gumbel(size=len(action_prob))
+        action = np.argmax(np.log(action_prob) + noise)
+
+        return int(action), action_prob
+
+    def create_action_vector(self, action: int) -> np.ndarray:
+        """Create a one-hot action vector.
+
+        Reference:
+            https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L154-L155
+
+        Args:
+            action: Action index.
+
+        Returns:
+            One-hot encoded action vector with shape (a_dim,).
+        """
+        action_vec = np.zeros(self.a_dim)
+        action_vec[action] = 1
+        return action_vec

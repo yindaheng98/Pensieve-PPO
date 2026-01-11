@@ -7,7 +7,6 @@ Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py
 """
 
-from typing import List
 
 import torch
 import torch.nn as nn
@@ -32,7 +31,7 @@ class Actor(nn.Module):
 
     def __init__(
         self,
-        state_dim: List[int],
+        state_dim: tuple[int, int],
         action_dim: int,
         feature_num: int = FEATURE_NUM,
         action_eps: float = ACTION_EPS,
@@ -104,7 +103,7 @@ class Critic(nn.Module):
 
     def __init__(
         self,
-        state_dim: List[int],
+        state_dim: tuple[int, int],
         action_dim: int,
         feature_num: int = FEATURE_NUM,
     ):
