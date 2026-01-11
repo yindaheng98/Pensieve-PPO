@@ -14,33 +14,43 @@ Testing strategy:
 - Create each environment separately with the same seed
 - Run them independently and compare results
 - This accounts for potential differences in random number consumption during init
+
+Note on constants:
+- Constants imported from pensieve_ppo.prepare (VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS,
+  S_INFO, S_LEN, A_DIM, RANDOM_SEED) are used in tests to verify that our
+  implementation uses the same values as the original src_env.
+- TestConstantsMatch class explicitly verifies these values match between
+  pensieve_ppo.prepare and src_env to ensure consistency with the original
+  Pensieve-PPO implementation.
+- See pensieve_ppo/prepare.py for GitHub links to the original source code lines.
 """
 
-from pensieve_ppo.prepare import VIDEO_BIT_RATE
-from pensieve_ppo.gym import create_env
-import env as src_env
-import unittest
 import os
 import sys
+import unittest
 
 import numpy as np
 
-# Add src directory to path for imports
+# Add src directory to path for imports (must be before importing env)
 src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
 sys.path.insert(0, src_dir)
 
 # Import original implementation from src
+import env as src_env
 
-# Import our gymnasium implementation
-
-# Constants
-S_INFO = 6
-S_LEN = 8
-A_DIM = 6
-RANDOM_SEED = 42
-TOTAL_VIDEO_CHUNKS = 48
-TRAIN_TRACES = './train/'
-VIDEO_SIZE_FILE_PREFIX = './envivio/video_size_'
+# Import our gymnasium implementation and constants.
+# These constants are imported from pensieve_ppo.prepare to verify equivalence
+# with src_env constants in TestConstantsMatch. They should always match the
+# values defined in the original Pensieve-PPO source code.
+from pensieve_ppo.prepare import (
+    VIDEO_BIT_RATE,
+    TOTAL_VIDEO_CHUNKS,
+    S_INFO,
+    S_LEN,
+    A_DIM,
+    RANDOM_SEED,
+    create_env_with_default,
+)
 
 
 class TestABREnvEquivalenceBase(unittest.TestCase):
@@ -79,13 +89,7 @@ class TestABREnvEquivalenceBase(unittest.TestCase):
         """Run gym env and return trajectory (states, rewards, dones)."""
         # Set global random seed to match src/env.py behavior
         np.random.seed(seed)
-        env = create_env(
-            levels_quality=VIDEO_BIT_RATE.tolist(),
-            trace_folder=TRAIN_TRACES,
-            video_size_file_prefix=VIDEO_SIZE_FILE_PREFIX,
-            max_chunks=TOTAL_VIDEO_CHUNKS,
-            train=True,
-        )
+        env = create_env_with_default(train=True)
         initial_state, _ = env.reset()
 
         states = [initial_state]
@@ -333,13 +337,7 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
     def _create_gym_env(self, seed: int):
         """Helper to create gym env with given seed."""
         np.random.seed(seed)
-        return create_env(
-            levels_quality=VIDEO_BIT_RATE.tolist(),
-            trace_folder=TRAIN_TRACES,
-            video_size_file_prefix=VIDEO_SIZE_FILE_PREFIX,
-            max_chunks=TOTAL_VIDEO_CHUNKS,
-            train=True,
-        )
+        return create_env_with_default(train=True)
 
     def test_reset_return_format(self):
         """Test reset return format differences."""
