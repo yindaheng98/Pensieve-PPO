@@ -11,9 +11,6 @@ class VideoData:
     bitrate_levels: int
     num_chunks: int
 
-    def __len__(self) -> int:
-        return self.num_chunks
-
     def get_chunk_size(self, bitrate: int, chunk_idx: int) -> int:
         """Get size of a specific chunk at given bitrate."""
         return self.video_size[bitrate][chunk_idx]

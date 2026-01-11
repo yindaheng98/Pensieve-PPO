@@ -63,9 +63,9 @@ class TestTraceLoaderMatchesOriginal(unittest.TestCase):
         orig_time, orig_bw, orig_names = src_load_trace.load_trace(TEST_TRACES)
 
         # Compare number of traces
-        self.assertEqual(len(trace_data), len(orig_time))
-        self.assertEqual(len(trace_data), len(orig_bw))
-        self.assertEqual(len(trace_data), len(orig_names))
+        self.assertEqual(len(trace_data.all_file_names), len(orig_time))
+        self.assertEqual(len(trace_data.all_file_names), len(orig_bw))
+        self.assertEqual(len(trace_data.all_file_names), len(orig_names))
 
         # Our implementation sorts files, original doesn't - so we compare by content
         # Create a mapping from original data to compare
@@ -74,7 +74,7 @@ class TestTraceLoaderMatchesOriginal(unittest.TestCase):
             orig_data_map[name] = (orig_time[i], orig_bw[i])
 
         # Compare each trace
-        for i in range(len(trace_data)):
+        for i in range(len(trace_data.all_file_names)):
             file_name = trace_data.all_file_names[i]
             with self.subTest(trace=file_name):
                 # Check that file name exists in original
@@ -106,7 +106,7 @@ class TestTraceLoaderMatchesOriginal(unittest.TestCase):
         orig_time, orig_bw, orig_names = src_load_trace.load_trace(TRAIN_TRACES)
 
         # Compare number of traces
-        self.assertEqual(len(trace_data), len(orig_time))
+        self.assertEqual(len(trace_data.all_file_names), len(orig_time))
 
         # Create a mapping from original data to compare
         orig_data_map = {}
@@ -114,7 +114,7 @@ class TestTraceLoaderMatchesOriginal(unittest.TestCase):
             orig_data_map[name] = (orig_time[i], orig_bw[i])
 
         # Compare each trace
-        for i in range(len(trace_data)):
+        for i in range(len(trace_data.all_file_names)):
             file_name = trace_data.all_file_names[i]
             with self.subTest(trace=file_name):
                 self.assertIn(file_name, orig_data_map)
@@ -143,20 +143,6 @@ class TestTraceLoaderMatchesOriginal(unittest.TestCase):
         # Check that lengths are consistent
         self.assertEqual(len(trace_data.all_cooked_time), len(trace_data.all_cooked_bw))
         self.assertEqual(len(trace_data.all_cooked_time), len(trace_data.all_file_names))
-
-        # Check __len__ method
-        self.assertEqual(len(trace_data), len(trace_data.all_file_names))
-
-    def test_trace_data_indexing(self):
-        """Test that TraceData indexing returns correct values."""
-        trace_data = load_trace(TEST_TRACES)
-
-        for i in range(min(5, len(trace_data))):
-            time, bw, name = trace_data[i]
-
-            self.assertEqual(time, trace_data.all_cooked_time[i])
-            self.assertEqual(bw, trace_data.all_cooked_bw[i])
-            self.assertEqual(name, trace_data.all_file_names[i])
 
     def test_file_names_all_present(self):
         """Test that all file names from original are present."""
@@ -269,12 +255,6 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
                         sizes[bitrate],
                         self.fixed_env.video_size[bitrate][chunk_idx]
                     )
-
-    def test_len_method(self):
-        """Test the __len__ method."""
-        video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS)
-
-        self.assertEqual(len(video_data), video_data.num_chunks)
 
 
 # ==============================================================================

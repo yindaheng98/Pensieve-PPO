@@ -70,3 +70,8 @@ class VideoPlayer:
     def num_bitrates(self) -> int:
         """Number of available bitrate levels."""
         return self._video_data.bitrate_levels
+
+    @property
+    def num_chunks(self) -> int:
+        """Total number of video chunks."""
+        return self._video_data.num_chunks
