@@ -16,6 +16,9 @@ Testing strategy:
 - This accounts for potential differences in random number consumption during init
 """
 
+from pensieve_ppo.combinations import VIDEO_BIT_RATE
+from pensieve_ppo.gym import create_env
+import env as src_env
 import unittest
 import os
 import sys
@@ -27,12 +30,8 @@ src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
 sys.path.insert(0, src_dir)
 
 # Import original implementation from src
-import env as src_env
 
 # Import our gymnasium implementation
-from pensieve_ppo.gym.env import ABREnv as GymABREnv
-from pensieve_ppo.core import create_simulator
-from pensieve_ppo.combinations import VIDEO_BIT_RATE
 
 # Constants
 S_INFO = 6
@@ -80,16 +79,13 @@ class TestABREnvEquivalenceBase(unittest.TestCase):
         """Run gym env and return trajectory (states, rewards, dones)."""
         # Set global random seed to match src/env.py behavior
         np.random.seed(seed)
-        # Set seed again before creating simulator to match src/core.py behavior
-        np.random.seed(seed)
-        simulator = create_simulator(
+        env = create_env(
+            levels_quality=VIDEO_BIT_RATE.tolist(),
             trace_folder=TRAIN_TRACES,
             video_size_file_prefix=VIDEO_SIZE_FILE_PREFIX,
             max_chunks=TOTAL_VIDEO_CHUNKS,
             train=True,
-            random_seed=None,  # Use global np.random
         )
-        env = GymABREnv(simulator=simulator, levels_quality=VIDEO_BIT_RATE)
         initial_state, _ = env.reset()
 
         states = [initial_state]
@@ -337,14 +333,13 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
     def _create_gym_env(self, seed: int):
         """Helper to create gym env with given seed."""
         np.random.seed(seed)
-        simulator = create_simulator(
+        return create_env(
+            levels_quality=VIDEO_BIT_RATE.tolist(),
             trace_folder=TRAIN_TRACES,
             video_size_file_prefix=VIDEO_SIZE_FILE_PREFIX,
             max_chunks=TOTAL_VIDEO_CHUNKS,
             train=True,
-            random_seed=None,
         )
-        return GymABREnv(simulator=simulator, levels_quality=VIDEO_BIT_RATE)
 
     def test_reset_return_format(self):
         """Test reset return format differences."""
