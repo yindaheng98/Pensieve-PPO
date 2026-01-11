@@ -28,7 +28,6 @@ VIDEO_BIT_RATE = np.array([300., 750., 1200., 1850., 2850., 4300.])  # Kbps
 # Normalization constants
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L14
 BUFFER_NORM_FACTOR = 10.0
-CHUNK_TIL_VIDEO_END_CAP = 48.0
 M_IN_K = 1000.0
 
 # Reward parameters
@@ -73,7 +72,6 @@ class ABREnv(gym.Env):
         smooth_penalty: float = SMOOTH_PENALTY,
         state_history_len: int = S_LEN,
         buffer_norm_factor: float = BUFFER_NORM_FACTOR,
-        total_chunk_cap: float = CHUNK_TIL_VIDEO_END_CAP,
         initial_bitrate: int = DEFAULT_QUALITY,
     ):
         """Initialize the ABR environment.
@@ -86,7 +84,6 @@ class ABREnv(gym.Env):
             smooth_penalty: Penalty coefficient for quality changes (default: 1.0)
             state_history_len: Number of past observations to keep in state (default: 8)
             buffer_norm_factor: Normalization factor for buffer size in seconds (default: 10.0)
-            total_chunk_cap: Cap value for remaining chunks normalization (default: 48.0)
             initial_bitrate: Initial bitrate level index on reset (default: 1)
         """
         super().__init__()
@@ -103,7 +100,6 @@ class ABREnv(gym.Env):
         # Store normalization parameters
         self.state_history_len = state_history_len
         self.buffer_norm_factor = buffer_norm_factor
-        self.total_chunk_cap = total_chunk_cap
 
         # Store initial bitrate
         self.initial_bitrate = initial_bitrate
@@ -122,6 +118,11 @@ class ABREnv(gym.Env):
             dtype=np.float32
         )
         self.action_space = spaces.Discrete(self.num_bitrates)
+
+    @property
+    def total_chunk_cap(self) -> int:
+        """Total number of video chunks, used for normalization."""
+        return self.simulator.video_player.total_chunks
 
     def reset(
         self,
