@@ -18,6 +18,33 @@ Pensieve-PPO is a user-friendly PyTorch implementation of Pensieve [1], a neural
 
 This stable version of Pensieve-PPO includes both the training and test datasets.
 
+## Library Structure
+
+The `pensieve_ppo` package provides a modular simulation framework:
+
+```
+pensieve_ppo/
+├── core/
+│   ├── trace/      # Network trace handling (bandwidth, latency, etc.)
+│   ├── video/      # Video processing (chunk sizes, bitrates, playback)
+│   └── simulator/  # Combines trace & video into a complete ABR simulator
+└── gym/            # Gymnasium environment built on top of the simulator
+```
+
+**Quick Start:**
+
+```python
+from pensieve_ppo.gym import ABREnv
+
+env = ABREnv()
+obs, info = env.reset()
+while True:
+    action = env.action_space.sample()
+    obs, reward, terminated, truncated, info = env.step(action)
+    if terminated or truncated:
+        break
+```
+
 You can run the repository by executing the following command:
 
 ```
