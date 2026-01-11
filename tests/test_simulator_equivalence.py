@@ -17,9 +17,9 @@ import fixed_env as src_fixed_env
 # Import our implementations
 from pensieve_ppo.core.simulator.simulator import Simulator
 from pensieve_ppo.core.video.player import VideoPlayer
-from pensieve_ppo.core.video.data import VideoData
+from pensieve_ppo.core.video.loader import load_video_size
 from pensieve_ppo.core.trace.simulator import TraceSimulator
-from pensieve_ppo.core.trace.data import TraceData
+from pensieve_ppo.core.trace.loader import load_trace
 
 # Use constants from original src/fixed_env.py
 BITRATE_LEVELS = src_fixed_env.BITRATE_LEVELS
@@ -29,22 +29,6 @@ RANDOM_SEED = src_fixed_env.RANDOM_SEED
 
 # Use paths from src/test.py and src/train.py
 TEST_TRACES = './test/'
-
-
-def load_video_data() -> VideoData:
-    """Load video chunk sizes using the same method as src/fixed_env.py Environment.__init__."""
-    import numpy as np
-
-    video_size_lists = []
-    for bitrate in range(BITRATE_LEVELS):
-        sizes = []
-        with open(VIDEO_SIZE_FILE + str(bitrate)) as f:
-            for line in f:
-                sizes.append(int(line.split()[0]))
-        video_size_lists.append(sizes[:TOTAL_VIDEO_CHUNKS])
-
-    video_size = np.array(video_size_lists, dtype=np.int64)
-    return VideoData(video_size=video_size)
 
 
 # ==============================================================================
@@ -61,15 +45,13 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
         src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
         os.chdir(src_dir)
 
+        # Load using src for original Environment (needs raw lists)
         cls.all_cooked_time, cls.all_cooked_bw, cls.all_file_names = \
             src_load_trace.load_trace(TEST_TRACES)
 
-        cls.trace_data = TraceData(
-            all_cooked_time=cls.all_cooked_time,
-            all_cooked_bw=cls.all_cooked_bw,
-            all_file_names=cls.all_file_names
-        )
-        cls.video_data = load_video_data()
+        # Load using our loaders for our implementation
+        cls.trace_data = load_trace(TEST_TRACES)
+        cls.video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS, TOTAL_VIDEO_CHUNKS)
 
     @classmethod
     def tearDownClass(cls):
@@ -273,14 +255,12 @@ class TestTraceSimulatorMatchesOriginal(unittest.TestCase):
         src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
         os.chdir(src_dir)
 
+        # Load using src for original Environment (needs raw lists)
         cls.all_cooked_time, cls.all_cooked_bw, cls.all_file_names = \
             src_load_trace.load_trace(TEST_TRACES)
 
-        cls.trace_data = TraceData(
-            all_cooked_time=cls.all_cooked_time,
-            all_cooked_bw=cls.all_cooked_bw,
-            all_file_names=cls.all_file_names
-        )
+        # Load using our loader
+        cls.trace_data = load_trace(TEST_TRACES)
 
     @classmethod
     def tearDownClass(cls):
@@ -326,15 +306,13 @@ class TestDownloadSimulationMatchesFixedEnv(unittest.TestCase):
         src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
         os.chdir(src_dir)
 
+        # Load using src for original Environment (needs raw lists)
         cls.all_cooked_time, cls.all_cooked_bw, cls.all_file_names = \
             src_load_trace.load_trace(TEST_TRACES)
 
-        cls.trace_data = TraceData(
-            all_cooked_time=cls.all_cooked_time,
-            all_cooked_bw=cls.all_cooked_bw,
-            all_file_names=cls.all_file_names
-        )
-        cls.video_data = load_video_data()
+        # Load using our loaders
+        cls.trace_data = load_trace(TEST_TRACES)
+        cls.video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS, TOTAL_VIDEO_CHUNKS)
 
     @classmethod
     def tearDownClass(cls):
