@@ -33,18 +33,18 @@ TEST_TRACES = './test/'
 
 def load_video_data() -> VideoData:
     """Load video chunk sizes using the same method as src/fixed_env.py Environment.__init__."""
-    video_size = {}
+    import numpy as np
+
+    video_size_lists = []
     for bitrate in range(BITRATE_LEVELS):
-        video_size[bitrate] = []
+        sizes = []
         with open(VIDEO_SIZE_FILE + str(bitrate)) as f:
             for line in f:
-                video_size[bitrate].append(int(line.split()[0]))
+                sizes.append(int(line.split()[0]))
+        video_size_lists.append(sizes[:TOTAL_VIDEO_CHUNKS])
 
-    return VideoData(
-        video_size=video_size,
-        bitrate_levels=BITRATE_LEVELS,
-        num_chunks=TOTAL_VIDEO_CHUNKS,
-    )
+    video_size = np.array(video_size_lists, dtype=np.int64)
+    return VideoData(video_size=video_size)
 
 
 # ==============================================================================
