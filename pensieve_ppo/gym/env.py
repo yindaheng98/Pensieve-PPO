@@ -7,7 +7,7 @@ Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py
 """
 
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
@@ -20,10 +20,6 @@ from ..core.simulator import Simulator
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L8
 S_INFO = 6  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
 S_LEN = 8  # take how many frames in the past
-
-# Default bitrate levels
-# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L12
-VIDEO_BIT_RATE = np.array([300., 750., 1200., 1850., 2850., 4300.])  # Kbps
 
 # Normalization constants
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L14
@@ -52,11 +48,11 @@ class ABREnv(gym.Env):
         - [1, :] Buffer size normalized by buffer_norm_factor
         - [2, :] Throughput (chunk_size / delay) in Mbps
         - [3, :] Delay normalized by buffer_norm_factor
-        - [4, :num_bitrates] Next chunk sizes at each bitrate level (in MB)
+        - [4, :bitrate_levels] Next chunk sizes at each bitrate level (in MB)
         - [5, :] Remaining chunks normalized by total_chunk_cap
 
     Action Space:
-        Discrete(num_bitrates) - select bitrate level
+        Discrete(bitrate_levels) - select bitrate level
 
     Reward:
         quality - rebuf_penalty * rebuffer - smooth_penalty * |quality_change|
@@ -67,7 +63,7 @@ class ABREnv(gym.Env):
     def __init__(
         self,
         simulator: Simulator,
-        video_bit_rate: Optional[np.ndarray] = None,
+        levels_quality: List[float],
         rebuf_penalty: float = REBUF_PENALTY,
         smooth_penalty: float = SMOOTH_PENALTY,
         state_history_len: int = S_LEN,
@@ -79,7 +75,11 @@ class ABREnv(gym.Env):
         Args:
             simulator: Pre-configured Simulator instance (use create_simulator
                       from pensieve_ppo.core to create one)
-            video_bit_rate: Array of bitrate values in Kbps (default: Pensieve values)
+            levels_quality: Quality metric list for each bitrate level, used for
+                           state representation and reward calculation. Length must
+                           match simulator.video_player.bitrate_levels.
+                           For example, bitrate values in Kbps: [300, 750, 1200, ...]
+                           or other quality indicators like VMAF/PSNR scores.
             rebuf_penalty: Penalty coefficient for rebuffering (default: 4.3)
             smooth_penalty: Penalty coefficient for quality changes (default: 1.0)
             state_history_len: Number of past observations to keep in state (default: 8)
@@ -94,8 +94,14 @@ class ABREnv(gym.Env):
         # Store reward parameters
         self.rebuf_penalty = rebuf_penalty
         self.smooth_penalty = smooth_penalty
-        self.video_bit_rate = video_bit_rate if video_bit_rate is not None else VIDEO_BIT_RATE.copy()
-        self.num_bitrates = len(self.video_bit_rate)
+        self.levels_quality = levels_quality
+
+        # Validate levels_quality length matches bitrate_levels from simulator
+        if len(self.levels_quality) != self.bitrate_levels:
+            raise ValueError(
+                f"levels_quality length ({len(self.levels_quality)}) must match "
+                f"simulator.video_player.bitrate_levels ({self.bitrate_levels})"
+            )
 
         # Store normalization parameters
         self.state_history_len = state_history_len
@@ -117,7 +123,12 @@ class ABREnv(gym.Env):
             shape=(S_INFO, self.state_history_len),
             dtype=np.float32
         )
-        self.action_space = spaces.Discrete(self.num_bitrates)
+        self.action_space = spaces.Discrete(self.bitrate_levels)
+
+    @property
+    def bitrate_levels(self) -> int:
+        """Number of available bitrate levels from the video player."""
+        return self.simulator.video_player.bitrate_levels
 
     @property
     def total_chunk_cap(self) -> int:
@@ -167,20 +178,20 @@ class ABREnv(gym.Env):
         state = np.roll(self.state, -1, axis=1)
 
         # this should be S_INFO number of terms
-        state[0, -1] = self.video_bit_rate[bit_rate] / \
-            float(np.max(self.video_bit_rate))  # last quality
+        state[0, -1] = self.levels_quality[bit_rate] / \
+            float(np.max(self.levels_quality))  # last quality
         state[1, -1] = self.buffer_size / self.buffer_norm_factor
         state[2, -1] = float(video_chunk_size) / \
             float(delay) / M_IN_K  # kilo byte / ms
         state[3, -1] = float(delay) / M_IN_K / self.buffer_norm_factor
-        state[4, :self.num_bitrates] = np.array(
+        state[4, :self.bitrate_levels] = np.array(
             next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
         state[5, -1] = np.minimum(video_chunk_remain,
                                   self.total_chunk_cap) / float(self.total_chunk_cap)
         self.state = state
 
         info = {
-            "bitrate": self.video_bit_rate[bit_rate],
+            "quality": self.levels_quality[bit_rate],
             "rebuffer": 0.0,
         }
 
@@ -194,7 +205,7 @@ class ABREnv(gym.Env):
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L72-L106
 
         Args:
-            action: Bitrate level to select (0 to num_bitrates-1)
+            action: Bitrate level to select (0 to bitrate_levels-1)
 
         Returns:
             Tuple of (observation, reward, terminated, truncated, info)
@@ -220,22 +231,22 @@ class ABREnv(gym.Env):
         self.time_stamp += sleep_time  # in ms
 
         # reward is video quality - rebuffer penalty - smooth penalty
-        reward = self.video_bit_rate[bit_rate] / M_IN_K \
+        reward = self.levels_quality[bit_rate] / M_IN_K \
             - self.rebuf_penalty * rebuf \
-            - self.smooth_penalty * np.abs(self.video_bit_rate[bit_rate] -
-                                           self.video_bit_rate[self.last_bit_rate]) / M_IN_K
+            - self.smooth_penalty * np.abs(self.levels_quality[bit_rate] -
+                                           self.levels_quality[self.last_bit_rate]) / M_IN_K
 
         self.last_bit_rate = bit_rate
         state = np.roll(self.state, -1, axis=1)
 
         # this should be S_INFO number of terms
-        state[0, -1] = self.video_bit_rate[bit_rate] / \
-            float(np.max(self.video_bit_rate))  # last quality
+        state[0, -1] = self.levels_quality[bit_rate] / \
+            float(np.max(self.levels_quality))  # last quality
         state[1, -1] = self.buffer_size / self.buffer_norm_factor
         state[2, -1] = float(video_chunk_size) / \
             float(delay) / M_IN_K  # kilo byte / ms
         state[3, -1] = float(delay) / M_IN_K / self.buffer_norm_factor
-        state[4, :self.num_bitrates] = np.array(
+        state[4, :self.bitrate_levels] = np.array(
             next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
         state[5, -1] = np.minimum(video_chunk_remain,
                                   self.total_chunk_cap) / float(self.total_chunk_cap)
@@ -247,7 +258,7 @@ class ABREnv(gym.Env):
         truncated = False
 
         info = {
-            "bitrate": self.video_bit_rate[bit_rate],
+            "quality": self.levels_quality[bit_rate],
             "rebuffer": result.rebuffer,
             "delay": result.delay,
             "sleep_time": result.sleep_time,

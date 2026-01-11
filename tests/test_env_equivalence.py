@@ -32,6 +32,7 @@ import env as src_env
 # Import our gymnasium implementation
 from pensieve_ppo.gym.env import ABREnv as GymABREnv
 from pensieve_ppo.core import create_simulator
+from pensieve_ppo.combinations import VIDEO_BIT_RATE
 
 # Constants
 S_INFO = 6
@@ -88,7 +89,7 @@ class TestABREnvEquivalenceBase(unittest.TestCase):
             train=True,
             random_seed=None,  # Use global np.random
         )
-        env = GymABREnv(simulator=simulator)
+        env = GymABREnv(simulator=simulator, levels_quality=VIDEO_BIT_RATE)
         initial_state, _ = env.reset()
 
         states = [initial_state]
@@ -131,10 +132,9 @@ class TestConstantsMatch(TestABREnvEquivalenceBase):
 
     def test_video_bitrate_values(self):
         """Test VIDEO_BIT_RATE values match."""
-        from pensieve_ppo.gym.env import VIDEO_BIT_RATE as gym_bitrates
         expected = np.array([300., 750., 1200., 1850., 2850., 4300.])
         np.testing.assert_array_equal(src_env.VIDEO_BIT_RATE, expected)
-        np.testing.assert_array_equal(gym_bitrates, expected)
+        np.testing.assert_array_equal(VIDEO_BIT_RATE, expected)
 
     def test_normalization_constants(self):
         """Test normalization constants match."""
@@ -344,7 +344,7 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
             train=True,
             random_seed=None,
         )
-        return GymABREnv(simulator=simulator)
+        return GymABREnv(simulator=simulator, levels_quality=VIDEO_BIT_RATE)
 
     def test_reset_return_format(self):
         """Test reset return format differences."""
@@ -390,10 +390,14 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
         _, _, _, src_info = src_abr.step(2)
         _, _, _, _, gym_info = gym_abr.step(2)
 
+        # src uses 'bitrate', gym uses 'quality' (more generic name)
         self.assertIn('bitrate', src_info)
         self.assertIn('rebuffer', src_info)
-        self.assertIn('bitrate', gym_info)
+        self.assertIn('quality', gym_info)
         self.assertIn('rebuffer', gym_info)
+
+        # Values should be equal
+        self.assertEqual(src_info['bitrate'], gym_info['quality'])
 
 
 class TestDeterminism(TestABREnvEquivalenceBase):
