@@ -91,7 +91,7 @@ class Simulator:
             - buffer_size, rebuffer: converted to seconds
         """
         assert quality >= 0
-        assert quality < self.video_player.num_bitrates
+        assert quality < self.video_player.bitrate_levels
 
         # 1. Get chunk size for requested quality
         video_chunk_size = self.video_player.get_chunk_size(quality)

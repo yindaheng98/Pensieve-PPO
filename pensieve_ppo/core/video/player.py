@@ -60,18 +60,18 @@ class VideoPlayer:
             Tuple of (end_of_video, remaining_chunks)
         """
         self.video_chunk_counter += 1
-        video_chunk_remain = self._video_data.num_chunks - self.video_chunk_counter
+        video_chunk_remain = self._video_data.total_chunks - self.video_chunk_counter
 
-        end_of_video = self.video_chunk_counter >= self._video_data.num_chunks
+        end_of_video = self.video_chunk_counter >= self._video_data.total_chunks
 
         return end_of_video, video_chunk_remain
 
     @property
-    def num_bitrates(self) -> int:
+    def bitrate_levels(self) -> int:
         """Number of available bitrate levels."""
         return self._video_data.bitrate_levels
 
     @property
-    def num_chunks(self) -> int:
+    def total_chunks(self) -> int:
         """Total number of video chunks."""
-        return self._video_data.num_chunks
+        return self._video_data.total_chunks

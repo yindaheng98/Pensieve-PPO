@@ -36,17 +36,17 @@ def load_video_size(
             for line in f:
                 video_size[bitrate].append(int(line.split()[0]))
 
-    num_chunks = min([len(video_size[bitrate]) for bitrate in range(bitrate_levels)])
+    total_chunks = min([len(video_size[bitrate]) for bitrate in range(bitrate_levels)])
 
     # Truncate to max_chunks if specified
     if max_chunks is not None:
-        num_chunks = min(max_chunks, num_chunks)
+        total_chunks = min(max_chunks, total_chunks)
 
     for bitrate in range(bitrate_levels):
-        video_size[bitrate] = video_size[bitrate][:num_chunks]
+        video_size[bitrate] = video_size[bitrate][:total_chunks]
 
     return VideoData(
         video_size=video_size,
         bitrate_levels=bitrate_levels,
-        num_chunks=num_chunks,
+        total_chunks=total_chunks,
     )
