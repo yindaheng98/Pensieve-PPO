@@ -8,15 +8,10 @@ and tested with identical inputs to ensure behavioral equivalence.
 """
 
 import os
-import sys
 import unittest
 
 import numpy as np
 import torch
-
-# Add src to path to import original implementations
-SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
-sys.path.insert(0, SRC_DIR)
 
 # Import original implementation from src
 import ppo2 as src_ppo2
@@ -24,6 +19,9 @@ import ppo2 as src_ppo2
 # Import our implementation
 from pensieve_ppo.agent.ppo import PPOAgent
 from pensieve_ppo.agent.ppo.model import Actor, Critic
+
+# src directory path for pretrained model
+SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
 
 # Constants matching src/test.py and src/train.py
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L11-L13

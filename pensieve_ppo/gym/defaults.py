@@ -14,8 +14,8 @@ from typing import Optional
 
 import numpy as np
 
-from .gym.combinations import create_env
-from .gym.env import ABREnv
+from .combinations import create_env
+from .env import ABREnv
 
 
 # ==============================================================================

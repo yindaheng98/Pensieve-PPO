@@ -16,41 +16,39 @@ Testing strategy:
 - This accounts for potential differences in random number consumption during init
 
 Note on constants:
-- Constants imported from pensieve_ppo.prepare (VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS,
+- Constants imported from pensieve_ppo.gym.defaults (VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS,
   S_INFO, S_LEN, A_DIM, RANDOM_SEED) are used in tests to verify that our
   implementation uses the same values as the original src_env.
 - TestConstantsMatch class explicitly verifies these values match between
-  pensieve_ppo.prepare and src_env to ensure consistency with the original
+  pensieve_ppo.gym.defaults and src_env to ensure consistency with the original
   Pensieve-PPO implementation.
-- See pensieve_ppo/prepare.py for GitHub links to the original source code lines.
+- See pensieve_ppo/gym/defaults.py for GitHub links to the original source code lines.
 """
 
 import os
-import sys
 import unittest
 
 import numpy as np
-
-# Add src directory to path for imports (must be before importing env)
-src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
-sys.path.insert(0, src_dir)
 
 # Import original implementation from src
 import env as src_env
 
 # Import our gymnasium implementation and constants.
-# These constants are imported from pensieve_ppo.prepare to verify equivalence
+# These constants are imported from pensieve_ppo.gym.defaults to verify equivalence
 # with src_env constants in TestConstantsMatch. They should always match the
 # values defined in the original Pensieve-PPO source code.
-from pensieve_ppo.prepare import (
+from pensieve_ppo.gym import create_env_with_default
+from pensieve_ppo.gym.defaults import (
     VIDEO_BIT_RATE,
     TOTAL_VIDEO_CHUNKS,
     S_INFO,
     S_LEN,
     A_DIM,
     RANDOM_SEED,
-    create_env_with_default,
 )
+
+# src directory path for file path resolution (chdir in tests)
+SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
 
 
 class TestABREnvEquivalenceBase(unittest.TestCase):
@@ -60,7 +58,7 @@ class TestABREnvEquivalenceBase(unittest.TestCase):
     def setUpClass(cls):
         """Change to src directory for file path resolution."""
         cls.original_cwd = os.getcwd()
-        os.chdir(src_dir)
+        os.chdir(SRC_DIR)
 
     @classmethod
     def tearDownClass(cls):
