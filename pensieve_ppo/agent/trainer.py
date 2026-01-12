@@ -9,8 +9,9 @@ Reference:
 """
 
 import multiprocessing as mp
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Callable, Dict, List, Optional
 
+import gymnasium as gym
 import numpy as np
 import torch
 
@@ -30,9 +31,8 @@ class Trainer:
 
     def __init__(
         self,
-        agent_class: Type[AbstractAgent],
-        agent_kwargs: Dict[str, Any],
-        env_factory: Callable[[int], Any],
+        env_factory: Callable[[int], gym.Env],
+        agent_factory: Callable[[], AbstractAgent],
         parallel_workers: int = 16,
         steps_per_epoch: int = 1000,
         train_epochs: int = 500000,
@@ -46,9 +46,8 @@ class Trainer:
         """Initialize the trainer.
 
         Args:
-            agent_class: The agent class to instantiate (e.g., PPOAgent).
-            agent_kwargs: Keyword arguments for creating agents.
-            env_factory: Factory function that takes agent_id and returns an env.
+            env_factory: Factory function (agent_id: int) -> env.
+            agent_factory: Factory function () -> AbstractAgent.
             parallel_workers: Number of parallel worker agents for distributed training.
             steps_per_epoch: Number of environment steps each worker collects per epoch.
             train_epochs: Total number of training epochs.
@@ -59,9 +58,8 @@ class Trainer:
             on_epoch_end: Callback invoked at the end of each epoch.
             on_save_model: Callback invoked when model is saved.
         """
-        self.agent_class = agent_class
-        self.agent_kwargs = agent_kwargs
         self.env_factory = env_factory
+        self.agent_factory = agent_factory
         self.num_agents = parallel_workers
         self.train_seq_len = steps_per_epoch
         self.train_epochs = train_epochs
@@ -91,7 +89,7 @@ class Trainer:
         assert len(exp_queues) == self.num_agents
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L83-L85
-        actor = self.agent_class(**self.agent_kwargs)
+        actor = self.agent_factory()
 
         # restore neural net parameters
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L90-L114
@@ -150,7 +148,7 @@ class Trainer:
         """
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L131-L141
         env = self.env_factory(agent_id)
-        actor = self.agent_class(**self.agent_kwargs)
+        actor = self.agent_factory()
 
         # initial synchronization of the network parameters from the coordinator
         actor_net_params = net_params_queue.get()
