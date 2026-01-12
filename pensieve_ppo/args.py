@@ -45,7 +45,7 @@ def add_env_agent_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--state-history-len', type=int, default=S_LEN,
                         help=f'State history length (S_LEN), S_INFO is fixed at {S_INFO} (default: {S_LEN})')
     parser.add_argument('--seed', type=int, default=RANDOM_SEED, action=SetSeedAction,
-                        help=f'Random seed (default: {RANDOM_SEED})')
+                        help=f'Global random seed (default: {RANDOM_SEED})')
     parser.add_argument('-o', '--agent-options', type=str, nargs='*', default=[],
                         metavar='KEY=VALUE',
                         help='Additional agent options as key=value pairs')
