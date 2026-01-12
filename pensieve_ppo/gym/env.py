@@ -68,7 +68,7 @@ class ABREnv(gym.Env):
         smooth_penalty: float = SMOOTH_PENALTY,
         state_history_len: int = S_LEN,
         buffer_norm_factor: float = BUFFER_NORM_FACTOR,
-        initial_bitrate: int = DEFAULT_QUALITY,
+        initial_level: int = DEFAULT_QUALITY,
     ):
         """Initialize the ABR environment.
 
@@ -84,7 +84,7 @@ class ABREnv(gym.Env):
             smooth_penalty: Penalty coefficient for quality changes (default: 1.0)
             state_history_len: Number of past observations to keep in state (default: 8)
             buffer_norm_factor: Normalization factor for buffer size in seconds (default: 10.0)
-            initial_bitrate: Initial bitrate level index on reset (default: 1)
+            initial_level: Initial quality level index on reset (default: 1)
         """
         super().__init__()
 
@@ -108,7 +108,7 @@ class ABREnv(gym.Env):
         self.buffer_norm_factor = buffer_norm_factor
 
         # Store initial bitrate
-        self.initial_bitrate = initial_bitrate
+        self.initial_bitrate = initial_level
 
         # Initialize state
         self.last_bit_rate = self.initial_bitrate

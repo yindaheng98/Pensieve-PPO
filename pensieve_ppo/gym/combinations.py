@@ -12,7 +12,7 @@ def create_env(
     smooth_penalty: float = SMOOTH_PENALTY,
     state_history_len: int = S_LEN,
     buffer_norm_factor: float = BUFFER_NORM_FACTOR,
-    initial_bitrate: int = DEFAULT_QUALITY,
+    initial_level: int = DEFAULT_QUALITY,
     **simulator_kwargs,
 ) -> ABREnv:
     """Create an ABREnv with a configured Simulator.
@@ -25,15 +25,15 @@ def create_env(
         smooth_penalty: Penalty coefficient for quality changes (default: 1.0)
         state_history_len: Number of past observations to keep in state (default: 8)
         buffer_norm_factor: Normalization factor for buffer size in seconds (default: 10.0)
-        initial_bitrate: Initial bitrate level index on reset (default: 1)
+        initial_level: Initial quality level index on reset (default: 1)
         **simulator_kwargs: Arguments passed to create_simulator (trace_folder,
-                           video_size_file_prefix, bitrate_levels, max_chunks,
-                           train, random_seed)
+                           video_size_file_prefix, max_chunks, train, random_seed).
+                           Note: bitrate_levels is automatically set to len(levels_quality).
 
     Returns:
         Configured ABREnv instance
     """
-    simulator = create_simulator(**simulator_kwargs)
+    simulator = create_simulator(bitrate_levels=len(levels_quality), **simulator_kwargs)
 
     return ABREnv(
         simulator=simulator,
@@ -42,5 +42,5 @@ def create_env(
         smooth_penalty=smooth_penalty,
         state_history_len=state_history_len,
         buffer_norm_factor=buffer_norm_factor,
-        initial_bitrate=initial_bitrate,
+        initial_level=initial_level,
     )
