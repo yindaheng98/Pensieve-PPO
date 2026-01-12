@@ -6,8 +6,8 @@ for creating ABREnv instances with Pensieve-PPO defaults.
 
 from typing import Optional
 
-from .combinations import create_env
-from .env import ABREnv
+from .gym.combinations import create_env
+from .gym.env import ABREnv
 
 
 # Default constants from original Pensieve-PPO implementation

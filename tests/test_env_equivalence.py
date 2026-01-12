@@ -32,8 +32,7 @@ import numpy as np
 import env as src_env
 
 # Import our gymnasium implementation and constants.
-from pensieve_ppo.gym import create_env_with_default
-from pensieve_ppo.gym.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS
+from pensieve_ppo.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS, create_env_with_default
 from pensieve_ppo.gym.env import S_INFO, S_LEN
 
 # Test-specific constants (must match src_env for equivalence verification)
