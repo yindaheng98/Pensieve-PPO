@@ -9,7 +9,7 @@ Reference:
 """
 
 import multiprocessing as mp
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Type
 
 import numpy as np
 import torch
@@ -33,13 +33,15 @@ class Trainer:
         agent_class: Type[AbstractAgent],
         agent_kwargs: Dict[str, Any],
         env_factory: Callable[[int], Any],
-        num_agents: int = 16,
-        train_seq_len: int = 1000,
+        parallel_workers: int = 16,
+        steps_per_epoch: int = 1000,
         train_epochs: int = 500000,
         model_save_interval: int = 300,
         random_seed: int = 42,
-        summary_dir: str = './ppo',
-        nn_model: Optional[str] = None,
+        output_dir: str = './ppo',
+        pretrained_model_path: Optional[str] = None,
+        on_epoch_end: Callable[[int, AbstractAgent, Dict], None] = lambda epoch, agent, info: None,
+        on_save_model: Callable[[int, str, AbstractAgent], None] = lambda epoch, path, agent: None,
     ):
         """Initialize the trainer.
 
@@ -47,28 +49,28 @@ class Trainer:
             agent_class: The agent class to instantiate (e.g., PPOAgent).
             agent_kwargs: Keyword arguments for creating agents.
             env_factory: Factory function that takes agent_id and returns an env.
-            num_agents: Number of parallel agents.
-            train_seq_len: Sequence length for each training batch.
+            parallel_workers: Number of parallel worker agents for distributed training.
+            steps_per_epoch: Number of environment steps each worker collects per epoch.
             train_epochs: Total number of training epochs.
             model_save_interval: Interval for saving model checkpoints.
             random_seed: Random seed for reproducibility.
-            summary_dir: Directory for saving logs and models.
-            nn_model: Path to pre-trained model to load (optional).
+            output_dir: Directory for saving logs and model checkpoints.
+            pretrained_model_path: Path to pre-trained model to load (optional).
+            on_epoch_end: Callback invoked at the end of each epoch.
+            on_save_model: Callback invoked when model is saved.
         """
         self.agent_class = agent_class
         self.agent_kwargs = agent_kwargs
         self.env_factory = env_factory
-        self.num_agents = num_agents
-        self.train_seq_len = train_seq_len
+        self.num_agents = parallel_workers
+        self.train_seq_len = steps_per_epoch
         self.train_epochs = train_epochs
         self.model_save_interval = model_save_interval
         self.random_seed = random_seed
-        self.summary_dir = summary_dir
-        self.nn_model = nn_model
-
-        # Callbacks for logging (set by train.py)
-        self.on_epoch_end: Optional[Callable[[int, AbstractAgent, Dict], None]] = None
-        self.on_save_model: Optional[Callable[[int, str, AbstractAgent], Tuple[float, float]]] = None
+        self.summary_dir = output_dir
+        self.nn_model = pretrained_model_path
+        self.on_epoch_end = on_epoch_end
+        self.on_save_model = on_save_model
 
     def _central_agent(
         self,
@@ -119,8 +121,7 @@ class Trainer:
             train_info = actor.train(s_batch, a_batch, p_batch, v_batch, epoch)
 
             # Callback for epoch end
-            if self.on_epoch_end is not None:
-                self.on_epoch_end(epoch, actor, train_info)
+            self.on_epoch_end(epoch, actor, train_info)
 
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L116-L127
             if epoch % self.model_save_interval == 0:
@@ -129,8 +130,7 @@ class Trainer:
                 actor.save_model(model_path)
 
                 # Callback for model saving (e.g., testing and logging)
-                if self.on_save_model is not None:
-                    self.on_save_model(epoch, model_path, actor)
+                self.on_save_model(epoch, model_path, actor)
 
     def _agent_worker(
         self,
