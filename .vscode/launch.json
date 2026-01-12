@@ -57,5 +57,19 @@
                 "PYTHONPATH": "${workspaceFolder}/src",
             },
         },
+        {
+            "name": "pytest agent",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/test_ppo_agent_equivalence.py",
+                "-v"
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+            },
+        },
     ]
 }
