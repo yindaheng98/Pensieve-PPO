@@ -8,6 +8,10 @@ Reference:
 
 from .agent import PPOAgent
 from .model import Actor, Critic
+from ..registry import register_agent
+
+# Register PPO agent
+register_agent("ppo", PPOAgent)
 
 __all__ = [
     'PPOAgent',
