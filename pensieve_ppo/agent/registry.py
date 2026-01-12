@@ -44,6 +44,7 @@ def create_agent(
     state_dim: tuple[int, int],
     action_dim: int,
     device: Optional[torch.device] = None,
+    model_path: Optional[str] = None,
     **kwargs,
 ) -> AbstractAgent:
     """Create an agent by name.
@@ -58,6 +59,8 @@ def create_agent(
         state_dim: State dimension as [num_features, sequence_length].
         action_dim: Number of discrete actions.
         device: PyTorch device for computations. If None, uses CPU.
+        model_path: Path to a saved model file. If provided, loads the model
+            parameters after creating the agent.
         **kwargs: Additional agent-specific parameters.
             For PPO agent:
                 - learning_rate (float): Learning rate for the optimizer. Default: 1e-4.
@@ -78,6 +81,7 @@ def create_agent(
         ...     state_dim=(6, 8),
         ...     action_dim=6,
         ...     device=torch.device("cuda"),
+        ...     model_path="models/ppo_model.pt",
         ...     learning_rate=1e-4,
         ...     gamma=0.99,
         ... )
@@ -91,9 +95,14 @@ def create_agent(
         )
 
     agent_class = AGENT_REGISTRY[name_lower]
-    return agent_class(
+    agent = agent_class(
         state_dim=state_dim,
         action_dim=action_dim,
         device=device,
         **kwargs,
     )
+
+    if model_path is not None:
+        agent.load_model(model_path)
+
+    return agent
