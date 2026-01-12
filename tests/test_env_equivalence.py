@@ -16,13 +16,11 @@ Testing strategy:
 - This accounts for potential differences in random number consumption during init
 
 Note on constants:
-- Constants imported from pensieve_ppo.gym.defaults (VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS,
-  S_INFO, S_LEN, A_DIM, RANDOM_SEED) are used in tests to verify that our
-  implementation uses the same values as the original src_env.
+- Constants are imported from pensieve_ppo.gym.defaults and pensieve_ppo.gym.env
+  to verify equivalence with the original src_env.
 - TestConstantsMatch class explicitly verifies these values match between
-  pensieve_ppo.gym.defaults and src_env to ensure consistency with the original
+  our implementation and src_env to ensure consistency with the original
   Pensieve-PPO implementation.
-- See pensieve_ppo/gym/defaults.py for GitHub links to the original source code lines.
 """
 
 import os
@@ -34,18 +32,13 @@ import numpy as np
 import env as src_env
 
 # Import our gymnasium implementation and constants.
-# These constants are imported from pensieve_ppo.gym.defaults to verify equivalence
-# with src_env constants in TestConstantsMatch. They should always match the
-# values defined in the original Pensieve-PPO source code.
 from pensieve_ppo.gym import create_env_with_default
-from pensieve_ppo.gym.defaults import (
-    VIDEO_BIT_RATE,
-    TOTAL_VIDEO_CHUNKS,
-    S_INFO,
-    S_LEN,
-    A_DIM,
-    RANDOM_SEED,
-)
+from pensieve_ppo.gym.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS
+from pensieve_ppo.gym.env import S_INFO, S_LEN
+
+# Test-specific constants (must match src_env for equivalence verification)
+A_DIM = len(VIDEO_BIT_RATE)  # Number of bitrate levels
+RANDOM_SEED = 42  # Default random seed for reproducible tests
 
 # src directory path for file path resolution (chdir in tests)
 SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
