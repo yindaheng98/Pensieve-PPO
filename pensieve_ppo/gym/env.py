@@ -144,6 +144,7 @@ class ABREnv(gym.Env):
         """Reset the environment to initial state.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L41-L66
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L80-L84
 
         Args:
             seed: Random seed for reproducibility
