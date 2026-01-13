@@ -13,7 +13,7 @@ calculations use milliseconds for consistency with the original Pensieve impleme
 import math
 
 from .data import TraceData
-from .abc import AbstractTraceSimulator
+from .abc import AbstractTraceSimulator, TraceProgress
 
 
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L3
@@ -58,6 +58,7 @@ class TraceSimulator(AbstractTraceSimulator):
 
         self.all_cooked_time = trace_data.all_cooked_time
         self.all_cooked_bw = trace_data.all_cooked_bw
+        self.all_file_names = trace_data.all_file_names
 
         # Store simulation parameters
         self.video_chunk_len = video_chunk_len
@@ -68,6 +69,19 @@ class TraceSimulator(AbstractTraceSimulator):
 
         # Initialize with first trace
         self.reset()
+
+    # ==================== Methods for logging ====================
+
+    def get_trace_progress(self) -> TraceProgress:
+        """Get current trace progress information for logging.
+
+        Returns:
+            TraceProgress containing trace index and all trace names
+        """
+        return TraceProgress(
+            trace_index=self.trace_idx,
+            all_trace_names=list(self.all_file_names),
+        )
 
     # ==================== Methods for reset ====================
 

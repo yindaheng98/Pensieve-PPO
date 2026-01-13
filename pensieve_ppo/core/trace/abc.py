@@ -5,6 +5,18 @@ from abc import ABC, abstractmethod
 
 
 @dataclass
+class TraceProgress:
+    """Current trace progress information for logging.
+
+    Attributes:
+        trace_index: Index of the current trace (0-based)
+        all_trace_names: List of all trace file names
+    """
+    trace_index: int
+    all_trace_names: list[str]
+
+
+@dataclass
 class TraceSimulateResult:
     """Result of a single simulation step.
 
@@ -26,6 +38,16 @@ class AbstractTraceSimulator(ABC):
     Both TraceSimulator (concrete implementation) and TraceSimulatorWrapper
     inherit from this class to ensure a consistent interface.
     """
+
+    # ==================== Methods for logging ====================
+    @abstractmethod
+    def get_trace_progress(self) -> TraceProgress:
+        """Get current trace progress information for logging.
+
+        Returns:
+            TraceProgress containing trace index and all trace names
+        """
+        ...
 
     # ==================== Methods for reset ====================
 

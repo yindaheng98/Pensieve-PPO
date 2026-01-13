@@ -6,7 +6,7 @@ Design principles:
     - The wrapped simulator is private (`__base`) to enforce this pattern
 """
 
-from .abc import AbstractTraceSimulator
+from .abc import AbstractTraceSimulator, TraceProgress
 from .simulator import TraceSimulator
 
 
@@ -44,6 +44,10 @@ class TraceSimulatorWrapper(AbstractTraceSimulator):
         return self.__base  # type: ignore[return-value]
 
     # ==================== Delegated methods (use super() in subclasses) ====================
+
+    def get_trace_progress(self) -> TraceProgress:
+        """Get current trace progress information for logging."""
+        return self.__base.get_trace_progress()
 
     def reset(self) -> None:
         """Reset the simulator state."""
