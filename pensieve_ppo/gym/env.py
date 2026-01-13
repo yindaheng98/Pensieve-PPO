@@ -13,7 +13,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-from ..core.simulator import Simulator
+from ..core.simulator import Simulator, StepResult
 
 
 # State dimensions
@@ -143,7 +143,7 @@ class ABREnv(gym.Env):
     ) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Reset the environment to initial state.
 
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L72-L106
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L41-L66
 
         Args:
             seed: Random seed for reproducibility
@@ -163,37 +163,9 @@ class ABREnv(gym.Env):
         self.buffer_size = 0.
         bit_rate = self.last_bit_rate
         result = self.simulator.step(bit_rate)
-        delay, sleep_time, self.buffer_size, rebuf, \
-            video_chunk_size, next_video_chunk_sizes, \
-            end_of_video, video_chunk_remain = (
-                result.delay,
-                result.sleep_time,
-                result.buffer_size,
-                result.rebuffer,
-                result.video_chunk_size,
-                result.next_video_chunk_sizes,
-                result.end_of_video,
-                result.video_chunk_remain,
-            )
-        state = np.roll(self.state, -1, axis=1)
+        self.buffer_size = result.buffer_size
 
-        # this should be S_INFO number of terms
-        state[0, -1] = self.levels_quality[bit_rate] / \
-            float(np.max(self.levels_quality))  # last quality
-        state[1, -1] = self.buffer_size / self.buffer_norm_factor
-        state[2, -1] = float(video_chunk_size) / \
-            float(delay) / M_IN_K  # kilo byte / ms
-        state[3, -1] = float(delay) / M_IN_K / self.buffer_norm_factor
-        state[4, :self.bitrate_levels] = np.array(
-            next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
-        state[5, -1] = np.minimum(video_chunk_remain,
-                                  self.total_chunk_cap) / float(self.total_chunk_cap)
-        self.state = state
-
-        info = {
-            "quality": self.levels_quality[bit_rate],
-            "rebuffer": 0.0,
-        }
+        _, info = self._process_step_result(bit_rate, result)
 
         return self.state.copy(), info
 
@@ -214,7 +186,40 @@ class ABREnv(gym.Env):
         # the action is from the last decision
         # this is to make the framework similar to the real
         result = self.simulator.step(bit_rate)
-        delay, sleep_time, self.buffer_size, rebuf, \
+        self.buffer_size = result.buffer_size
+
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L80-L81
+        self.time_stamp += result.delay  # in ms
+        self.time_stamp += result.sleep_time  # in ms
+
+        reward, info = self._process_step_result(bit_rate, result)
+
+        self.last_bit_rate = bit_rate
+
+        # Episode termination
+        terminated = result.end_of_video
+        truncated = False
+
+        return self.state.copy(), float(reward), terminated, truncated, info
+
+    def _process_step_result(
+        self,
+        bit_rate: int,
+        result: StepResult,
+    ) -> Tuple[float, Dict[str, Any]]:
+        """Process simulator result: compute reward, update state, and build info.
+
+        Args:
+            bit_rate: Current bitrate level selected.
+            result: Result from simulator.step().
+
+        Returns:
+            Tuple of (reward, info_dict).
+        """
+        # Unpack result (matches original variable names)
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L75-L78
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L48-L51
+        delay, sleep_time, buffer_size, rebuf, \
             video_chunk_size, next_video_chunk_sizes, \
             end_of_video, video_chunk_remain = (
                 result.delay,
@@ -227,25 +232,25 @@ class ABREnv(gym.Env):
                 result.video_chunk_remain,
             )
 
-        self.time_stamp += delay  # in ms
-        self.time_stamp += sleep_time  # in ms
-
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L83-L87
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L80-L84
         # reward is video quality - rebuffer penalty - smooth penalty
         reward = self.levels_quality[bit_rate] / M_IN_K \
             - self.rebuf_penalty * rebuf \
             - self.smooth_penalty * np.abs(self.levels_quality[bit_rate] -
                                            self.levels_quality[self.last_bit_rate]) / M_IN_K
 
-        self.last_bit_rate = bit_rate
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L90-L104
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L52-L66
         state = np.roll(self.state, -1, axis=1)
 
         # this should be S_INFO number of terms
         state[0, -1] = self.levels_quality[bit_rate] / \
             float(np.max(self.levels_quality))  # last quality
-        state[1, -1] = self.buffer_size / self.buffer_norm_factor
+        state[1, -1] = buffer_size / self.buffer_norm_factor  # 10 sec
         state[2, -1] = float(video_chunk_size) / \
             float(delay) / M_IN_K  # kilo byte / ms
-        state[3, -1] = float(delay) / M_IN_K / self.buffer_norm_factor
+        state[3, -1] = float(delay) / M_IN_K / self.buffer_norm_factor  # 10 sec
         state[4, :self.bitrate_levels] = np.array(
             next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
         state[5, -1] = np.minimum(video_chunk_remain,
@@ -253,20 +258,19 @@ class ABREnv(gym.Env):
 
         self.state = state
 
-        # Episode termination
-        terminated = end_of_video
-        truncated = False
-
+        # Build info dict with all step details
         info = {
             "quality": self.levels_quality[bit_rate],
-            "rebuffer": result.rebuffer,
-            "delay": result.delay,
-            "sleep_time": result.sleep_time,
-            "video_chunk_size": result.video_chunk_size,
-            "video_chunk_remain": result.video_chunk_remain,
+            "rebuffer": rebuf,
+            "delay": delay,
+            "sleep_time": sleep_time,
+            "buffer_size": buffer_size,
+            "video_chunk_size": video_chunk_size,
+            "video_chunk_remain": video_chunk_remain,
+            "reward": reward,
         }
 
-        return self.state.copy(), float(reward), terminated, truncated, info
+        return reward, info
 
     def render(self) -> None:
         """Render the environment (not implemented for this env)."""

@@ -24,9 +24,14 @@ Note on constants:
 """
 
 import os
+import sys
 import unittest
 
 import numpy as np
+
+# Add src directory to path for importing original implementation
+SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
+sys.path.insert(0, SRC_DIR)
 
 # Import original implementation from src
 import env as src_env
@@ -38,9 +43,6 @@ from pensieve_ppo.gym.env import S_INFO, S_LEN
 # Test-specific constants (must match src_env for equivalence verification)
 A_DIM = len(VIDEO_BIT_RATE)  # Number of bitrate levels
 RANDOM_SEED = 42  # Default random seed for reproducible tests
-
-# src directory path for file path resolution (chdir in tests)
-SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
 
 
 class TestABREnvEquivalenceBase(unittest.TestCase):
