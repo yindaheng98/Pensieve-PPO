@@ -148,7 +148,10 @@ class ABREnv(gym.Env):
 
         Args:
             seed: Random seed for reproducibility
-            options: Additional options (unused)
+            options: Additional options:
+                - reset_time_stamp (bool): Whether to reset time_stamp to 0.
+                  Default is True. Set to False for testing mode where time_stamp
+                  should accumulate across traces (matching src/test.py behavior).
 
         Returns:
             Tuple of (observation, info_dict)
@@ -158,7 +161,13 @@ class ABREnv(gym.Env):
         if seed is not None:
             np.random.seed(seed)
 
-        self.time_stamp = 0
+        # Parse options
+        options = options or {}
+        reset_time_stamp = options.get('reset_time_stamp', True)
+
+        if reset_time_stamp:
+            self.time_stamp = 0
+
         self.last_bit_rate = self.initial_bitrate
         self.state = np.zeros((S_INFO, self.state_history_len))
         self.buffer_size = 0.
