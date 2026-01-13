@@ -35,16 +35,25 @@ def testing(
     env: ABREnv,
     agent: AbstractAgent,
     log_file_prefix: str,
+    initial_level: int,
 ) -> None:
     """Run testing on all test traces.
 
     Reference:
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L30-L151
 
+    The loop structure matches src/test.py exactly:
+        while True:
+            1. step(action) - download chunk
+            2. write log (using previous entropy)
+            3. predict (update entropy for next log)
+            4. if end_of_video: reset and open new log
+
     Args:
         env: The ABR environment.
         agent: The trained agent.
         log_file_prefix: Prefix for log file paths.
+        initial_level: Initial quality level index on reset.
     """
     # Create log directory if needed
     log_dir = os.path.dirname(log_file_prefix)
@@ -52,9 +61,8 @@ def testing(
 
     s_info, s_len = agent.s_dim
     a_dim = agent.a_dim
-    DEFAULT_QUALITY = env.initial_bitrate
 
-    # Get trace info
+    # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L36
     trace_progress = env.simulator.trace_simulator.get_trace_progress()
     all_file_names = trace_progress.all_trace_names
 
@@ -62,9 +70,12 @@ def testing(
     log_path = log_file_prefix + '_' + all_file_names[trace_progress.trace_index]
     log_file = open(log_path, 'w')
 
-    # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L53-L66
-    last_bit_rate = DEFAULT_QUALITY
-    bit_rate = DEFAULT_QUALITY
+    # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L53
+    env.reset(options={'initial_level': initial_level})
+
+    # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L55-L66
+    last_bit_rate = initial_level
+    bit_rate = initial_level
 
     action_vec = np.zeros(a_dim)
     action_vec[bit_rate] = 1
@@ -76,43 +87,7 @@ def testing(
     entropy_ = 0.5
     video_count = 0
 
-    # Reset environment - executes first chunk with bit_rate (DEFAULT_QUALITY)
-    # This is equivalent to the first get_video_chunk() call in original code
-    # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L71-L85
-    # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L100-L115
-    state, info = env.reset()
-
-    reward = info['reward']
-
-    r_batch.append(reward)
-
-    # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L87
-    last_bit_rate = bit_rate
-
-    # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L89-L98
-    # log time_stamp, bit_rate, buffer_size, reward
-    log_file.write(str(info['time_stamp'] / M_IN_K) + '\t' +
-                   str(info['quality']) + '\t' +
-                   str(info['buffer_size']) + '\t' +
-                   str(info['rebuffer']) + '\t' +
-                   str(info['video_chunk_size']) + '\t' +
-                   str(info['delay']) + '\t' +
-                   str(entropy_) + '\t' +
-                   str(reward) + '\n')
-    log_file.flush()
-
-    # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L68
     while True:  # serve video forever
-        # Note: state is already computed by env (equivalent to lines 100-115 in original)
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L117-L123
-        action_prob = agent.predict(np.reshape(state, (1, s_info, s_len)))
-        noise = np.random.gumbel(size=len(action_prob))
-        bit_rate = np.argmax(np.log(action_prob) + noise)
-
-        s_batch.append(state)
-        entropy_ = -np.dot(action_prob, np.log(action_prob))
-        entropy_record.append(entropy_)
-
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L69-L85
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L100-L115
         # the action is from the last decision
@@ -135,13 +110,22 @@ def testing(
                        str(reward) + '\n')
         log_file.flush()
 
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L117-L123
+        action_prob = agent.predict(np.reshape(state, (1, s_info, s_len)))
+        noise = np.random.gumbel(size=len(action_prob))
+        bit_rate = np.argmax(np.log(action_prob) + noise)
+
+        s_batch.append(state)
+        entropy_ = -np.dot(action_prob, np.log(action_prob))
+        entropy_record.append(entropy_)
+
         if end_of_video:
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L126-L147
             log_file.write('\n')
             log_file.close()
 
-            last_bit_rate = DEFAULT_QUALITY
-            bit_rate = DEFAULT_QUALITY  # use the default action here
+            last_bit_rate = initial_level
+            bit_rate = initial_level  # use the default action here
 
             del s_batch[:]
             del a_batch[:]
@@ -160,33 +144,14 @@ def testing(
             if video_count >= len(all_file_names):
                 break
 
-            # Reset for next trace (equivalent to next get_video_chunk with DEFAULT_QUALITY)
-            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L71-L85
-            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L100-L115
-            state, info = env.reset(options={'reset_time_stamp': False})
-            reward = info['reward']
+            # Reset for next trace - only initializes state
+            env.reset(options={'reset_time_stamp': False, 'initial_level': initial_level})
 
-            r_batch.append(reward)
-
-            # Note: entropy_ is NOT reset here (same as original code)
-            # The first chunk of subsequent videos will use the last entropy from previous video
-            # entropy_ = 0.5
-
+            # Open new log file
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L149-L150
             trace_progress = env.simulator.trace_simulator.get_trace_progress()
             log_path = log_file_prefix + '_' + all_file_names[trace_progress.trace_index]
             log_file = open(log_path, 'w')
-
-            # Log first chunk of new trace
-            log_file.write(str(info['time_stamp'] / M_IN_K) + '\t' +
-                           str(info['quality']) + '\t' +
-                           str(info['buffer_size']) + '\t' +
-                           str(info['rebuffer']) + '\t' +
-                           str(info['video_chunk_size']) + '\t' +
-                           str(info['delay']) + '\t' +
-                           str(entropy_) + '\t' +
-                           str(reward) + '\n')
-            log_file.flush()
 
 
 def calculate_test_statistics(log_file_prefix: str) -> Dict[str, float]:
@@ -263,6 +228,7 @@ if __name__ == '__main__':
         env=env,
         agent=agent,
         log_file_prefix=log_file_prefix,
+        initial_level=args.initial_level,
     )
 
     # Calculate and print test statistics

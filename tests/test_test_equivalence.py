@@ -136,6 +136,7 @@ class TestTestEquivalence(unittest.TestCase):
             env=env,
             agent=agent,
             log_file_prefix=log_file_prefix,
+            initial_level=1,  # DEFAULT_QUALITY in src/test.py
         )
 
     def _parse_log_line(self, line: str) -> dict:
@@ -326,7 +327,7 @@ class TestLogFormat(unittest.TestCase):
         )
 
         log_prefix = os.path.join(log_dir, 'log_sim_ppo')
-        run_testing(env=env, agent=agent, log_file_prefix=log_prefix)
+        run_testing(env=env, agent=agent, log_file_prefix=log_prefix, initial_level=1)
 
         # Check log files exist
         log_files = os.listdir(log_dir)
@@ -354,7 +355,7 @@ class TestLogFormat(unittest.TestCase):
         )
 
         log_prefix = os.path.join(log_dir, 'log_sim_ppo')
-        run_testing(env=env, agent=agent, log_file_prefix=log_prefix)
+        run_testing(env=env, agent=agent, log_file_prefix=log_prefix, initial_level=1)
 
         # Read first log file
         log_files = sorted(os.listdir(log_dir))
@@ -396,7 +397,7 @@ class TestLogFormat(unittest.TestCase):
         )
 
         log_prefix = os.path.join(log_dir, 'log_sim_ppo')
-        run_testing(env=env, agent=agent, log_file_prefix=log_prefix)
+        run_testing(env=env, agent=agent, log_file_prefix=log_prefix, initial_level=1)
 
         # Check each log file
         log_files = os.listdir(log_dir)
@@ -444,7 +445,7 @@ class TestReproducibility(unittest.TestCase):
             model_path=PRETRAINED_MODEL,
             agent_name='ppo',
         )
-        run_testing(env=env1, agent=agent1, log_file_prefix=os.path.join(log_dir1, 'log'))
+        run_testing(env=env1, agent=agent1, log_file_prefix=os.path.join(log_dir1, 'log'), initial_level=1)
 
         # Run 2
         np.random.seed(RANDOM_SEED)
@@ -453,7 +454,7 @@ class TestReproducibility(unittest.TestCase):
             model_path=PRETRAINED_MODEL,
             agent_name='ppo',
         )
-        run_testing(env=env2, agent=agent2, log_file_prefix=os.path.join(log_dir2, 'log'))
+        run_testing(env=env2, agent=agent2, log_file_prefix=os.path.join(log_dir2, 'log'), initial_level=1)
 
         # Compare outputs
         logs1 = sorted(os.listdir(log_dir1))
@@ -463,7 +464,7 @@ class TestReproducibility(unittest.TestCase):
 
         for log_name in logs1:
             with open(os.path.join(log_dir1, log_name), 'r') as f1, \
-                 open(os.path.join(log_dir2, log_name), 'r') as f2:
+                    open(os.path.join(log_dir2, log_name), 'r') as f2:
                 content1 = f1.read()
                 content2 = f2.read()
                 self.assertEqual(content1, content2,

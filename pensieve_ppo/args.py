@@ -6,7 +6,7 @@ from typing import Any, Dict
 import numpy as np
 
 from .agent import get_available_agents
-from .defaults import VIDEO_BIT_RATE, TRAIN_TRACES, TEST_TRACES
+from .defaults import VIDEO_BIT_RATE, TRAIN_TRACES, TEST_TRACES, DEFAULT_QUALITY
 from .gym.env import S_INFO, S_LEN
 
 # Default random seed (matching common.py RANDOM_SEED)
@@ -46,6 +46,8 @@ def add_env_agent_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--state-history-len', type=int, default=S_LEN,
                         help=f"Number of past observations in state, determines state_dim=({S_INFO}, state_history_len) "
                              f"(default: {S_LEN})")
+    parser.add_argument('--initial-level', type=int, default=DEFAULT_QUALITY,
+                        help=f"Initial quality level index on reset (default: {DEFAULT_QUALITY})")
     parser.add_argument('--seed', type=int, default=RANDOM_SEED, action=SetSeedAction,
                         help=f"Global random seed for Numpy and PyTorch (default: {RANDOM_SEED})")
     parser.add_argument('-o', '--agent-options', type=str, nargs='*', default=[],
