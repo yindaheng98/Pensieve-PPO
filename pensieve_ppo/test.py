@@ -163,8 +163,7 @@ def testing(
             # Reset for next trace (equivalent to next get_video_chunk with DEFAULT_QUALITY)
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L71-L85
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L100-L115
-            state, info = env.reset()
-
+            state, info = env.reset(options={'reset_time_stamp': False})
             reward = info['reward']
 
             r_batch.append(reward)
