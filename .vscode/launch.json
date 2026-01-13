@@ -71,5 +71,19 @@
                 "PYTHONPATH": "${workspaceFolder}/src",
             },
         },
+        {
+            "name": "pytest testing",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "tests/test_test_equivalence.py",
+                "-v"
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src",
+            },
+        },
     ]
 }
