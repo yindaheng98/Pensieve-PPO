@@ -31,9 +31,6 @@ M_IN_K = 1000.0
 REBUF_PENALTY = 4.3  # 1 sec rebuffering penalty
 SMOOTH_PENALTY = 1.0  # penalty for bitrate changes
 
-# Default values
-DEFAULT_QUALITY = 1  # default video quality without agent
-
 
 class ABREnv(gym.Env):
     """Gymnasium environment for Adaptive Bitrate Streaming.
@@ -68,7 +65,7 @@ class ABREnv(gym.Env):
         smooth_penalty: float = SMOOTH_PENALTY,
         state_history_len: int = S_LEN,
         buffer_norm_factor: float = BUFFER_NORM_FACTOR,
-        initial_level: int = DEFAULT_QUALITY,
+        initial_level: int = 0,
     ):
         """Initialize the ABR environment.
 
@@ -143,15 +140,19 @@ class ABREnv(gym.Env):
     ) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Reset the environment to initial state.
 
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L41-L66
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L80-L84
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L42-L47
+        This method only initializes state to zeros and does NOT execute the first chunk download.
+        The first chunk should be downloaded by calling step(action) after reset().
+        This follows proper Gymnasium API separation of concerns.
 
         Args:
             seed: Random seed for reproducibility
             options: Additional options:
                 - reset_time_stamp (bool): Whether to reset time_stamp to 0.
                   Default is True. Set to False for testing mode where time_stamp
-                  should accumulate across traces (matching src/test.py behavior).
+                  should accumulate across traces.
+                - initial_level (int): Override initial bitrate level for last_bit_rate.
+                  If not specified, uses initial_level from __init__.
 
         Returns:
             Tuple of (observation, info_dict)
@@ -164,23 +165,19 @@ class ABREnv(gym.Env):
         # Parse options
         options = options or {}
         reset_time_stamp = options.get('reset_time_stamp', True)
+        initial_level = options.get('initial_level', self.initial_bitrate)
 
         if reset_time_stamp:
             self.time_stamp = 0
 
-        self.last_bit_rate = self.initial_bitrate
+        self.last_bit_rate = initial_level
         self.state = np.zeros((S_INFO, self.state_history_len))
         self.buffer_size = 0.
-        bit_rate = self.last_bit_rate
-        result = self.simulator.step(bit_rate)
-        self.buffer_size = result.buffer_size
 
-        # Accumulate time_stamp for the first chunk (consistent with step behavior)
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L76-L77
-        self.time_stamp += result.delay  # in ms
-        self.time_stamp += result.sleep_time  # in ms
-
-        _, info = self._process_step_result(bit_rate, result)
+        info = {
+            "time_stamp": self.time_stamp,
+            "buffer_size": self.buffer_size,
+        }
 
         return self.state.copy(), info
 
