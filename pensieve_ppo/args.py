@@ -1,12 +1,12 @@
 """Argument parsing utilities for Pensieve PPO."""
 
 import argparse
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import numpy as np
-import torch
 
-from .defaults import VIDEO_BIT_RATE
+from .agent import get_available_agents
+from .defaults import VIDEO_BIT_RATE, TRAIN_TRACES, TEST_TRACES
 from .gym.env import S_INFO, S_LEN
 
 # Default random seed (matching common.py RANDOM_SEED)
@@ -30,31 +30,30 @@ def add_env_agent_args(parser: argparse.ArgumentParser) -> None:
     for parameter descriptions.
     """
     parser.add_argument('--trace-folder', type=str, default=None,
-                        help='Path to trace folder (default: None, auto-selects based on train mode)')
-    parser.add_argument('--train', action='store_true',
-                        help='Use training mode (default: True for factory, False for single env/agent)')
+                        help=f"Folder containing network bandwidth trace files for simulation "
+                             f"(default: '{TRAIN_TRACES}' for train, '{TEST_TRACES}' for test)")
     parser.add_argument('--agent-name', type=str, default='ppo',
-                        help="Agent name (default: 'ppo')")
+                        choices=get_available_agents(),
+                        help="RL algorithm to use (default: 'ppo')")
     parser.add_argument('--model-path', type=str, default=None,
-                        help='Path to pre-trained model (default: None)')
+                        help="Path to load pre-trained model weights (default: None)")
     parser.add_argument('--device', type=str, default=None,
-                        help='PyTorch device (e.g., "cuda", "cpu") (default: None)')
+                        help="PyTorch device for computation, e.g. 'cuda', 'cpu' (default: None, auto-select)")
     parser.add_argument('--levels-quality', type=float, nargs='+', default=None,
                         metavar='BITRATE',
-                        help=f'Video bitrate levels in Kbps (default: {VIDEO_BIT_RATE})')
+                        help=f"Video bitrate levels in Kbps, determines action_dim=len(levels_quality) "
+                             f"(default: {VIDEO_BIT_RATE})")
     parser.add_argument('--state-history-len', type=int, default=S_LEN,
-                        help=f'State history length (S_LEN), S_INFO is fixed at {S_INFO} (default: {S_LEN})')
+                        help=f"Number of past observations in state, determines state_dim=({S_INFO}, state_history_len) "
+                             f"(default: {S_LEN})")
     parser.add_argument('--seed', type=int, default=RANDOM_SEED, action=SetSeedAction,
-                        help=f'Global random seed (default: {RANDOM_SEED})')
+                        help=f"Global random seed for Numpy and PyTorch (default: {RANDOM_SEED})")
     parser.add_argument('-o', '--agent-options', type=str, nargs='*', default=[],
                         metavar='KEY=VALUE',
-                        help='Additional agent options as key=value pairs')
+                        help="Extra agent kwargs, e.g. learning_rate=1e-4 gamma=0.99")
     parser.add_argument('-e', '--env-options', type=str, nargs='*', default=[],
                         metavar='KEY=VALUE',
-                        help='Additional environment options as key=value pairs')
-
-    # Apply default seed immediately so callers remain transparent
-    np.random.seed(RANDOM_SEED)
+                        help="Extra env kwargs, e.g. rebuf_penalty=4.3 smooth_penalty=1.0")
 
 
 def parse_options(options: list) -> Dict[str, Any]:
