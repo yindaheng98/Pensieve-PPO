@@ -166,6 +166,11 @@ class ABREnv(gym.Env):
         result = self.simulator.step(bit_rate)
         self.buffer_size = result.buffer_size
 
+        # Accumulate time_stamp for the first chunk (consistent with step behavior)
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L76-L77
+        self.time_stamp += result.delay  # in ms
+        self.time_stamp += result.sleep_time  # in ms
+
         _, info = self._process_step_result(bit_rate, result)
 
         return self.state.copy(), info
@@ -261,6 +266,7 @@ class ABREnv(gym.Env):
 
         # Build info dict with all step details
         info = {
+            "time_stamp": self.time_stamp,
             "quality": self.levels_quality[bit_rate],
             "rebuffer": rebuf,
             "delay": delay,
