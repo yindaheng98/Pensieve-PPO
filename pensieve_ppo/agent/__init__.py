@@ -16,4 +16,5 @@ __all__ = [
     'create_agent',
     'register_agent',
     'get_available_agents',
+    'ppo',
 ]
