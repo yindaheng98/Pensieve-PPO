@@ -70,8 +70,8 @@ def create_env_agent_factory_with_default(
     levels_quality: list = VIDEO_BIT_RATE,
     state_history_len: int = S_LEN,
     # Additional options
-    env_options: Optional[dict] = None,
-    agent_options: Optional[dict] = None,
+    env_options: dict = {},
+    agent_options: dict = {},
 ) -> Tuple[Callable[[int], ABREnv], Callable[[], AbstractAgent]]:
     """Create env_factory and agent_factory with default parameters.
 
@@ -96,7 +96,7 @@ def create_env_agent_factory_with_default(
             train=train,
             state_history_len=state_history_len,
             random_seed=seed,
-            **(env_options or {}),
+            **env_options,
         )
 
     # Create agent factory
@@ -105,7 +105,7 @@ def create_env_agent_factory_with_default(
             name=agent_name,
             state_dim=state_dim,
             action_dim=action_dim,
-            **(agent_options or {}),
+            **agent_options,
         )
 
     return env_factory, agent_factory
@@ -121,8 +121,8 @@ def create_env_agent_with_default(
     levels_quality: list = VIDEO_BIT_RATE,
     state_history_len: int = S_LEN,
     # Additional options
-    env_options: Optional[dict] = None,
-    agent_options: Optional[dict] = None,
+    env_options: dict = {},
+    agent_options: dict = {},
 ) -> Tuple[ABREnv, AbstractAgent]:
     """Create a compatible env and agent pair with default parameters.
 
@@ -145,7 +145,7 @@ def create_env_agent_with_default(
         trace_folder=trace_folder,
         train=train,
         state_history_len=state_history_len,
-        **(env_options or {}),
+        **env_options,
     )
 
     # Create agent with derived compatibility parameters
@@ -155,7 +155,7 @@ def create_env_agent_with_default(
         action_dim=action_dim,
         device=device,
         model_path=model_path,
-        **(agent_options or {}),
+        **agent_options,
     )
 
     return env, agent
