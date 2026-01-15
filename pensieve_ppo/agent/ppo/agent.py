@@ -22,6 +22,9 @@ from .model import Actor, Critic
 GAMMA = 0.99
 EPS = 0.2  # PPO2 epsilon
 
+# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L13
+ACTOR_LR_RATE = 1e-4
+
 
 class PPOAgent(AbstractAgent):
     """PPO (Proximal Policy Optimization) Agent.
@@ -40,7 +43,7 @@ class PPOAgent(AbstractAgent):
         self,
         state_dim: tuple[int, int],
         action_dim: int,
-        learning_rate: float = 1e-4,
+        learning_rate: float = ACTOR_LR_RATE,
         gamma: float = GAMMA,
         eps: float = EPS,
         ppo_training_epo: int = 5,
