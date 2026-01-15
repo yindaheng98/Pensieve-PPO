@@ -158,7 +158,7 @@ def calculate_test_statistics(log_file_prefix: str) -> Dict[str, float]:
     """Calculate statistics from test log files.
 
     Reference:
-        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L42-L73
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L42-L55
 
     Args:
         log_file_prefix: Prefix for log file paths (same as used in testing()).
