@@ -13,6 +13,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
 
 from ..abc import AbstractAgent
 from .model import Actor, Critic
@@ -267,3 +268,12 @@ class PPOAgent(AbstractAgent):
         actor_model_params, critic_model_params = torch.load(path, map_location=self.device)
         self.actor.load_state_dict(actor_model_params)
         self.critic.load_state_dict(critic_model_params)
+
+    def tensorboard_logging(self, writer: SummaryWriter, epoch: int) -> None:
+        """Log PPO-specific metrics to TensorBoard.
+
+        Args:
+            writer: TensorBoard SummaryWriter instance.
+            epoch: Current training epoch.
+        """
+        writer.add_scalar('Entropy Weight', self._entropy_weight, epoch)

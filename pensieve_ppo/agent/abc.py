@@ -9,10 +9,13 @@ Reference:
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, Optional, Tuple, List, TYPE_CHECKING
 
 import numpy as np
 import torch
+
+if TYPE_CHECKING:
+    from torch.utils.tensorboard import SummaryWriter
 
 
 class AbstractAgent(ABC):
@@ -176,3 +179,14 @@ class AbstractAgent(ABC):
         action_vec = np.zeros(self.a_dim)
         action_vec[action] = 1
         return action_vec
+
+    def tensorboard_logging(self, writer: SummaryWriter, epoch: int) -> None:
+        """Log metrics to TensorBoard.
+
+        This method can be overridden by subclasses to log agent-specific metrics.
+
+        Args:
+            writer: TensorBoard SummaryWriter instance.
+            epoch: Current training epoch.
+        """
+        pass
