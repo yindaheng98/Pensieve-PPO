@@ -28,7 +28,7 @@ MODEL_SAVE_INTERVAL = 300
 SUMMARY_DIR = './ppo'
 
 
-def testing_factory(
+def create_testing_callback(
     args: argparse.Namespace,
     output_dir: str,
 ) -> Callable[[int, str, AbstractAgent], None]:
@@ -229,8 +229,8 @@ if __name__ == '__main__':
     # Post-process arguments (parse options, set seed)
     parse_env_agent_args(args)
 
-    # Create on_save_model callback using testing_factory
-    on_save_model = testing_factory(
+    # Create on_save_model callback using create_testing_callback
+    on_save_model = create_testing_callback(
         args=args,
         output_dir=args.output_dir,
     )
