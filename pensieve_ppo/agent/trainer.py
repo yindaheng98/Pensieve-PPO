@@ -37,7 +37,6 @@ class Trainer:
         steps_per_epoch: int = 1000,
         train_epochs: int = 500000,
         model_save_interval: int = 300,
-        random_seed: int = 42,
         output_dir: str = './ppo',
         pretrained_model_path: Optional[str] = None,
         on_epoch_end: Callable[[int, AbstractAgent, Dict], None] = lambda epoch, agent, info: None,
@@ -52,7 +51,6 @@ class Trainer:
             steps_per_epoch: Number of environment steps each worker collects per epoch.
             train_epochs: Total number of training epochs.
             model_save_interval: Interval for saving model checkpoints.
-            random_seed: Random seed for reproducibility.
             output_dir: Directory for saving logs and model checkpoints.
             pretrained_model_path: Path to pre-trained model to load (optional).
             on_epoch_end: Callback invoked at the end of each epoch.
@@ -64,7 +62,6 @@ class Trainer:
         self.train_seq_len = steps_per_epoch
         self.train_epochs = train_epochs
         self.model_save_interval = model_save_interval
-        self.random_seed = random_seed
         self.summary_dir = output_dir
         self.nn_model = pretrained_model_path
         self.on_epoch_end = on_epoch_end
@@ -188,7 +185,6 @@ class Trainer:
         Reference:
             https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L167-L198
         """
-        np.random.seed(self.random_seed)
         torch.set_num_threads(1)
         # inter-process communication queues
         net_params_queues = []

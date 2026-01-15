@@ -39,7 +39,7 @@ def add_env_agent_arguments(parser: argparse.ArgumentParser) -> None:
                              f"(default: {S_LEN})")
     parser.add_argument('--initial-level', type=int, default=DEFAULT_QUALITY,
                         help=f"Initial quality level index on reset (default: {DEFAULT_QUALITY})")
-    parser.add_argument('--seed', type=int, default=RANDOM_SEED,
+    parser.add_argument('--random-seed', type=int, default=RANDOM_SEED,
                         help=f"Global random seed for Numpy and PyTorch (default: {RANDOM_SEED})")
     parser.add_argument('-o', '--agent-options', type=str, nargs='*', default=[],
                         metavar='KEY=VALUE',
@@ -78,7 +78,7 @@ def parse_env_agent_args(args: argparse.Namespace) -> argparse.Namespace:
     args.env_options = parse_options(args.env_options)
 
     # Set global random seed
-    if args.seed is not None:
-        np.random.seed(args.seed)
+    if args.random_seed is not None:
+        np.random.seed(args.random_seed)
 
     return args
