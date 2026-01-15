@@ -11,7 +11,7 @@ import argparse
 import copy
 import os
 import shutil
-from typing import Dict, Callable, Optional
+from typing import Callable
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -114,49 +114,35 @@ def create_testing_callback(
 
 
 def prepare_training(
-    train_trace_folder: str = TRAIN_TRACES,
+    *args,
     output_dir: str = SUMMARY_DIR,
     parallel_workers: int = NUM_AGENTS,
     steps_per_epoch: int = TRAIN_SEQ_LEN,
     train_epochs: int = TRAIN_EPOCH,
     model_save_interval: int = MODEL_SAVE_INTERVAL,
-    env_random_seed: Optional[int] = None,
     pretrained_model_path: str = None,
-    agent_name: str = 'ppo',
-    device: str = None,
-    levels_quality: list = None,
-    state_history_len: int = None,
-    agent_options: dict = {},
-    env_options: dict = {},
     on_save_model: Callable[[int, str, AbstractAgent], None] = None,
+    **kwargs,
 ) -> Trainer:
-    """Prepare trainer with testing callbacks.
+    """Prepare trainer for distributed training.
 
-    This function sets up the distributed training pipeline with:
-    - Environment and agent factories with shared parameters
-    - TensorBoard logging
-    - Periodic testing during training
+    Wrapper for create_env_agent_factory_with_default with train=True.
+    See create_env_agent_factory_with_default for available parameters.
 
     Reference:
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L77-L127
 
     Args:
-        train_trace_folder: Folder containing training traces.
+        *args: Positional arguments passed to create_env_agent_factory_with_default.
         output_dir: Directory for saving logs and model checkpoints.
         parallel_workers: Number of parallel worker agents.
         steps_per_epoch: Number of environment steps per epoch per worker.
         train_epochs: Total number of training epochs.
         model_save_interval: Interval for saving model checkpoints.
-        env_random_seed: Random seed for environment initialization. If None, no seed is set.
         pretrained_model_path: Path to pre-trained model to resume from.
-        agent_name: Name of the agent type (e.g., 'ppo').
-        device: PyTorch device ('cuda', 'cpu', or None for auto-select).
-        levels_quality: Video bitrate levels in Kbps.
-        state_history_len: Number of past observations in state.
-        agent_options: Additional agent configuration options.
-        env_options: Additional environment configuration options.
         on_save_model: Callback function invoked when model is saved.
                      Signature: (epoch: int, model_path: str, agent: AbstractAgent) -> None
+        **kwargs: Keyword arguments passed to create_env_agent_factory_with_default.
 
     Returns:
         Configured Trainer instance ready for training.
@@ -168,15 +154,7 @@ def prepare_training(
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L83-L85
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L131-L133
     env_factory, agent_factory = create_env_agent_factory_with_default(
-        trace_folder=train_trace_folder,
-        train=True,
-        random_seed=env_random_seed,
-        agent_name=agent_name,
-        device=device,
-        levels_quality=levels_quality,
-        state_history_len=state_history_len,
-        agent_options=agent_options,
-        env_options=env_options,
+        *args, train=True, **kwargs,
     )
 
     # Create trainer
@@ -215,8 +193,6 @@ def add_training_arguments(parser: argparse.ArgumentParser) -> None:
                         help=f"Interval for saving model checkpoints (default: {MODEL_SAVE_INTERVAL})")
     parser.add_argument('--pretrained-model-path', type=str, default=None,
                         help="Path to pre-trained model to resume training from (default: None)")
-    parser.add_argument('--env-random-seed', type=int, default=None,
-                        help="Random seed for environment initialization (default: None, no seed set)")
 
 
 if __name__ == '__main__':
@@ -237,20 +213,20 @@ if __name__ == '__main__':
 
     # Prepare trainer
     trainer = prepare_training(
-        train_trace_folder=args.train_trace_folder,
-        output_dir=args.output_dir,
-        parallel_workers=args.parallel_workers,
-        steps_per_epoch=args.steps_per_epoch,
-        train_epochs=args.train_epochs,
-        model_save_interval=args.model_save_interval,
-        env_random_seed=args.env_random_seed,
-        pretrained_model_path=args.pretrained_model_path,
+        trace_folder=args.train_trace_folder,
+        model_path=None,
         agent_name=args.agent_name,
         device=args.device,
         levels_quality=args.levels_quality,
         state_history_len=args.state_history_len,
         agent_options=args.agent_options,
         env_options=args.env_options,
+        output_dir=args.output_dir,
+        parallel_workers=args.parallel_workers,
+        steps_per_epoch=args.steps_per_epoch,
+        train_epochs=args.train_epochs,
+        model_save_interval=args.model_save_interval,
+        pretrained_model_path=args.pretrained_model_path,
         on_save_model=on_save_model,
     )
 
