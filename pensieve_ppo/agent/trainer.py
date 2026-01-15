@@ -18,6 +18,20 @@ import torch
 from .abc import AbstractAgent
 
 
+class EpochEndCallback:
+    """No-op callback for trainer events."""
+
+    def __call__(self, epoch: int, agent: AbstractAgent, info: Dict) -> None:
+        pass
+
+
+class SaveModelCallback:
+    """No-op callback for trainer events."""
+
+    def __call__(self, epoch: int, model_path: str, agent: AbstractAgent) -> None:
+        pass
+
+
 class Trainer:
     """Distributed trainer for RL agents.
 
@@ -39,8 +53,8 @@ class Trainer:
         model_save_interval: int = 300,
         output_dir: str = './ppo',
         pretrained_model_path: Optional[str] = None,
-        on_epoch_end: Callable[[int, AbstractAgent, Dict], None] = lambda epoch, agent, info: None,
-        on_save_model: Callable[[int, str, AbstractAgent], None] = lambda epoch, path, agent: None,
+        on_epoch_end: Callable[[int, AbstractAgent, Dict], None] = EpochEndCallback(),
+        on_save_model: Callable[[int, str, AbstractAgent], None] = SaveModelCallback(),
     ):
         """Initialize the trainer.
 

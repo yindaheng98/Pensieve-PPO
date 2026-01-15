@@ -15,7 +15,7 @@ from typing import Callable
 
 from torch.utils.tensorboard import SummaryWriter
 
-from .agent import AbstractAgent, Trainer
+from .agent import AbstractAgent, Trainer, SaveModelCallback
 from .defaults import create_env_agent_factory_with_default, TRAIN_TRACES
 from .args import add_env_agent_arguments, parse_env_agent_args
 from .test import main as test_main, calculate_test_statistics, add_testing_arguments
@@ -28,33 +28,18 @@ MODEL_SAVE_INTERVAL = 300
 SUMMARY_DIR = './ppo'
 
 
-def create_testing_callback(
-    args: argparse.Namespace,
-    output_dir: str,
-) -> Callable[[int, str, AbstractAgent], None]:
-    """Create on_save_model callback using a closure.
+class TestingCallback(SaveModelCallback):
+    """Picklable callback for testing and logging during training."""
 
-    This factory function creates and returns an on_save_model callback that
-    will run testing using test.py's main function whenever a model is saved.
+    def __init__(self, args: argparse.Namespace, output_dir: str):
+        # Create output directory and necessary objects
+        os.makedirs(output_dir, exist_ok=True)
+        self.writer = SummaryWriter(output_dir)
+        log_file_path = os.path.join(output_dir, 'log_test.txt')
+        self.log_file = open(log_file_path, 'w')
+        self.args = args
 
-    Args:
-        args: Parsed arguments namespace containing all test configuration.
-              Must include all arguments from add_env_agent_arguments and
-              add_testing_arguments. The model_path and test_log_file_prefix will
-              be updated dynamically in on_save_model.
-        output_dir: Directory for saving logs and model checkpoints.
-
-    Returns:
-        Callable function with signature (epoch: int, model_path: str, agent: AbstractAgent) -> None
-        that runs testing and logs results.
-    """
-    # Create output directory and necessary objects
-    os.makedirs(output_dir, exist_ok=True)
-    writer = SummaryWriter(output_dir)
-    log_file_path = os.path.join(output_dir, 'log_test.txt')
-    log_file = open(log_file_path, 'w')
-
-    def testing_and_log(epoch: int, model_path: str, agent: AbstractAgent) -> None:
+    def __call__(self, epoch: int, model_path: str, agent: AbstractAgent) -> None:
         """Callback invoked when model is saved.
 
         This function runs testing using test.py's main function and logs the results
@@ -68,6 +53,7 @@ def create_testing_callback(
             model_path: Path to saved model.
             agent: Trained agent (used for logging entropy weight if available).
         """
+        args, writer, log_file = self.args, self.writer, self.log_file
         # Extract test log folder from test_log_file_prefix and clean up
         test_log_folder = os.path.dirname(args.test_log_file_prefix)
         if os.path.exists(test_log_folder):
@@ -109,8 +95,6 @@ def create_testing_callback(
         writer.flush()
 
         print(f'Epoch {epoch}: avg_reward={rewards_mean:.4f}, avg_entropy={avg_entropy:.4f}')
-
-    return testing_and_log
 
 
 def prepare_training(
@@ -205,11 +189,8 @@ if __name__ == '__main__':
     # Post-process arguments (parse options, set seed)
     parse_env_agent_args(args)
 
-    # Create on_save_model callback using create_testing_callback
-    on_save_model = create_testing_callback(
-        args=args,
-        output_dir=args.output_dir,
-    )
+    # Create on_save_model callback
+    on_save_model = TestingCallback(args=args, output_dir=args.output_dir)
 
     # Prepare trainer
     trainer = prepare_training(
