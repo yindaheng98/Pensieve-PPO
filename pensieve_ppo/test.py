@@ -18,8 +18,12 @@ from .defaults import create_env_agent_with_default
 from .gym.env import ABREnv, M_IN_K
 from .args import add_env_agent_arguments, parse_env_agent_args
 
+# Reference: https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L22
+TEST_LOG_FOLDER = './test_results/'
+
 # Default log file prefix (agent name will be appended)
-DEFAULT_LOG_FILE_PREFIX = './test_results/log_sim_'
+# Reference: https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L25
+LOG_FILE_PREFIX = os.path.join(TEST_LOG_FOLDER, 'log_sim_')
 
 
 def prepare_testing(*args, **kwargs) -> Tuple[ABREnv, AbstractAgent]:
@@ -199,18 +203,19 @@ def calculate_test_statistics(log_file_prefix: str) -> Dict[str, float]:
 def add_testing_arguments(parser: argparse.ArgumentParser) -> None:
     """Add testing-specific arguments to parser.
 
-    This function adds the --log-file-prefix argument needed for testing.
+    This function adds the --test-log-file-prefix argument needed for testing.
     It should be called along with add_env_agent_arguments to get all
     arguments required by the main() function.
     """
-    parser.add_argument('--log-file-prefix', type=str, default=DEFAULT_LOG_FILE_PREFIX,
-                        help=f"Prefix for log files (default: {DEFAULT_LOG_FILE_PREFIX}). "
+    parser.add_argument('--test-log-file-prefix', type=str, default=LOG_FILE_PREFIX,
+                        dest='test_log_file_prefix',
+                        help=f"Prefix for test log files (default: {LOG_FILE_PREFIX}). "
                              f"Actual log path: <prefix><agent_name>_<trace_name>")
 
 
 def main(args):
     # Append agent name to log file prefix
-    log_file_prefix = args.log_file_prefix + args.agent_name
+    log_file_prefix = args.test_log_file_prefix + args.agent_name
 
     # Prepare env and agent
     env, agent = prepare_testing(
