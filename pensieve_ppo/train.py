@@ -36,7 +36,9 @@ class TestingCallback(SaveModelCallback):
         os.makedirs(output_dir, exist_ok=True)
         self.writer = SummaryWriter(output_dir)
         log_file_path = os.path.join(output_dir, 'log_test.txt')
-        self.log_file = open(log_file_path, 'w')
+        self.log_file_path = log_file_path
+        with open(self.log_file_path, 'w'):
+            pass
         self.args = args
 
     def __call__(self, epoch: int, model_path: str, agent: AbstractAgent) -> None:
@@ -53,7 +55,7 @@ class TestingCallback(SaveModelCallback):
             model_path: Path to saved model.
             agent: Trained agent (used for logging entropy weight if available).
         """
-        args, writer, log_file = self.args, self.writer, self.log_file
+        args, writer, log_file_path = self.args, self.writer, self.log_file_path
         # Extract test log folder from test_log_file_prefix and clean up
         test_log_folder = os.path.dirname(args.test_log_file_prefix)
         if os.path.exists(test_log_folder):
@@ -78,14 +80,14 @@ class TestingCallback(SaveModelCallback):
         rewards_max = stats['rewards_max']
         avg_entropy = stats['avg_entropy']
 
-        log_file.write(str(epoch) + '\t' +
-                       str(rewards_min) + '\t' +
-                       str(rewards_5per) + '\t' +
-                       str(rewards_mean) + '\t' +
-                       str(rewards_median) + '\t' +
-                       str(rewards_95per) + '\t' +
-                       str(rewards_max) + '\n')
-        log_file.flush()
+        with open(log_file_path, 'a') as log_file:
+            log_file.write(str(epoch) + '\t' +
+                           str(rewards_min) + '\t' +
+                           str(rewards_5per) + '\t' +
+                           str(rewards_mean) + '\t' +
+                           str(rewards_median) + '\t' +
+                           str(rewards_95per) + '\t' +
+                           str(rewards_max) + '\n')
 
         # Log to TensorBoard
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L124-L127

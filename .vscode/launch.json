@@ -7,13 +7,21 @@
             "request": "launch",
             "module": "pytest",
             "args": [
-                "tests/test_data_loaders.py",
+                "tests",
                 "-v"
             ],
             "cwd": "${workspaceFolder}",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/src",
             },
+        },
+        {
+            "name": "train",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pensieve_ppo.train",
+            "args": [],
+            "cwd": "${workspaceFolder}",
         },
     ]
 }

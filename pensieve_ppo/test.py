@@ -72,7 +72,9 @@ def testing(
 
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L41-L42
     log_path = log_file_prefix + '_' + all_file_names[trace_progress.trace_index]
-    log_file = open(log_path, 'w')
+    # First time open with 'w' to clear the file
+    with open(log_path, 'w'):
+        pass
 
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L53
     env.reset(options={'initial_level': initial_level})
@@ -104,15 +106,16 @@ def testing(
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L89-L98
         # log time_stamp, bit_rate, buffer_size, reward
-        log_file.write(str(info['time_stamp'] / M_IN_K) + '\t' +
-                       str(info['quality']) + '\t' +
-                       str(info['buffer_size']) + '\t' +
-                       str(info['rebuffer']) + '\t' +
-                       str(info['video_chunk_size']) + '\t' +
-                       str(info['delay']) + '\t' +
-                       str(entropy_) + '\t' +
-                       str(reward) + '\n')
-        log_file.flush()
+        # Open file: first time with 'w' to clear, then with 'a' to append
+        with open(log_path, 'a') as log_file:
+            log_file.write(str(info['time_stamp'] / M_IN_K) + '\t' +
+                           str(info['quality']) + '\t' +
+                           str(info['buffer_size']) + '\t' +
+                           str(info['rebuffer']) + '\t' +
+                           str(info['video_chunk_size']) + '\t' +
+                           str(info['delay']) + '\t' +
+                           str(entropy_) + '\t' +
+                           str(reward) + '\n')
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L117-L123
         action_prob = agent.predict(np.reshape(state, (1, s_info, s_len)))
@@ -125,8 +128,9 @@ def testing(
 
         if end_of_video:
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L126-L147
-            log_file.write('\n')
-            log_file.close()
+            # Append newline and close file
+            with open(log_path, 'a') as log_file:
+                log_file.write('\n')
 
             last_bit_rate = initial_level
             bit_rate = initial_level  # use the default action here
@@ -155,7 +159,8 @@ def testing(
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L149-L150
             trace_progress = env.simulator.trace_simulator.get_trace_progress()
             log_path = log_file_prefix + '_' + all_file_names[trace_progress.trace_index]
-            log_file = open(log_path, 'w')
+            with open(log_path, 'w'):
+                pass
 
 
 def calculate_test_statistics(log_file_prefix: str) -> Dict[str, float]:
