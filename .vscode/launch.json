@@ -2,82 +2,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "pytest loader",
+            "name": "pytest",
             "type": "debugpy",
             "request": "launch",
             "module": "pytest",
             "args": [
                 "tests/test_data_loaders.py",
-                "-v"
-            ],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/src",
-            },
-        },
-        {
-            "name": "pytest simulator",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "pytest",
-            "args": [
-                "tests/test_simulator_equivalence.py",
-                "-v"
-            ],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/src",
-            },
-        },
-        {
-            "name": "pytest random simulator",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "pytest",
-            "args": [
-                "tests/test_random_simulator_equivalence.py",
-                "-v"
-            ],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/src",
-            },
-        },
-        {
-            "name": "pytest env",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "pytest",
-            "args": [
-                "tests/test_env_equivalence.py",
-                "-v"
-            ],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/src",
-            },
-        },
-        {
-            "name": "pytest agent",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "pytest",
-            "args": [
-                "tests/test_ppo_agent_equivalence.py",
-                "-v"
-            ],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/src",
-            },
-        },
-        {
-            "name": "pytest testing",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "pytest",
-            "args": [
-                "tests/test_test_equivalence.py",
                 "-v"
             ],
             "cwd": "${workspaceFolder}",
