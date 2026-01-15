@@ -196,17 +196,19 @@ def calculate_test_statistics(log_file_prefix: str) -> Dict[str, float]:
     }
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Test Pensieve PPO agent')
-    add_env_agent_arguments(parser)
+def add_testing_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add testing-specific arguments to parser.
+
+    This function adds the --log-file-prefix argument needed for testing.
+    It should be called along with add_env_agent_arguments to get all
+    arguments required by the main() function.
+    """
     parser.add_argument('--log-file-prefix', type=str, default=DEFAULT_LOG_FILE_PREFIX,
                         help=f"Prefix for log files (default: {DEFAULT_LOG_FILE_PREFIX}). "
                              f"Actual log path: <prefix><agent_name>_<trace_name>")
-    args = parser.parse_args()
 
-    # Post-process arguments (parse options, set seed)
-    parse_env_agent_args(args)
 
+def main(args):
     # Append agent name to log file prefix
     log_file_prefix = args.log_file_prefix + args.agent_name
 
@@ -229,6 +231,21 @@ if __name__ == '__main__':
         log_file_prefix=log_file_prefix,
         initial_level=args.initial_level,
     )
+
+    return log_file_prefix
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Test Pensieve PPO agent')
+    add_env_agent_arguments(parser)
+    add_testing_arguments(parser)
+    args = parser.parse_args()
+
+    # Post-process arguments (parse options, set seed)
+    parse_env_agent_args(args)
+
+    # Run testing
+    log_file_prefix = main(args)
 
     # Calculate and print test statistics
     stats = calculate_test_statistics(log_file_prefix)
