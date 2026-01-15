@@ -14,9 +14,9 @@ from typing import Dict, Tuple
 import numpy as np
 
 from .agent.abc import AbstractAgent
-from .defaults import create_env_agent_with_default, VIDEO_BIT_RATE
+from .defaults import create_env_agent_with_default
 from .gym.env import ABREnv, M_IN_K
-from .args import add_env_agent_args, parse_options
+from .args import add_env_agent_arguments, parse_env_agent_args
 
 # Default log file prefix (agent name will be appended)
 DEFAULT_LOG_FILE_PREFIX = './test_results/log_sim_'
@@ -198,29 +198,28 @@ def calculate_test_statistics(log_file_prefix: str) -> Dict[str, float]:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test Pensieve PPO agent')
-    add_env_agent_args(parser)
+    add_env_agent_arguments(parser)
     parser.add_argument('--log-file-prefix', type=str, default=DEFAULT_LOG_FILE_PREFIX,
                         help=f"Prefix for log files (default: {DEFAULT_LOG_FILE_PREFIX}). "
                              f"Actual log path: <prefix><agent_name>_<trace_name>")
     args = parser.parse_args()
 
-    # Parse additional options
-    agent_options = parse_options(args.agent_options)
-    env_options = parse_options(args.env_options)
+    # Post-process arguments (parse options, set seed)
+    parse_env_agent_args(args)
 
     # Append agent name to log file prefix
     log_file_prefix = args.log_file_prefix + args.agent_name
 
     # Prepare env and agent
     env, agent = prepare_testing(
-        trace_folder=args.trace_folder,
+        trace_folder=args.test_trace_folder,
         model_path=args.model_path,
         agent_name=args.agent_name,
         device=args.device,
-        levels_quality=args.levels_quality or VIDEO_BIT_RATE,
+        levels_quality=args.levels_quality,
         state_history_len=args.state_history_len,
-        agent_options=agent_options,
-        env_options=env_options,
+        agent_options=args.agent_options,
+        env_options=args.env_options,
     )
 
     # Run testing

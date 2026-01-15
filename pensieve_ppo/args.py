@@ -6,32 +6,23 @@ from typing import Any, Dict
 import numpy as np
 
 from .agent import get_available_agents
-from .defaults import VIDEO_BIT_RATE, TRAIN_TRACES, TEST_TRACES, DEFAULT_QUALITY
+from .defaults import VIDEO_BIT_RATE, TEST_TRACES, DEFAULT_QUALITY
 from .gym.env import S_INFO, S_LEN
 
-# Default random seed (matching common.py RANDOM_SEED)
+# Default random seed
 RANDOM_SEED = 42
 
 
-class SetSeedAction(argparse.Action):
-    """Argparse action that sets global random seed on parse."""
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        if values is not None:
-            np.random.seed(values)
-        setattr(namespace, self.dest, values)
-
-
-def add_env_agent_args(parser: argparse.ArgumentParser) -> None:
-    """Add arguments for create_env_agent_with_default and create_env_agent_factory_with_default.
+def add_env_agent_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add arguments for environment and agent configuration.
 
     These arguments correspond to the parameters of create_env_agent_with_default and
     create_env_agent_factory_with_default in pensieve_ppo/defaults.py. See those functions
     for parameter descriptions.
     """
-    parser.add_argument('--trace-folder', type=str, default=None,
-                        help=f"Folder containing network bandwidth trace files for simulation "
-                             f"(default: '{TRAIN_TRACES}' for train, '{TEST_TRACES}' for test)")
+    parser.add_argument('--test-trace-folder', type=str, default=TEST_TRACES,
+                        help=f"Folder containing network bandwidth trace files for testing "
+                             f"(default: '{TEST_TRACES}')")
     parser.add_argument('--agent-name', type=str, default='ppo',
                         choices=get_available_agents(),
                         help="RL algorithm to use (default: 'ppo')")
@@ -39,7 +30,7 @@ def add_env_agent_args(parser: argparse.ArgumentParser) -> None:
                         help="Path to load pre-trained model weights (default: None)")
     parser.add_argument('--device', type=str, default=None,
                         help="PyTorch device for computation, e.g. 'cuda', 'cpu' (default: None, auto-select)")
-    parser.add_argument('--levels-quality', type=float, nargs='+', default=None,
+    parser.add_argument('--levels-quality', type=float, nargs='+', default=VIDEO_BIT_RATE,
                         metavar='BITRATE',
                         help=f"Video bitrate levels in Kbps, determines action_dim=len(levels_quality) "
                              f"(default: {VIDEO_BIT_RATE})")
@@ -48,7 +39,7 @@ def add_env_agent_args(parser: argparse.ArgumentParser) -> None:
                              f"(default: {S_LEN})")
     parser.add_argument('--initial-level', type=int, default=DEFAULT_QUALITY,
                         help=f"Initial quality level index on reset (default: {DEFAULT_QUALITY})")
-    parser.add_argument('--seed', type=int, default=RANDOM_SEED, action=SetSeedAction,
+    parser.add_argument('--seed', type=int, default=RANDOM_SEED,
                         help=f"Global random seed for Numpy and PyTorch (default: {RANDOM_SEED})")
     parser.add_argument('-o', '--agent-options', type=str, nargs='*', default=[],
                         metavar='KEY=VALUE',
@@ -67,3 +58,27 @@ def parse_options(options: list) -> Dict[str, Any]:
         key, value = opt.split('=', 1)
         result[key] = eval(value)
     return result
+
+
+def parse_env_agent_args(args: argparse.Namespace) -> argparse.Namespace:
+    """Post-process parsed arguments for environment and agent configuration.
+
+    This function handles:
+    - Parsing additional options (agent_options, env_options)
+    - Setting global random seed if specified.
+
+    Args:
+        args: Parsed argument namespace from argparse.
+
+    Returns:
+        The modified argument namespace.
+    """
+    # Parse additional options
+    args.agent_options = parse_options(args.agent_options)
+    args.env_options = parse_options(args.env_options)
+
+    # Set global random seed
+    if args.seed is not None:
+        np.random.seed(args.seed)
+
+    return args
