@@ -127,7 +127,7 @@ def create_env_agent_factory_with_default(
 
     # Create agent factory
     agent_factory = PicklableAgentFactory(
-        agent_name=agent_name,
+        name=agent_name,
         state_dim=state_dim,
         action_dim=action_dim,
         device=device,
