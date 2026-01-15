@@ -65,8 +65,9 @@ def create_env_with_default(
 def create_env_agent_factory_with_default(
     trace_folder: Optional[str] = None,
     train: bool = True,
-    random_seed: Optional[int] = None,
+    model_path: Optional[str] = None,
     agent_name: str = 'ppo',
+    device: Optional[torch.device] = None,
     # Compatibility parameters (shared between env and agent)
     levels_quality: list = VIDEO_BIT_RATE,
     state_history_len: int = S_LEN,
@@ -90,7 +91,7 @@ def create_env_agent_factory_with_default(
 
     # Create environment factory
     def env_factory(agent_id: int) -> ABREnv:
-        seed = random_seed + agent_id if random_seed is not None else None
+        seed = env_options['random_seed'] + agent_id if 'random_seed' in env_options and env_options['random_seed'] is not None else None
         return create_env_with_default(
             levels_quality=levels_quality,
             trace_folder=trace_folder,
@@ -106,6 +107,8 @@ def create_env_agent_factory_with_default(
             name=agent_name,
             state_dim=state_dim,
             action_dim=action_dim,
+            device=device,
+            model_path=model_path,
             **agent_options,
         )
 
