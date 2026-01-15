@@ -62,16 +62,31 @@ def create_env_with_default(
     )
 
 
-class PicklableFactory:
+class PicklableEnvFactory:
+    """Callable factory for creating ABREnv instances."""
+
+    def __init__(self, *args, env_options: dict = {}, **kwargs):
+        self.args = args
+        self.env_options = env_options
+        self.kwargs = kwargs
+
+    def __call__(self, pid: int) -> ABREnv:
+        env_options = self.env_options.copy()
+        random_seed = env_options['random_seed'] + pid if 'random_seed' in env_options and env_options['random_seed'] is not None else None
+        env_options = {**env_options, 'random_seed': random_seed}
+        return create_env_with_default(*self.args, **self.kwargs, **env_options)
+
+
+class PicklableAgentFactory:
     """Callable factory for creating AbstractAgent instances."""
 
-    def __init__(self, target: Callable[..., any], *args, **kwargs):
-        self.target = target
+    def __init__(self, *args, agent_options: dict = {}, **kwargs):
         self.args = args
+        self.agent_options = agent_options
         self.kwargs = kwargs
 
     def __call__(self) -> AbstractAgent:
-        return self.target(*self.args, **self.kwargs)
+        return create_agent(*self.args, **self.kwargs, **self.agent_options)
 
 
 def create_env_agent_factory_with_default(
@@ -102,8 +117,7 @@ def create_env_agent_factory_with_default(
     action_dim = len(levels_quality)
 
     # Create environment factory
-    env_factory = PicklableFactory(
-        create_env_with_default,
+    env_factory = PicklableEnvFactory(
         levels_quality=levels_quality,
         trace_folder=trace_folder,
         train=train,
@@ -112,8 +126,7 @@ def create_env_agent_factory_with_default(
     )
 
     # Create agent factory
-    agent_factory = PicklableFactory(
-        create_agent,
+    agent_factory = PicklableAgentFactory(
         agent_name=agent_name,
         state_dim=state_dim,
         action_dim=action_dim,

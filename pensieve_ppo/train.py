@@ -34,7 +34,8 @@ class TestingCallback(SaveModelCallback):
     def __init__(self, args: argparse.Namespace, output_dir: str):
         # Create output directory and necessary objects
         os.makedirs(output_dir, exist_ok=True)
-        self.writer = SummaryWriter(output_dir)
+        self.output_dir = output_dir
+        self.writer = None
         log_file_path = os.path.join(output_dir, 'log_test.txt')
         self.log_file_path = log_file_path
         with open(self.log_file_path, 'w'):
@@ -55,6 +56,7 @@ class TestingCallback(SaveModelCallback):
             model_path: Path to saved model.
             agent: Trained agent (used for logging entropy weight if available).
         """
+        self.writer = self.writer or SummaryWriter(log_dir=self.output_dir)
         args, writer, log_file_path = self.args, self.writer, self.log_file_path
         # Extract test log folder from test_log_file_prefix and clean up
         test_log_folder = os.path.dirname(args.test_log_file_prefix)
