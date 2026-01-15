@@ -180,7 +180,7 @@ class AbstractAgent(ABC):
         action_vec[action] = 1
         return action_vec
 
-    def tensorboard_logging(self, writer: SummaryWriter, epoch: int) -> None:
+    def tensorboard_logging(self, writer: 'SummaryWriter', epoch: int) -> None:
         """Log metrics to TensorBoard.
 
         This method can be overridden by subclasses to log agent-specific metrics.
