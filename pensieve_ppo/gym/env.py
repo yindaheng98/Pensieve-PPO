@@ -14,7 +14,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-from ..core.simulator import Simulator, StepResult
+from ..core.simulator import Simulator
 
 
 # State dimensions (used by RL agents, not by env anymore)
@@ -214,7 +214,6 @@ class ABREnv(gym.Env):
 
         info = {
             "time_stamp": self.time_stamp,
-            "buffer_size": self.buffer_size,
         }
 
         return observation, info
@@ -242,30 +241,6 @@ class ABREnv(gym.Env):
         self.time_stamp += result.delay  # in ms
         self.time_stamp += result.sleep_time  # in ms
 
-        observation, reward, info = self._process_step_result(bit_rate, result)
-
-        self.last_bit_rate = bit_rate
-
-        # Episode termination
-        terminated = result.end_of_video
-        truncated = False
-
-        return observation, float(reward), terminated, truncated, info
-
-    def _process_step_result(
-        self,
-        bit_rate: int,
-        result: StepResult,
-    ) -> Tuple[Observation, float, Dict[str, Any]]:
-        """Process simulator result: create observation, compute reward, and build info.
-
-        Args:
-            bit_rate: Current bitrate level selected.
-            result: Result from simulator.step().
-
-        Returns:
-            Tuple of (observation, reward, info_dict).
-        """
         # Unpack result (matches original variable names)
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L75-L78
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L48-L51
@@ -306,16 +281,16 @@ class ABREnv(gym.Env):
         info = {
             "time_stamp": self.time_stamp,
             "quality": self.levels_quality[bit_rate],
-            "rebuffer": rebuf,
-            "delay": delay,
-            "sleep_time": sleep_time,
-            "buffer_size": buffer_size,
-            "video_chunk_size": video_chunk_size,
-            "video_chunk_remain": video_chunk_remain,
             "reward": reward,
         }
 
-        return observation, reward, info
+        self.last_bit_rate = bit_rate
+
+        # Episode termination
+        terminated = result.end_of_video
+        truncated = False
+
+        return observation, float(reward), terminated, truncated, info
 
     def render(self) -> None:
         """Render the environment (not implemented for this env)."""
