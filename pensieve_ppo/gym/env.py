@@ -17,11 +17,6 @@ from gymnasium import spaces
 from ..core.simulator import Simulator
 
 
-# State dimensions (used by RL agents, not by env anymore)
-# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L8
-S_INFO = 6  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
-S_LEN = 8  # take how many frames in the past
-
 # Normalization constants
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L14
 BUFFER_NORM_FACTOR = 10.0
