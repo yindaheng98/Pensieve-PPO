@@ -44,6 +44,7 @@ class Observation:
         next_video_chunk_sizes: List of chunk sizes at each quality level in bytes.
         video_chunk_remain: Number of remaining video chunks.
         end_of_video: Whether this is the last chunk of the video.
+        is_initial_step: Whether this is the first step after reset (True) or a subsequent step (False).
     """
     delay: float
     sleep_time: float
@@ -53,6 +54,7 @@ class Observation:
     next_video_chunk_sizes: np.ndarray
     video_chunk_remain: int
     end_of_video: bool
+    is_initial_step: bool
 
 
 class ABREnv(gym.Env):
@@ -200,6 +202,7 @@ class ABREnv(gym.Env):
             next_video_chunk_sizes=np.zeros(self.bitrate_levels),
             video_chunk_remain=self.total_chunk_cap,
             end_of_video=False,
+            is_initial_step=True,  # Reset always returns first step observation
         )
 
         info = {
@@ -265,6 +268,7 @@ class ABREnv(gym.Env):
             next_video_chunk_sizes=np.array(next_video_chunk_sizes),
             video_chunk_remain=video_chunk_remain,
             end_of_video=end_of_video,
+            is_initial_step=False,  # Subsequent steps are not initial step
         )
 
         # Build info dict with all step details
