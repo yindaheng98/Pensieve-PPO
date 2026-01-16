@@ -33,6 +33,8 @@ class AbstractAgent(ABC):
     @abstractmethod
     def reset(
         self,
+        *,
+        seed: Optional[int] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Reset the agent's internal state.
@@ -43,6 +45,7 @@ class AbstractAgent(ABC):
         not the environment.
 
         Args:
+            seed: Optional random seed for reproducibility.
             options: Additional options for reset behavior. Common options include:
                 - initial_level (int): Initial bitrate level index.
         """
