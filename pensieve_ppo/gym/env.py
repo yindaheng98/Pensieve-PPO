@@ -18,8 +18,7 @@ from ..core.simulator import Simulator
 
 
 # Normalization constants
-# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L14
-BUFFER_NORM_FACTOR = 10.0
+# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L16
 M_IN_K = 1000.0
 
 # Reward parameters
@@ -93,7 +92,6 @@ class ABREnv(gym.Env):
         levels_quality: List[float],
         rebuf_penalty: float = REBUF_PENALTY,
         smooth_penalty: float = SMOOTH_PENALTY,
-        buffer_norm_factor: float = BUFFER_NORM_FACTOR,
         initial_level: int = 0,
     ):
         """Initialize the ABR environment.
@@ -108,7 +106,6 @@ class ABREnv(gym.Env):
                            or other quality indicators like VMAF/PSNR scores.
             rebuf_penalty: Penalty coefficient for rebuffering (default: 4.3)
             smooth_penalty: Penalty coefficient for quality changes (default: 1.0)
-            buffer_norm_factor: Normalization factor for buffer size in seconds (default: 10.0)
             initial_level: Initial quality level index on reset (default: 1)
         """
         super().__init__()
@@ -128,9 +125,6 @@ class ABREnv(gym.Env):
                 f"simulator.video_player.bitrate_levels ({self.bitrate_levels})"
             )
 
-        # Store normalization parameters
-        self.buffer_norm_factor = buffer_norm_factor
-
         # Store initial bitrate
         self.initial_bitrate = initial_level
 
@@ -140,6 +134,7 @@ class ABREnv(gym.Env):
         self.time_stamp = 0.0
 
         # Define action space (observation space is not a simple Box anymore)
+        # TODO: Define a proper observation space if needed
         self.observation_space = None  # Observation is a dataclass, not a gym space
         self.action_space = spaces.Discrete(self.bitrate_levels)
 
