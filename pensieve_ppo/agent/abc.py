@@ -1,8 +1,8 @@
-"""Abstract base class for reinforcement learning agents.
+"""Abstract base classes for ABR agents.
 
-This module provides the AbstractAgent base class that defines the interface
-for all RL agents in this project. Specific algorithms (e.g., PPO, A2C)
-should inherit from this class and implement the abstract methods.
+This module provides the abstract base classes for all agents:
+- AbstractAgent: Minimal interface for any ABR agent (predict only)
+- AbstractRLAgent: Extended interface for reinforcement learning agents
 
 Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py
@@ -14,11 +14,49 @@ from typing import Any, Dict, Optional, Tuple, List, TYPE_CHECKING
 import numpy as np
 import torch
 
+from ..gym.env import Observation
+
+
+# Normalization constants
+# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L16
+M_IN_K = 1000.0
+
+# State dimensions (used by RL agents for state representation)
+# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L8
+S_INFO = 6  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
+S_LEN = 8  # take how many frames in the past
+
+# Normalization constants (used by RL agents for state computation)
+# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L14
+BUFFER_NORM_FACTOR = 10.0
+
 if TYPE_CHECKING:
     from torch.utils.tensorboard import SummaryWriter
 
 
 class AbstractAgent(ABC):
+    """Abstract base class for any ABR agent.
+
+    This is the minimal interface that all ABR agents must implement.
+    It only requires a predict method that takes an observation and returns an action.
+    This allows for simple rule-based agents, heuristic agents, or RL agents to all
+    share the same interface for evaluation.
+    """
+
+    @abstractmethod
+    def predict(self, observation: Observation) -> int:
+        """Predict an action given an observation.
+
+        Args:
+            observation: Raw observation from the environment.
+
+        Returns:
+            Action index (bitrate level to select).
+        """
+        pass
+
+
+class AbstractRLAgent(AbstractAgent):
     """Abstract base class for RL agents.
 
     This class defines the common interface that all RL agents must implement.
