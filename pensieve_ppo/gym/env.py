@@ -7,6 +7,7 @@ Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py
 """
 
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import gymnasium as gym
@@ -16,7 +17,7 @@ from gymnasium import spaces
 from ..core.simulator import Simulator, StepResult
 
 
-# State dimensions
+# State dimensions (used by RL agents, not by env anymore)
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L8
 S_INFO = 6  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
 S_LEN = 8  # take how many frames in the past
@@ -32,6 +33,34 @@ REBUF_PENALTY = 4.3  # 1 sec rebuffering penalty
 SMOOTH_PENALTY = 1.0  # penalty for bitrate changes
 
 
+@dataclass
+class Observation:
+    """Raw observation data from ABR environment.
+
+    This dataclass contains all the information from a single environment step
+    that agents can use to make decisions. Unlike the state matrix used by RL
+    agents, this is raw unprocessed data.
+
+    Attributes:
+        delay: Download delay in milliseconds.
+        sleep_time: Sleep time in milliseconds.
+        buffer_size: Current buffer size in seconds.
+        rebuffer: Rebuffering time in seconds.
+        video_chunk_size: Downloaded chunk size in bytes.
+        next_video_chunk_sizes: List of chunk sizes at each quality level in bytes.
+        video_chunk_remain: Number of remaining video chunks.
+        end_of_video: Whether this is the last chunk of the video.
+    """
+    delay: float
+    sleep_time: float
+    buffer_size: float
+    rebuffer: float
+    video_chunk_size: float
+    next_video_chunk_sizes: np.ndarray
+    video_chunk_remain: int
+    end_of_video: bool
+
+
 class ABREnv(gym.Env):
     """Gymnasium environment for Adaptive Bitrate Streaming.
 
@@ -39,14 +68,20 @@ class ABREnv(gym.Env):
     variable bandwidth. The agent must select bitrate levels to maximize
     video quality while minimizing rebuffering and bitrate oscillations.
 
-    Observation Space:
-        Box(S_INFO, state_history_len) containing:
-        - [0, :] Last quality normalized by max quality
-        - [1, :] Buffer size normalized by buffer_norm_factor
-        - [2, :] Throughput (chunk_size / delay) in Mbps
-        - [3, :] Delay normalized by buffer_norm_factor
-        - [4, :bitrate_levels] Next chunk sizes at each bitrate level (in MB)
-        - [5, :] Remaining chunks normalized by total_chunk_cap
+    Observation:
+        An Observation dataclass containing raw data from each step:
+        - delay: Download delay in milliseconds
+        - sleep_time: Sleep time in milliseconds
+        - buffer_size: Current buffer size in seconds
+        - rebuffer: Rebuffering time in seconds
+        - video_chunk_size: Downloaded chunk size in bytes
+        - next_video_chunk_sizes: Chunk sizes at each quality level in bytes
+        - video_chunk_remain: Number of remaining video chunks
+        - end_of_video: Whether this is the last chunk
+
+        Note: State computation (history tracking, normalization) is handled
+        by the agent, not the environment. This allows different agents to
+        use different state representations.
 
     Action Space:
         Discrete(bitrate_levels) - select bitrate level
@@ -63,7 +98,6 @@ class ABREnv(gym.Env):
         levels_quality: List[float],
         rebuf_penalty: float = REBUF_PENALTY,
         smooth_penalty: float = SMOOTH_PENALTY,
-        state_history_len: int = S_LEN,
         buffer_norm_factor: float = BUFFER_NORM_FACTOR,
         initial_level: int = 0,
     ):
@@ -73,13 +107,12 @@ class ABREnv(gym.Env):
             simulator: Pre-configured Simulator instance (use create_simulator
                       from pensieve_ppo.core to create one)
             levels_quality: Quality metric list for each bitrate level, used for
-                           state representation and reward calculation. Length must
-                           match simulator.video_player.bitrate_levels.
+                           reward calculation. Length must match
+                           simulator.video_player.bitrate_levels.
                            For example, bitrate values in Kbps: [300, 750, 1200, ...]
                            or other quality indicators like VMAF/PSNR scores.
             rebuf_penalty: Penalty coefficient for rebuffering (default: 4.3)
             smooth_penalty: Penalty coefficient for quality changes (default: 1.0)
-            state_history_len: Number of past observations to keep in state (default: 8)
             buffer_norm_factor: Normalization factor for buffer size in seconds (default: 10.0)
             initial_level: Initial quality level index on reset (default: 1)
         """
@@ -101,25 +134,18 @@ class ABREnv(gym.Env):
             )
 
         # Store normalization parameters
-        self.state_history_len = state_history_len
         self.buffer_norm_factor = buffer_norm_factor
 
         # Store initial bitrate
         self.initial_bitrate = initial_level
 
-        # Initialize state
+        # Initialize environment state (not agent state)
         self.last_bit_rate = self.initial_bitrate
         self.buffer_size = 0.0
-        self.state = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
         self.time_stamp = 0.0
 
-        # Define observation and action spaces
-        self.observation_space = spaces.Box(
-            low=-np.inf,
-            high=np.inf,
-            shape=(S_INFO, self.state_history_len),
-            dtype=np.float32
-        )
+        # Define action space (observation space is not a simple Box anymore)
+        self.observation_space = None  # Observation is a dataclass, not a gym space
         self.action_space = spaces.Discrete(self.bitrate_levels)
 
     @property
@@ -137,11 +163,11 @@ class ABREnv(gym.Env):
         *,
         seed: Optional[int] = None,
         options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+    ) -> Tuple[Observation, Dict[str, Any]]:
         """Reset the environment to initial state.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L42-L47
-        This method only initializes state to zeros and does NOT execute the first chunk download.
+        This method only initializes state and does NOT execute the first chunk download.
         The first chunk should be downloaded by calling step(action) after reset().
         This follows proper Gymnasium API separation of concerns.
 
@@ -156,6 +182,7 @@ class ABREnv(gym.Env):
 
         Returns:
             Tuple of (observation, info_dict)
+            The initial observation has zeros for most fields since no step has been taken.
         """
         super().reset(seed=seed)
 
@@ -171,19 +198,30 @@ class ABREnv(gym.Env):
             self.time_stamp = 0
 
         self.last_bit_rate = initial_level
-        self.state = np.zeros((S_INFO, self.state_history_len))
         self.buffer_size = 0.
+
+        # Create initial observation with zeros (no step taken yet)
+        observation = Observation(
+            delay=0.0,
+            sleep_time=0.0,
+            buffer_size=0.0,
+            rebuffer=0.0,
+            video_chunk_size=0.0,
+            next_video_chunk_sizes=np.zeros(self.bitrate_levels),
+            video_chunk_remain=self.total_chunk_cap,
+            end_of_video=False,
+        )
 
         info = {
             "time_stamp": self.time_stamp,
             "buffer_size": self.buffer_size,
         }
 
-        return self.state.copy(), info
+        return observation, info
 
     def step(
         self, action: Union[int, np.ndarray]
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+    ) -> Tuple[Observation, float, bool, bool, Dict[str, Any]]:
         """Execute one step in the environment.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L72-L106
@@ -204,7 +242,7 @@ class ABREnv(gym.Env):
         self.time_stamp += result.delay  # in ms
         self.time_stamp += result.sleep_time  # in ms
 
-        reward, info = self._process_step_result(bit_rate, result)
+        observation, reward, info = self._process_step_result(bit_rate, result)
 
         self.last_bit_rate = bit_rate
 
@@ -212,21 +250,21 @@ class ABREnv(gym.Env):
         terminated = result.end_of_video
         truncated = False
 
-        return self.state.copy(), float(reward), terminated, truncated, info
+        return observation, float(reward), terminated, truncated, info
 
     def _process_step_result(
         self,
         bit_rate: int,
         result: StepResult,
-    ) -> Tuple[float, Dict[str, Any]]:
-        """Process simulator result: compute reward, update state, and build info.
+    ) -> Tuple[Observation, float, Dict[str, Any]]:
+        """Process simulator result: create observation, compute reward, and build info.
 
         Args:
             bit_rate: Current bitrate level selected.
             result: Result from simulator.step().
 
         Returns:
-            Tuple of (reward, info_dict).
+            Tuple of (observation, reward, info_dict).
         """
         # Unpack result (matches original variable names)
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L75-L78
@@ -252,23 +290,17 @@ class ABREnv(gym.Env):
             - self.smooth_penalty * np.abs(self.levels_quality[bit_rate] -
                                            self.levels_quality[self.last_bit_rate]) / M_IN_K
 
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L90-L104
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L52-L66
-        state = np.roll(self.state, -1, axis=1)
-
-        # this should be S_INFO number of terms
-        state[0, -1] = self.levels_quality[bit_rate] / \
-            float(np.max(self.levels_quality))  # last quality
-        state[1, -1] = buffer_size / self.buffer_norm_factor  # 10 sec
-        state[2, -1] = float(video_chunk_size) / \
-            float(delay) / M_IN_K  # kilo byte / ms
-        state[3, -1] = float(delay) / M_IN_K / self.buffer_norm_factor  # 10 sec
-        state[4, :self.bitrate_levels] = np.array(
-            next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
-        state[5, -1] = np.minimum(video_chunk_remain,
-                                  self.total_chunk_cap) / float(self.total_chunk_cap)
-
-        self.state = state
+        # Create observation with raw data
+        observation = Observation(
+            delay=delay,
+            sleep_time=sleep_time,
+            buffer_size=buffer_size,
+            rebuffer=rebuf,
+            video_chunk_size=video_chunk_size,
+            next_video_chunk_sizes=np.array(next_video_chunk_sizes),
+            video_chunk_remain=video_chunk_remain,
+            end_of_video=end_of_video,
+        )
 
         # Build info dict with all step details
         info = {
@@ -283,7 +315,7 @@ class ABREnv(gym.Env):
             "reward": reward,
         }
 
-        return reward, info
+        return observation, reward, info
 
     def render(self) -> None:
         """Render the environment (not implemented for this env)."""
