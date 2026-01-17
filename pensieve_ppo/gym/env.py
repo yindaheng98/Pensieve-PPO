@@ -221,7 +221,7 @@ class ABREnv(gym.Env):
         self,
         bit_rate: int,
         result: StepResult,
-    ) -> Tuple[float, Dict[str, Any]]:
+    ) -> Tuple[np.ndarray, float]:
         """Process simulator result: compute reward, update state, and build info.
 
         Args:
