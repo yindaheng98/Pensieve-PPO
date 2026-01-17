@@ -1,7 +1,7 @@
 """Unit tests to verify PPOAgent behavior matches src/ppo2.py Network.
 
 This module tests equivalence between:
-- pensieve_ppo.agent.ppo.PPOAgent vs src/ppo2.py Network
+- pensieve_ppo.agent.rl.ppo.PPOAgent vs src/ppo2.py Network
 
 Both implementations are loaded with the same pretrained model weights
 and tested with identical inputs to ensure behavioral equivalence.
@@ -17,8 +17,8 @@ import torch
 import ppo2 as src_ppo2
 
 # Import our implementation
-from pensieve_ppo.agent.ppo import PPOAgent
-from pensieve_ppo.agent.ppo.model import Actor, Critic
+from pensieve_ppo.agent.rl.ppo import PPOAgent
+from pensieve_ppo.agent.rl.ppo.model import Actor, Critic
 
 # src directory path for pretrained model
 SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
