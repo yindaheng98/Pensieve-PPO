@@ -56,7 +56,7 @@ class AbstractABRStateObserver(ABC):
         self,
         env: "ABREnv",
         initial_bit_rate: int = 0,
-    ) -> np.ndarray:
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Reset observer state and return initial observation.
 
         Args:
@@ -64,7 +64,7 @@ class AbstractABRStateObserver(ABC):
             initial_bit_rate: Initial bitrate level index.
 
         Returns:
-            Initial state array.
+            Tuple of (state, info_dict).
         """
         pass
 
@@ -74,7 +74,7 @@ class AbstractABRStateObserver(ABC):
         env: "ABREnv",
         bit_rate: int,
         result: StepResult,
-    ) -> Tuple[np.ndarray, float]:
+    ) -> Tuple[np.ndarray, float, Dict[str, Any]]:
         """Process simulator result: compute reward and update state.
 
         Args:
@@ -83,7 +83,7 @@ class AbstractABRStateObserver(ABC):
             result: Result from simulator.step().
 
         Returns:
-            Tuple of (state, reward).
+            Tuple of (state, reward, info_dict).
         """
         pass
 
@@ -186,10 +186,11 @@ class ABREnv(gym.Env):
             self.time_stamp = 0
 
         # Reset observer and get initial state
-        state = self.observer.reset(self, initial_level)
+        state, observer_info = self.observer.reset(self, initial_level)
 
         info = {
             "time_stamp": self.time_stamp,
+            **observer_info
         }
 
         return state, info
@@ -217,7 +218,7 @@ class ABREnv(gym.Env):
         self.time_stamp += result.sleep_time  # in ms
 
         # Observe state and compute reward
-        state, reward = self.observer.observe(self, bit_rate, result)
+        state, reward, observer_info = self.observer.observe(self, bit_rate, result)
 
         # Episode termination
         terminated = result.end_of_video
@@ -225,6 +226,15 @@ class ABREnv(gym.Env):
 
         info = {
             "time_stamp": self.time_stamp,
+            "delay": result.delay,
+            "sleep_time": result.sleep_time,
+            "buffer_size": result.buffer_size,
+            "rebuffer": result.rebuffer,
+            "video_chunk_size": result.video_chunk_size,
+            "next_video_chunk_sizes": result.next_video_chunk_sizes,
+            "video_chunk_remain": result.video_chunk_remain,
+            "end_of_video": result.end_of_video,
+            **observer_info
         }
         return state, float(reward), terminated, truncated, info
 
@@ -307,7 +317,7 @@ class ABRStateObserver(AbstractABRStateObserver):
         self,
         env: "ABREnv",
         initial_bit_rate: int = 0,
-    ) -> np.ndarray:
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Reset observer state and return initial observation.
 
         Args:
@@ -315,7 +325,7 @@ class ABRStateObserver(AbstractABRStateObserver):
             initial_bit_rate: Initial bitrate level index.
 
         Returns:
-            Initial state array (zeros).
+            Tuple of (state, info_dict).
         """
         # Validate levels_quality length matches env's bitrate_levels
         if self.bitrate_levels != env.simulator.video_player.bitrate_levels:
@@ -326,14 +336,14 @@ class ABRStateObserver(AbstractABRStateObserver):
 
         self.last_bit_rate = initial_bit_rate
         self.state = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
-        return self.state.copy()
+        return self.state.copy(), {}
 
     def observe(
         self,
         env: 'ABREnv',
         bit_rate: int,
         result: StepResult,
-    ) -> Tuple[np.ndarray, float]:
+    ) -> Tuple[np.ndarray, float, Dict[str, Any]]:
         """Process simulator result: compute reward and update state.
 
         Args:
@@ -342,7 +352,7 @@ class ABRStateObserver(AbstractABRStateObserver):
             result: Result from simulator.step().
 
         Returns:
-            Tuple of (state, reward).
+            Tuple of (state, reward, info_dict).
         """
         # Unpack result (matches original variable names)
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L75-L78
@@ -388,4 +398,9 @@ class ABRStateObserver(AbstractABRStateObserver):
         self.state = state
         self.last_bit_rate = bit_rate
 
-        return self.state.copy(), reward
+        # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
+        info = {
+            'quality': self.levels_quality[bit_rate],
+        }
+
+        return self.state.copy(), reward, info
