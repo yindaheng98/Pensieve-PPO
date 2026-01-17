@@ -7,7 +7,7 @@ import numpy as np
 
 from .agent import get_available_agents
 from .defaults import VIDEO_BIT_RATE, TEST_TRACES, DEFAULT_QUALITY
-from .gym.env import S_INFO, S_LEN
+from .agent.rl.observer import S_INFO, S_LEN
 
 # Default random seed
 RANDOM_SEED = 42

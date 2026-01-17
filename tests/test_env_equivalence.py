@@ -22,14 +22,14 @@ Note on API differences:
 - Tests account for this by calling step() with DEFAULT_QUALITY after gym reset()
 
 Note on constants:
-- Constants are imported from pensieve_ppo.gym.defaults and pensieve_ppo.gym.env
+- Constants are imported from pensieve_ppo.agent.rl.observer and pensieve_ppo.defaults
   to verify equivalence with the original src_env.
 - TestConstantsMatch class explicitly verifies these values match between
   our implementation and src_env to ensure consistency with the original
   Pensieve-PPO implementation.
 """
 
-from pensieve_ppo.gym.env import S_INFO, S_LEN
+from pensieve_ppo.agent.rl.observer import S_INFO, S_LEN
 from pensieve_ppo.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS, create_env_with_default
 import env as src_env
 import os
@@ -150,20 +150,20 @@ class TestConstantsMatch(TestABREnvEquivalenceBase):
 
     def test_normalization_constants(self):
         """Test normalization constants match."""
-        from pensieve_ppo.gym.env import BUFFER_NORM_FACTOR, M_IN_K
+        from pensieve_ppo.agent.rl.observer import BUFFER_NORM_FACTOR, M_IN_K
         self.assertEqual(src_env.BUFFER_NORM_FACTOR, BUFFER_NORM_FACTOR)
         self.assertEqual(src_env.M_IN_K, M_IN_K)
         # CHUNK_TIL_VIDEO_END_CAP is now derived from simulator.total_chunks
 
     def test_reward_constants(self):
         """Test reward penalty constants match."""
-        from pensieve_ppo.gym.env import REBUF_PENALTY, SMOOTH_PENALTY
+        from pensieve_ppo.agent.rl.observer import REBUF_PENALTY, SMOOTH_PENALTY
         self.assertEqual(src_env.REBUF_PENALTY, REBUF_PENALTY)
         self.assertEqual(src_env.SMOOTH_PENALTY, SMOOTH_PENALTY)
 
     def test_dimension_constants(self):
         """Test dimension constants match."""
-        from pensieve_ppo.gym.env import S_INFO as gym_S_INFO, S_LEN as gym_S_LEN
+        from pensieve_ppo.agent.rl.observer import S_INFO as gym_S_INFO, S_LEN as gym_S_LEN
         self.assertEqual(src_env.S_INFO, gym_S_INFO)
         self.assertEqual(src_env.S_LEN, gym_S_LEN)
         # A_DIM is now defined by caller via video_bit_rate length

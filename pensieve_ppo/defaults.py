@@ -15,7 +15,14 @@ import torch
 
 from .agent import AbstractAgent, create_agent
 from .gym import ABREnv, create_env
-from .gym.env import S_INFO, S_LEN
+from .agent.rl.observer import (
+    RLABRStateObserver,
+    S_INFO,
+    S_LEN,
+    REBUF_PENALTY,
+    SMOOTH_PENALTY,
+    BUFFER_NORM_FACTOR,
+)
 
 
 # Default constants from original Pensieve-PPO implementation
@@ -40,20 +47,35 @@ def create_env_with_default(
     video_size_file_prefix: str = VIDEO_SIZE_FILE_PREFIX,
     max_chunks: int = TOTAL_VIDEO_CHUNKS,
     train: bool = True,
+    # Observer parameters
+    rebuf_penalty: float = REBUF_PENALTY,
+    smooth_penalty: float = SMOOTH_PENALTY,
+    state_history_len: int = S_LEN,
+    buffer_norm_factor: float = BUFFER_NORM_FACTOR,
+    # Env parameters
+    initial_level: int = 0,
     **kwargs,
 ) -> ABREnv:
     """Create an ABREnv with default Pensieve parameters.
 
     Wraps `create_env` with default values matching the original Pensieve implementation.
     If trace_folder is None, auto-selects TRAIN_TRACES or TEST_TRACES based on train flag.
-
-    See `create_env` for additional **kwargs options.
     """
     if trace_folder is None:
         trace_folder = TRAIN_TRACES if train else TEST_TRACES
 
-    return create_env(
+    # Create the RL observer with specified parameters
+    observer = RLABRStateObserver(
         levels_quality=levels_quality,
+        rebuf_penalty=rebuf_penalty,
+        smooth_penalty=smooth_penalty,
+        state_history_len=state_history_len,
+        buffer_norm_factor=buffer_norm_factor,
+    )
+
+    return create_env(
+        observer=observer,
+        initial_level=initial_level,
         trace_folder=trace_folder,
         video_size_file_prefix=video_size_file_prefix,
         max_chunks=max_chunks,

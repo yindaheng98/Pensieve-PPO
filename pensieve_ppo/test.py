@@ -15,7 +15,8 @@ import numpy as np
 
 from .agent.rl.abc import AbstractAgent
 from .defaults import create_env_agent_with_default
-from .gym.env import ABREnv, M_IN_K
+from .gym.env import ABREnv
+from .agent.rl.observer import M_IN_K
 from .args import add_env_agent_arguments, parse_env_agent_args
 
 # Reference: https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L22
