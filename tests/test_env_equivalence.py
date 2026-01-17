@@ -296,17 +296,8 @@ class TestInternalStateTracking(TestABREnvEquivalenceBase):
         _, _, _, src_env_obj = self._run_src_trajectory(RANDOM_SEED, actions)
         _, _, _, gym_env_obj = self._run_gym_trajectory(RANDOM_SEED, actions)
 
-        self.assertEqual(src_env_obj.last_bit_rate, gym_env_obj.last_bit_rate)
+        self.assertEqual(src_env_obj.last_bit_rate, gym_env_obj.observer.last_bit_rate)
         self.assertEqual(src_env_obj.last_bit_rate, actions[-1])
-
-    def test_buffer_size_tracking(self):
-        """Test buffer_size is tracked identically."""
-        actions = [3] * 10
-
-        _, _, _, src_env_obj = self._run_src_trajectory(RANDOM_SEED, actions)
-        _, _, _, gym_env_obj = self._run_gym_trajectory(RANDOM_SEED, actions)
-
-        self.assertAlmostEqual(src_env_obj.buffer_size, gym_env_obj.buffer_size, places=6)
 
 
 class TestEdgeCases(TestABREnvEquivalenceBase):

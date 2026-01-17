@@ -60,11 +60,7 @@ class ABREnv(gym.Env):
     def __init__(
         self,
         simulator: Simulator,
-        levels_quality: List[float],
-        rebuf_penalty: float = REBUF_PENALTY,
-        smooth_penalty: float = SMOOTH_PENALTY,
-        state_history_len: int = S_LEN,
-        buffer_norm_factor: float = BUFFER_NORM_FACTOR,
+        observer: 'ABRStateObserver',
         initial_level: int = 0,
     ):
         """Initialize the ABR environment.
@@ -72,65 +68,33 @@ class ABREnv(gym.Env):
         Args:
             simulator: Pre-configured Simulator instance (use create_simulator
                       from pensieve_ppo.core to create one)
-            levels_quality: Quality metric list for each bitrate level, used for
-                           state representation and reward calculation. Length must
-                           match simulator.video_player.bitrate_levels.
-                           For example, bitrate values in Kbps: [300, 750, 1200, ...]
-                           or other quality indicators like VMAF/PSNR scores.
-            rebuf_penalty: Penalty coefficient for rebuffering (default: 4.3)
-            smooth_penalty: Penalty coefficient for quality changes (default: 1.0)
-            state_history_len: Number of past observations to keep in state (default: 8)
-            buffer_norm_factor: Normalization factor for buffer size in seconds (default: 10.0)
-            initial_level: Initial quality level index on reset (default: 1)
+            observer: ABRStateObserver instance for state observation and reward
+                     calculation. Its levels_quality length must match
+                     simulator.video_player.bitrate_levels.
+            initial_level: Initial quality level index on reset (default: 0)
         """
         super().__init__()
 
         # Store simulator
         self.simulator = simulator
 
-        # Store reward parameters
-        self.rebuf_penalty = rebuf_penalty
-        self.smooth_penalty = smooth_penalty
-        self.levels_quality = levels_quality
-
-        # Validate levels_quality length matches bitrate_levels from simulator
-        if len(self.levels_quality) != self.bitrate_levels:
-            raise ValueError(
-                f"levels_quality length ({len(self.levels_quality)}) must match "
-                f"simulator.video_player.bitrate_levels ({self.bitrate_levels})"
-            )
-
-        # Store normalization parameters
-        self.state_history_len = state_history_len
-        self.buffer_norm_factor = buffer_norm_factor
+        # Store observer
+        self.observer = observer
 
         # Store initial bitrate
         self.initial_bitrate = initial_level
 
-        # Initialize state
-        self.last_bit_rate = self.initial_bitrate
-        self.buffer_size = 0.0
-        self.state = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
+        # timestamp in ms for logging purposes
         self.time_stamp = 0.0
 
         # Define observation and action spaces
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(S_INFO, self.state_history_len),
+            shape=(S_INFO, observer.state_history_len),
             dtype=np.float32
         )
-        self.action_space = spaces.Discrete(self.bitrate_levels)
-
-    @property
-    def bitrate_levels(self) -> int:
-        """Number of available bitrate levels from the video player."""
-        return self.simulator.video_player.bitrate_levels
-
-    @property
-    def total_chunk_cap(self) -> int:
-        """Total number of video chunks, used for normalization."""
-        return self.simulator.video_player.total_chunks
+        self.action_space = spaces.Discrete(simulator.video_player.bitrate_levels)
 
     def reset(
         self,
@@ -170,15 +134,14 @@ class ABREnv(gym.Env):
         if reset_time_stamp:
             self.time_stamp = 0
 
-        self.last_bit_rate = initial_level
-        self.state = np.zeros((S_INFO, self.state_history_len))
-        self.buffer_size = 0.
+        # Reset observer and get initial state
+        state = self.observer.reset(self, initial_level)
 
         info = {
             "time_stamp": self.time_stamp,
         }
 
-        return self.state.copy(), info
+        return state, info
 
     def step(
         self, action: Union[int, np.ndarray]
@@ -197,16 +160,13 @@ class ABREnv(gym.Env):
         # the action is from the last decision
         # this is to make the framework similar to the real
         result = self.simulator.step(bit_rate)
-        self.buffer_size = result.buffer_size
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L80-L81
         self.time_stamp += result.delay  # in ms
         self.time_stamp += result.sleep_time  # in ms
 
-        state, reward = self.observe(bit_rate, result)
-
-        self.state = state
-        self.last_bit_rate = bit_rate
+        # Observe state and compute reward
+        state, reward = self.observer.observe(self, bit_rate, result)
 
         # Episode termination
         terminated = result.end_of_video
@@ -215,21 +175,112 @@ class ABREnv(gym.Env):
         info = {
             "time_stamp": self.time_stamp,
         }
-        return self.state.copy(), float(reward), terminated, truncated, info
+        return state, float(reward), terminated, truncated, info
+
+    def render(self) -> None:
+        """Render the environment (not implemented for this env)."""
+        pass
+
+    def close(self) -> None:
+        """Clean up environment resources."""
+        pass
+
+
+class ABRStateObserver:
+    """Observer for ABR environment state and reward calculation.
+
+    This class handles state representation and reward computation,
+    decoupled from the environment dynamics.
+
+    Attributes:
+        levels_quality: Quality metric list for each bitrate level.
+        rebuf_penalty: Penalty coefficient for rebuffering.
+        smooth_penalty: Penalty coefficient for quality changes.
+        state_history_len: Number of past observations in state.
+        buffer_norm_factor: Normalization factor for buffer size.
+        state: Current state array.
+        last_bit_rate: Last selected bitrate level.
+    """
+
+    def __init__(
+        self,
+        levels_quality: List[float],
+        rebuf_penalty: float = REBUF_PENALTY,
+        smooth_penalty: float = SMOOTH_PENALTY,
+        state_history_len: int = S_LEN,
+        buffer_norm_factor: float = BUFFER_NORM_FACTOR,
+    ):
+        """Initialize the ABR state observer.
+
+        Args:
+            levels_quality: Quality metric list for each bitrate level, used for
+                           state representation and reward calculation.
+                           For example, bitrate values in Kbps: [300, 750, 1200, ...]
+                           or other quality indicators like VMAF/PSNR scores.
+            rebuf_penalty: Penalty coefficient for rebuffering (default: 4.3)
+            smooth_penalty: Penalty coefficient for quality changes (default: 1.0)
+            state_history_len: Number of past observations to keep in state (default: 8)
+            buffer_norm_factor: Normalization factor for buffer size in seconds (default: 10.0)
+        """
+
+        # Store reward parameters
+        self.rebuf_penalty = rebuf_penalty
+        self.smooth_penalty = smooth_penalty
+        self.levels_quality = levels_quality
+
+        # Store normalization parameters
+        self.state_history_len = state_history_len
+        self.buffer_norm_factor = buffer_norm_factor
+
+        # State tracking (initialized in reset)
+        self.state: Optional[np.ndarray] = None
+        self.last_bit_rate: int = 0
+
+    @property
+    def bitrate_levels(self) -> int:
+        """Number of available bitrate levels."""
+        return len(self.levels_quality)
+
+    def reset(
+        self,
+        env: "ABREnv",
+        initial_bit_rate: int = 0,
+    ) -> np.ndarray:
+        """Reset observer state and return initial observation.
+
+        Args:
+            env: The ABREnv instance to observe.
+            initial_bit_rate: Initial bitrate level index.
+
+        Returns:
+            Initial state array (zeros).
+        """
+        # Validate levels_quality length matches env's bitrate_levels
+        if self.bitrate_levels != env.simulator.video_player.bitrate_levels:
+            raise ValueError(
+                f"levels_quality length ({self.bitrate_levels}) must match "
+                f"env.simulator.video_player.bitrate_levels ({env.simulator.video_player.bitrate_levels})"
+            )
+
+        self.last_bit_rate = initial_bit_rate
+        self.state = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
+        return self.state.copy()
 
     def observe(
         self,
+        env: 'ABREnv',
         bit_rate: int,
         result: StepResult,
     ) -> Tuple[np.ndarray, float]:
-        """Process simulator result: compute reward, update state, and build info.
+        """Process simulator result: compute reward and update state.
 
         Args:
+            env: The ABREnv instance to observe.
             bit_rate: Current bitrate level selected.
             result: Result from simulator.step().
 
         Returns:
-            Tuple of (reward, info_dict).
+            Tuple of (state, reward).
         """
         # Unpack result (matches original variable names)
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L75-L78
@@ -269,14 +320,10 @@ class ABREnv(gym.Env):
         state[4, :self.bitrate_levels] = np.array(
             next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
         state[5, -1] = np.minimum(video_chunk_remain,
-                                  self.total_chunk_cap) / float(self.total_chunk_cap)
+                                  env.simulator.video_player.total_chunks) / float(env.simulator.video_player.total_chunks)
 
-        return state, reward
+        # Update internal state
+        self.state = state
+        self.last_bit_rate = bit_rate
 
-    def render(self) -> None:
-        """Render the environment (not implemented for this env)."""
-        pass
-
-    def close(self) -> None:
-        """Clean up environment resources."""
-        pass
+        return self.state.copy(), reward

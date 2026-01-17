@@ -3,7 +3,7 @@
 from typing import List
 
 from ..core import create_simulator
-from .env import ABREnv, REBUF_PENALTY, SMOOTH_PENALTY, S_LEN, BUFFER_NORM_FACTOR
+from .env import ABREnv, ABRStateObserver, REBUF_PENALTY, SMOOTH_PENALTY, S_LEN, BUFFER_NORM_FACTOR
 
 
 def create_env(
@@ -35,12 +35,16 @@ def create_env(
     """
     simulator = create_simulator(bitrate_levels=len(levels_quality), **simulator_kwargs)
 
-    return ABREnv(
-        simulator=simulator,
+    observer = ABRStateObserver(
         levels_quality=levels_quality,
         rebuf_penalty=rebuf_penalty,
         smooth_penalty=smooth_penalty,
         state_history_len=state_history_len,
         buffer_norm_factor=buffer_norm_factor,
+    )
+
+    return ABREnv(
+        simulator=simulator,
+        observer=observer,
         initial_level=initial_level,
     )
