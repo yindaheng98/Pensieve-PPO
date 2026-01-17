@@ -117,8 +117,8 @@ class Trainer:
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L102-L112
             training_batches: List[TrainingBatch] = []
             for i in range(self.num_agents):
-                batch = exp_queues[i].get()
-                training_batches.append(batch)
+                training_batch = exp_queues[i].get()
+                training_batches.append(training_batch)
 
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L102-L114
             train_info = actor.train_batch(training_batches, epoch)
@@ -182,8 +182,8 @@ class Trainer:
                 if done:
                     break
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L161-L165
-            experience = actor.produce_training_batch(trajectory, done)
-            exp_queue.put(experience)
+            training_batch = actor.produce_training_batch(trajectory, done)
+            exp_queue.put(training_batch)
 
             actor_net_params = net_params_queue.get()
             actor.set_network_params(actor_net_params)
