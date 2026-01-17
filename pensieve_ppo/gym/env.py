@@ -176,7 +176,6 @@ class ABREnv(gym.Env):
 
         info = {
             "time_stamp": self.time_stamp,
-            "buffer_size": self.buffer_size,
         }
 
         return self.state.copy(), info
@@ -204,14 +203,18 @@ class ABREnv(gym.Env):
         self.time_stamp += result.delay  # in ms
         self.time_stamp += result.sleep_time  # in ms
 
-        reward, info = self.observe(bit_rate, result)
+        state, reward = self.observe(bit_rate, result)
 
+        self.state = state
         self.last_bit_rate = bit_rate
 
         # Episode termination
         terminated = result.end_of_video
         truncated = False
 
+        info = {
+            "time_stamp": self.time_stamp,
+        }
         return self.state.copy(), float(reward), terminated, truncated, info
 
     def observe(
@@ -268,22 +271,7 @@ class ABREnv(gym.Env):
         state[5, -1] = np.minimum(video_chunk_remain,
                                   self.total_chunk_cap) / float(self.total_chunk_cap)
 
-        self.state = state
-
-        # Build info dict with all step details
-        info = {
-            "time_stamp": self.time_stamp,
-            "quality": self.levels_quality[bit_rate],
-            "rebuffer": rebuf,
-            "delay": delay,
-            "sleep_time": sleep_time,
-            "buffer_size": buffer_size,
-            "video_chunk_size": video_chunk_size,
-            "video_chunk_remain": video_chunk_remain,
-            "reward": reward,
-        }
-
-        return reward, info
+        return state, reward
 
     def render(self) -> None:
         """Render the environment (not implemented for this env)."""

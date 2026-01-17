@@ -29,6 +29,9 @@ Note on constants:
   Pensieve-PPO implementation.
 """
 
+from pensieve_ppo.gym.env import S_INFO, S_LEN
+from pensieve_ppo.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS, create_env_with_default
+import env as src_env
 import os
 import sys
 import unittest
@@ -40,11 +43,8 @@ SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
 sys.path.insert(0, SRC_DIR)
 
 # Import original implementation from src
-import env as src_env
 
 # Import our gymnasium implementation and constants.
-from pensieve_ppo.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS, create_env_with_default
-from pensieve_ppo.gym.env import S_INFO, S_LEN
 
 # Test-specific constants (must match src_env for equivalence verification)
 A_DIM = len(VIDEO_BIT_RATE)  # Number of bitrate levels
@@ -393,28 +393,6 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
         # gym returns (state, reward, terminated, truncated, info)
         gym_result = gym_abr.step(2)
         self.assertEqual(len(gym_result), 5)
-
-    def test_info_dict_common_fields(self):
-        """Test info dict contains common fields after step."""
-        np.random.seed(RANDOM_SEED)
-        src_abr = src_env.ABREnv(random_seed=RANDOM_SEED)
-        src_abr.reset()
-        gym_abr = self._create_gym_env(RANDOM_SEED)
-        gym_abr.reset()
-        # Execute first chunk for gym env to match src state
-        gym_abr.step(1)  # DEFAULT_QUALITY = 1
-
-        _, _, _, src_info = src_abr.step(2)
-        _, _, _, _, gym_info = gym_abr.step(2)
-
-        # src uses 'bitrate', gym uses 'quality' (more generic name)
-        self.assertIn('bitrate', src_info)
-        self.assertIn('rebuffer', src_info)
-        self.assertIn('quality', gym_info)
-        self.assertIn('rebuffer', gym_info)
-
-        # Values should be equal
-        self.assertEqual(src_info['bitrate'], gym_info['quality'])
 
 
 class TestDeterminism(TestABREnvEquivalenceBase):
