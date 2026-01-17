@@ -204,7 +204,7 @@ class ABREnv(gym.Env):
         self.time_stamp += result.delay  # in ms
         self.time_stamp += result.sleep_time  # in ms
 
-        reward, info = self._process_step_result(bit_rate, result)
+        reward, info = self.observe(bit_rate, result)
 
         self.last_bit_rate = bit_rate
 
@@ -214,7 +214,7 @@ class ABREnv(gym.Env):
 
         return self.state.copy(), float(reward), terminated, truncated, info
 
-    def _process_step_result(
+    def observe(
         self,
         bit_rate: int,
         result: StepResult,
