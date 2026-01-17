@@ -12,10 +12,9 @@ import multiprocessing as mp
 from typing import Callable, Dict, List, Optional
 
 import gymnasium as gym
-import numpy as np
 import torch
 
-from .abc import AbstractAgent
+from .abc import AbstractAgent, TrainingBatch, Step
 
 
 class EpochEndCallback:
@@ -103,31 +102,26 @@ class Trainer:
         actor = self.agent_factory()
 
         # restore neural net parameters
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L90-L114
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L90-L100
         if self.nn_model is not None:
             actor.load_model(self.nn_model)
             print('Model restored.')
 
-        # while True:  # assemble experiences from agents, compute the gradients
+        # while True:  # assemble training batches from agents, compute the gradients
         for epoch in range(self.train_epochs):
             # synchronize the network parameters of work agent
             actor_net_params = actor.get_network_params()
             for i in range(self.num_agents):
                 net_params_queues[i].put(actor_net_params)
 
-            s, a, p, r = [], [], [], []
+            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L102-L112
+            training_batches: List[TrainingBatch] = []
             for i in range(self.num_agents):
-                s_, a_, p_, r_ = exp_queues[i].get()
-                s += s_
-                a += a_
-                p += p_
-                r += r_
-            s_batch = np.stack(s, axis=0)
-            a_batch = np.vstack(a)
-            p_batch = np.vstack(p)
-            v_batch = np.vstack(r)
+                batch = exp_queues[i].get()
+                training_batches.append(batch)
 
-            train_info = actor.train(s_batch, a_batch, p_batch, v_batch, epoch)
+            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L102-L114
+            train_info = actor.train_batch(training_batches, epoch)
 
             # Callback for epoch end
             self.on_epoch_end(epoch, actor, train_info)
@@ -157,7 +151,7 @@ class Trainer:
             net_params_queue: Queue for receiving network parameters.
             exp_queue: Queue for sending experiences.
         """
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L131-L141
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L131-L140
         env = self.env_factory(agent_id)
         actor = self.agent_factory()
 
@@ -167,28 +161,29 @@ class Trainer:
 
         for epoch in range(self.train_epochs):
             obs, _ = env.reset()
-            s_batch, a_batch, p_batch, r_batch = [], [], [], []
-
-            done = False
-            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L142-L152
+            trajectory: List[Step] = []
             for step in range(self.train_seq_len):
-                s_batch.append(obs)
-
+                # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
                 action, action_prob = actor.select_action(obs)
 
-                obs, rew, terminated, truncated, info = env.step(action)
+                # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L152
+                next_obs, rew, terminated, truncated, info = env.step(action)
                 done = terminated or truncated
 
-                # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L154-L160
+                # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L154-L155
                 action_vec = actor.create_action_vector(action)
-                a_batch.append(action_vec)
-                r_batch.append(rew)
-                p_batch.append(action_prob)
+
+                # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L143
+                # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-158
+                trajectory.append(Step(observation=obs, action=action_vec, action_prob=action_prob, reward=rew))
+
+                obs = next_obs
+                # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L159-160
                 if done:
                     break
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L161-L165
-            v_batch = actor.compute_v(s_batch, a_batch, r_batch, done)
-            exp_queue.put([s_batch, a_batch, p_batch, v_batch])
+            experience = actor.produce_training_batch(trajectory, done)
+            exp_queue.put(experience)
 
             actor_net_params = net_params_queue.get()
             actor.set_network_params(actor_net_params)

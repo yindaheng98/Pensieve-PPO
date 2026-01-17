@@ -9,6 +9,7 @@ Reference:
 """
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple, List, TYPE_CHECKING
 
 import numpy as np
@@ -16,6 +17,41 @@ import torch
 
 if TYPE_CHECKING:
     from torch.utils.tensorboard import SummaryWriter
+
+
+@dataclass
+class Step:
+    """A single environment step.
+
+    Attributes:
+        observation: State observation.
+        action: Action (one-hot encoded).
+        action_prob: Action probability distribution.
+        reward: Reward received.
+    """
+    observation: np.ndarray
+    action: np.ndarray
+    action_prob: np.ndarray
+    reward: float
+
+
+@dataclass
+class TrainingBatch:
+    """A batch of training data produced from a trajectory.
+
+    Contains observations, actions, action probabilities, and computed value
+    targets, ready to be used for training the agent.
+
+    Attributes:
+        s_batch: List of observations (states).
+        a_batch: List of actions (one-hot encoded).
+        p_batch: List of action probabilities.
+        v_batch: List of computed value targets (returns).
+    """
+    s_batch: List[np.ndarray]
+    a_batch: List[np.ndarray]
+    p_batch: List[np.ndarray]
+    v_batch: List[float]
 
 
 class AbstractAgent(ABC):
@@ -179,6 +215,76 @@ class AbstractAgent(ABC):
         action_vec = np.zeros(self.a_dim)
         action_vec[action] = 1
         return action_vec
+
+    def produce_training_batch(
+        self,
+        trajectory: List[Step],
+        done: bool,
+    ) -> TrainingBatch:
+        """Produce a training batch from a trajectory.
+
+        Extracts observations, actions, rewards, and action probabilities from
+        the trajectory steps, computes value targets, and returns a training
+        batch ready for the training step.
+
+        Args:
+            trajectory: List of steps collected during environment rollout.
+            done: Whether the trajectory ended in a terminal state.
+
+        Returns:
+            Training batch with computed value targets.
+        """
+        # Extract data from steps
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L143
+        s_batch = [step.observation for step in trajectory]
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-158
+        a_batch = [step.action for step in trajectory]
+        r_batch = [step.reward for step in trajectory]
+        p_batch = [step.action_prob for step in trajectory]
+
+        # Compute value targets
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L161
+        v_batch = self.compute_v(s_batch, a_batch, r_batch, done)
+
+        return TrainingBatch(
+            s_batch=s_batch,
+            a_batch=a_batch,
+            p_batch=p_batch,
+            v_batch=v_batch,
+        )
+
+    def train_batch(
+        self,
+        training_batches: List[TrainingBatch],
+        epoch: int,
+    ) -> Dict[str, float]:
+        """Train on multiple training batches.
+
+        Concatenates data from all training batches and performs a training step.
+
+        Reference:
+            https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L102-L114
+
+        Args:
+            training_batches: List of training batches from workers.
+            epoch: Current training epoch.
+
+        Returns:
+            Dictionary containing training metrics.
+        """
+        s, a, p, v = [], [], [], []
+        for batch in training_batches:
+            s += batch.s_batch
+            a += batch.a_batch
+            p += batch.p_batch
+            v += batch.v_batch
+
+        s_batch = np.stack(s, axis=0)
+        a_batch = np.vstack(a)
+        p_batch = np.vstack(p)
+        v_batch = np.vstack(v)
+
+        return self.train(s_batch, a_batch, p_batch, v_batch, epoch)
 
     def tensorboard_logging(self, writer: 'SummaryWriter', epoch: int) -> None:
         """Log metrics to TensorBoard.
