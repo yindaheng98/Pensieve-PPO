@@ -119,9 +119,7 @@ def testing(
                            str(reward) + '\n')
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L117-L123
-        action_prob = agent.predict(state) # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
-        noise = np.random.gumbel(size=len(action_prob))
-        bit_rate = np.argmax(np.log(action_prob) + noise)
+        bit_rate, action_prob = agent.select_action(state)
 
         # s_batch.append(state)
         entropy_ = -np.dot(action_prob, np.log(action_prob))
