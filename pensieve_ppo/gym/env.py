@@ -7,6 +7,7 @@ Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py
 """
 
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import gymnasium as gym
@@ -30,6 +31,61 @@ M_IN_K = 1000.0
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L17
 REBUF_PENALTY = 4.3  # 1 sec rebuffering penalty
 SMOOTH_PENALTY = 1.0  # penalty for bitrate changes
+
+
+class AbstractABRStateObserver(ABC):
+    """Abstract base class for ABR state observers.
+
+    This class defines the interface that ABREnv uses to interact with
+    state observers. Subclasses must implement state observation and
+    reward calculation logic.
+    """
+
+    @property
+    @abstractmethod
+    def observation_space(self) -> spaces.Box:
+        """Gymnasium observation space for the state.
+
+        Returns:
+            Gymnasium Box space defining the observation shape and bounds.
+        """
+        pass
+
+    @abstractmethod
+    def reset(
+        self,
+        env: "ABREnv",
+        initial_bit_rate: int = 0,
+    ) -> np.ndarray:
+        """Reset observer state and return initial observation.
+
+        Args:
+            env: The ABREnv instance to observe.
+            initial_bit_rate: Initial bitrate level index.
+
+        Returns:
+            Initial state array.
+        """
+        pass
+
+    @abstractmethod
+    def observe(
+        self,
+        env: "ABREnv",
+        bit_rate: int,
+        result: StepResult,
+    ) -> Tuple[np.ndarray, float]:
+        """Process simulator result: compute reward and update state.
+
+        Args:
+            env: The ABREnv instance to observe.
+            bit_rate: Current bitrate level selected.
+            result: Result from simulator.step().
+
+        Returns:
+            Tuple of (state, reward).
+        """
+        pass
 
 
 class ABREnv(gym.Env):
@@ -60,7 +116,7 @@ class ABREnv(gym.Env):
     def __init__(
         self,
         simulator: Simulator,
-        observer: 'ABRStateObserver',
+        observer: AbstractABRStateObserver,
         initial_level: int = 0,
     ):
         """Initialize the ABR environment.
@@ -181,7 +237,7 @@ class ABREnv(gym.Env):
         pass
 
 
-class ABRStateObserver:
+class ABRStateObserver(AbstractABRStateObserver):
     """Observer for ABR environment state and reward calculation.
 
     This class handles state representation and reward computation,
