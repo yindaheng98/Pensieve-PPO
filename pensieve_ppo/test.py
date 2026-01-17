@@ -65,7 +65,7 @@ def testing(
     os.makedirs(log_dir, exist_ok=True)
 
     s_info, s_len = agent.s_dim
-    a_dim = agent.a_dim
+    # a_dim = agent.a_dim # no where to use a_dim
 
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L36
     trace_progress = env.simulator.trace_simulator.get_trace_progress()
@@ -81,15 +81,15 @@ def testing(
     env.reset(options={'initial_level': initial_level})
 
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L55-L66
-    last_bit_rate = initial_level
+    # last_bit_rate = initial_level # no where to use last_bit_rate
     bit_rate = initial_level
 
-    action_vec = np.zeros(a_dim)
-    action_vec[bit_rate] = 1
+    # action_vec = np.zeros(a_dim) # no where to use action_vec
+    # action_vec[bit_rate] = 1
 
-    s_batch = [np.zeros((s_info, s_len))]
-    a_batch = [action_vec]
-    r_batch = []
+    # s_batch = [np.zeros((s_info, s_len))] # no where to use s_batch
+    # a_batch = [action_vec] # no where to use a_batch
+    # r_batch = [] # no where to use r_batch
     entropy_record = []
     entropy_ = 0.5
     video_count = 0
@@ -101,9 +101,9 @@ def testing(
         # this is to make the framework similar to the real
         state, reward, end_of_video, truncated, info = env.step(bit_rate)
 
-        r_batch.append(reward)
+        # r_batch.append(reward)
 
-        last_bit_rate = bit_rate
+        # last_bit_rate = bit_rate
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L89-L98
         # log time_stamp, bit_rate, buffer_size, reward
@@ -123,7 +123,7 @@ def testing(
         noise = np.random.gumbel(size=len(action_prob))
         bit_rate = np.argmax(np.log(action_prob) + noise)
 
-        s_batch.append(state)
+        # s_batch.append(state)
         entropy_ = -np.dot(action_prob, np.log(action_prob))
         entropy_record.append(entropy_)
 
@@ -133,18 +133,18 @@ def testing(
             with open(log_path, 'a') as log_file:
                 log_file.write('\n')
 
-            last_bit_rate = initial_level
+            # last_bit_rate = initial_level
             bit_rate = initial_level  # use the default action here
 
-            del s_batch[:]
-            del a_batch[:]
-            del r_batch[:]
+            # del s_batch[:]
+            # del a_batch[:]
+            # del r_batch[:]
 
-            action_vec = np.zeros(a_dim)
-            action_vec[bit_rate] = 1
+            # action_vec = np.zeros(a_dim)
+            # action_vec[bit_rate] = 1
 
-            s_batch.append(np.zeros((s_info, s_len)))
-            a_batch.append(action_vec)
+            # s_batch.append(np.zeros((s_info, s_len)))
+            # a_batch.append(action_vec)
             # print(np.mean(entropy_record))
             entropy_record = []
 
