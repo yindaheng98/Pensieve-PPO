@@ -93,7 +93,11 @@ class TestABREnvEquivalenceBase(unittest.TestCase):
         """
         # Set global random seed to match src/env.py behavior
         np.random.seed(seed)
-        env = create_env_with_default(train=True)
+        env = create_env_with_default(
+            train=True,
+            trace_folder='./train/',
+            video_size_file_prefix='./envivio/video_size_',
+        )
         env.reset(options={'initial_level': initial_action})
 
         # Execute first chunk with initial_action to get initial state
@@ -345,7 +349,11 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
     def _create_gym_env(self, seed: int):
         """Helper to create gym env with given seed."""
         np.random.seed(seed)
-        return create_env_with_default(train=True)
+        return create_env_with_default(
+            train=True,
+            trace_folder='./train/',
+            video_size_file_prefix='./envivio/video_size_',
+        )
 
     def test_reset_return_format(self):
         """Test reset return format differences.

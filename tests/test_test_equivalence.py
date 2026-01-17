@@ -128,6 +128,7 @@ class TestTestEquivalence(unittest.TestCase):
             model_path=PRETRAINED_MODEL,
             agent_name='ppo',
             levels_quality=VIDEO_BIT_RATE,
+            env_options={'video_size_file_prefix': './envivio/video_size_'},
         )
 
         # Run testing
@@ -324,6 +325,7 @@ class TestLogFormat(unittest.TestCase):
             trace_folder='./test/',
             model_path=PRETRAINED_MODEL,
             agent_name='ppo',
+            env_options={'video_size_file_prefix': './envivio/video_size_'},
         )
 
         log_prefix = os.path.join(log_dir, 'log_sim_ppo')
@@ -352,6 +354,7 @@ class TestLogFormat(unittest.TestCase):
             trace_folder='./test/',
             model_path=PRETRAINED_MODEL,
             agent_name='ppo',
+            env_options={'video_size_file_prefix': './envivio/video_size_'},
         )
 
         log_prefix = os.path.join(log_dir, 'log_sim_ppo')
@@ -394,6 +397,7 @@ class TestLogFormat(unittest.TestCase):
             trace_folder='./test/',
             model_path=PRETRAINED_MODEL,
             agent_name='ppo',
+            env_options={'video_size_file_prefix': './envivio/video_size_'},
         )
 
         log_prefix = os.path.join(log_dir, 'log_sim_ppo')
@@ -444,6 +448,7 @@ class TestReproducibility(unittest.TestCase):
             trace_folder='./test/',
             model_path=PRETRAINED_MODEL,
             agent_name='ppo',
+            env_options={'video_size_file_prefix': './envivio/video_size_'},
         )
         run_testing(env=env1, agent=agent1, log_file_prefix=os.path.join(log_dir1, 'log'), initial_level=1)
 
@@ -453,6 +458,7 @@ class TestReproducibility(unittest.TestCase):
             trace_folder='./test/',
             model_path=PRETRAINED_MODEL,
             agent_name='ppo',
+            env_options={'video_size_file_prefix': './envivio/video_size_'},
         )
         run_testing(env=env2, agent=agent2, log_file_prefix=os.path.join(log_dir2, 'log'), initial_level=1)
 
