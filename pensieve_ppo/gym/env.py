@@ -88,12 +88,7 @@ class ABREnv(gym.Env):
         self.time_stamp = 0.0
 
         # Define observation and action spaces
-        self.observation_space = spaces.Box(
-            low=-np.inf,
-            high=np.inf,
-            shape=(S_INFO, observer.state_history_len),
-            dtype=np.float32
-        )
+        self.observation_space = observer.observation_space
         self.action_space = spaces.Discrete(simulator.video_player.bitrate_levels)
 
     def reset(
@@ -222,6 +217,7 @@ class ABRStateObserver:
             state_history_len: Number of past observations to keep in state (default: 8)
             buffer_norm_factor: Normalization factor for buffer size in seconds (default: 10.0)
         """
+        self.s_info = S_INFO
 
         # Store reward parameters
         self.rebuf_penalty = rebuf_penalty
@@ -235,6 +231,16 @@ class ABRStateObserver:
         # State tracking (initialized in reset)
         self.state: Optional[np.ndarray] = None
         self.last_bit_rate: int = 0
+
+    @property
+    def observation_space(self) -> spaces.Box:
+        """Gymnasium observation space for the state."""
+        return spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(S_INFO, self.state_history_len),
+            dtype=np.float32
+        )
 
     @property
     def bitrate_levels(self) -> int:
