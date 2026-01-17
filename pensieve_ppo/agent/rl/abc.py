@@ -89,7 +89,8 @@ class AbstractAgent(ABC):
         """Predict action probabilities for a given state.
 
         Args:
-            state: Input state with shape (1, s_dim[0], s_dim[1]).
+            state: Input state with shape (s_dim[0], s_dim[1]).
+                   The batch dimension will be added internally.
 
         Returns:
             Action probability distribution as numpy array with shape (a_dim,).
@@ -191,8 +192,7 @@ class AbstractAgent(ABC):
         Returns:
             Tuple of (selected_action_index, action_probabilities).
         """
-        action_prob = self.predict(
-            np.reshape(state, (1, self.s_dim[0], self.s_dim[1])))
+        action_prob = self.predict(state) # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
 
         # gumbel noise
         noise = np.random.gumbel(size=len(action_prob))

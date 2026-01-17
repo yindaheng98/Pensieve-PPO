@@ -64,7 +64,7 @@ def testing(
     log_dir = os.path.dirname(log_file_prefix)
     os.makedirs(log_dir, exist_ok=True)
 
-    s_info, s_len = agent.s_dim
+    # s_info, s_len = agent.s_dim
     # a_dim = agent.a_dim # no where to use a_dim
 
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L36
@@ -119,7 +119,7 @@ def testing(
                            str(reward) + '\n')
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L117-L123
-        action_prob = agent.predict(np.reshape(state, (1, s_info, s_len)))
+        action_prob = agent.predict(state) # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
         noise = np.random.gumbel(size=len(action_prob))
         bit_rate = np.argmax(np.log(action_prob) + noise)
 

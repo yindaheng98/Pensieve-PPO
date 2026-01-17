@@ -173,12 +173,18 @@ class PPOAgent(AbstractAgent):
             https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py#L131-L135
 
         Args:
-            state: Input state with shape (1, s_dim[0], s_dim[1]).
+            state: Input state with shape (s_dim[0], s_dim[1]).
+                   The batch dimension will be added internally.
 
         Returns:
             Action probability distribution.
         """
+        s_info, s_len = self.s_dim
         with torch.no_grad():
+            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L117
+            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145
+            state = np.reshape(state, (1, s_info, s_len))
+            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py#L131-L135
             state = torch.from_numpy(state).to(torch.float32).to(self.device)
             pi = self.actor.forward(state)[0]
             return pi.cpu().numpy()
