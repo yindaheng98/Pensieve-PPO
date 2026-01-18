@@ -30,8 +30,8 @@ class Step:
         reward: Reward received.
     """
     observation: np.ndarray
-    action: np.ndarray
-    action_prob: np.ndarray
+    action: List[int]
+    action_prob: List[float]
     reward: float
 
 
@@ -49,8 +49,8 @@ class TrainingBatch:
         v_batch: List of computed value targets (returns).
     """
     s_batch: List[np.ndarray]
-    a_batch: List[np.ndarray]
-    p_batch: List[np.ndarray]
+    a_batch: List[List[int]]
+    p_batch: List[List[float]]
     v_batch: List[float]
 
 
@@ -85,7 +85,7 @@ class AbstractAgent(ABC):
         self.device = device if device is not None else torch.device('cpu')
 
     @abstractmethod
-    def predict(self, state: np.ndarray) -> np.ndarray:
+    def predict(self, state: np.ndarray) -> List[float]:
         """Predict action probabilities for a given state.
 
         Args:
@@ -93,7 +93,7 @@ class AbstractAgent(ABC):
                    The batch dimension will be added internally.
 
         Returns:
-            Action probability distribution as numpy array with shape (a_dim,).
+            Action probability distribution as a 1D list with length a_dim.
         """
         pass
 
@@ -124,7 +124,7 @@ class AbstractAgent(ABC):
     def compute_v(
         self,
         s_batch: List[np.ndarray],
-        a_batch: List[np.ndarray],
+        a_batch: List[List[int]],
         r_batch: List[float],
         terminal: bool,
     ) -> List[float]:
@@ -177,7 +177,7 @@ class AbstractAgent(ABC):
         """
         pass
 
-    def select_action(self, state: np.ndarray) -> Tuple[int, np.ndarray]:
+    def select_action(self, state: np.ndarray) -> Tuple[int, List[float]]:
         """Select an action using Gumbel-softmax sampling.
 
         This implements the action selection strategy used in the original
@@ -192,7 +192,7 @@ class AbstractAgent(ABC):
         Returns:
             Tuple of (selected_action_index, action_probabilities).
         """
-        action_prob = self.predict(state) # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
+        action_prob = self.predict(state)  # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
 
         # gumbel noise
         noise = np.random.gumbel(size=len(action_prob))

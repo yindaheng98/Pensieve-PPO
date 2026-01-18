@@ -166,7 +166,7 @@ class PPOAgent(AbstractAgent):
             "entropy": _H,
         }
 
-    def predict(self, state: np.ndarray) -> np.ndarray:
+    def predict(self, state: np.ndarray) -> List[float]:
         """Predict action probabilities for a given state.
 
         Reference:
@@ -177,7 +177,7 @@ class PPOAgent(AbstractAgent):
                    The batch dimension will be added internally.
 
         Returns:
-            Action probability distribution.
+            Action probability distribution as a 1D list.
         """
         s_info, s_len = self.s_dim
         with torch.no_grad():
@@ -187,12 +187,12 @@ class PPOAgent(AbstractAgent):
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py#L131-L135
             state = torch.from_numpy(state).to(torch.float32).to(self.device)
             pi = self.actor.forward(state)[0]
-            return pi.cpu().numpy()
+            return pi.cpu().tolist()
 
     def compute_v(
         self,
         s_batch: List[np.ndarray],
-        a_batch: List[np.ndarray],
+        a_batch: List[List[int]],
         r_batch: List[float],
         terminal: bool,
     ) -> List[float]:
