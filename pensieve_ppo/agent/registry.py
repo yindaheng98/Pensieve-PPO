@@ -58,33 +58,23 @@ def get_available_trainable_agents() -> list[str]:
 
 def create_agent(
     name: str,
-    state_dim: tuple[int, int],
-    action_dim: int,
-    device: Optional[torch.device] = None,
+    *args,
     model_path: Optional[str] = None,
     **kwargs,
 ) -> AbstractAgent:
     """Create an agent by name.
 
     This factory function creates an agent instance based on the given name.
-    The AbstractAgent parameters (state_dim, action_dim, device) are explicitly
-    defined, while agent-specific parameters are passed via **kwargs.
+    Since different agents may have different constructor signatures, all
+    positional and keyword arguments are passed directly to the agent class.
 
     Args:
         name: Name of the agent to create (case-insensitive).
             Available agents: "ppo".
-        state_dim: State dimension as [num_features, sequence_length].
-        action_dim: Number of discrete actions.
-        device: PyTorch device for computations. If None, uses CPU.
+        *args: Positional arguments passed to the agent constructor.
         model_path: Path to a saved model file. If provided, loads the model
             parameters after creating the agent. Only supported for trainable agents.
-        **kwargs: Additional agent-specific parameters.
-            For PPO agent:
-                - learning_rate (float): Learning rate for the optimizer. Default: 1e-4.
-                - gamma (float): Discount factor for future rewards. Default: 0.99.
-                - eps (float): PPO clipping parameter. Default: 0.2.
-                - ppo_training_epo (int): Number of PPO update epochs. Default: 5.
-                - h_target (float): Target entropy for adaptive entropy weight. Default: 0.1.
+        **kwargs: Keyword arguments passed to the agent constructor.
 
     Returns:
         An instance of the requested agent.
@@ -118,12 +108,7 @@ def create_agent(
         )
 
     agent_class = AGENT_REGISTRY[name]
-    agent = agent_class(
-        state_dim=state_dim,
-        action_dim=action_dim,
-        device=device,
-        **kwargs,
-    )
+    agent = agent_class(*args, **kwargs)
 
     if model_path is not None:
         agent.load(model_path)
