@@ -4,7 +4,8 @@ This module provides the base classes and implementations for RL agents.
 """
 
 from .abc import AbstractAgent, Step, TrainingBatch
-from .trainable import AbstractTrainableAgent, AbstractRLAgent
+from .trainable import AbstractTrainableAgent
+from .abcrl import AbstractRLAgent
 from .trainer import Trainer, EpochEndCallback, SaveModelCallback
 from .registry import create_agent, register_agent, get_available_agents
 from .observer import RLABRStateObserver
