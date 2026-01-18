@@ -165,7 +165,7 @@ class Trainer:
             trajectory: List[Step] = []
             for step in range(self.train_seq_len):
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
-                action, action_prob = actor.select_action(obs)
+                action, action_prob = actor.select_action_for_training(obs)
 
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L152
                 next_obs, rew, terminated, truncated, info = env.step(action)

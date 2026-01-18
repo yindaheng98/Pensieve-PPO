@@ -178,10 +178,27 @@ class AbstractAgent(ABC):
         pass
 
     def select_action(self, state: np.ndarray) -> Tuple[int, List[float]]:
-        """Select an action using Gumbel-softmax sampling.
+        """Select an action deterministically (greedy policy).
+
+        This method selects the action with highest probability, without any
+        exploration noise. Use this for testing/evaluation.
+
+        Args:
+            state: Input state with shape (s_dim[0], s_dim[1]).
+
+        Returns:
+            Tuple of (selected_action_index, action_probabilities).
+        """
+        action_prob = self.predict(state)  # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
+        action = np.argmax(action_prob)
+        return int(action), action_prob
+
+    def select_action_for_training(self, state: np.ndarray) -> Tuple[int, List[float]]:
+        """Select an action using Gumbel-softmax sampling for exploration.
 
         This implements the action selection strategy used in the original
-        Pensieve-PPO implementation.
+        Pensieve-PPO implementation, with Gumbel noise for exploration during
+        training.
 
         Reference:
             https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
@@ -194,7 +211,7 @@ class AbstractAgent(ABC):
         """
         action_prob = self.predict(state)  # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
 
-        # gumbel noise
+        # gumbel noise for exploration
         noise = np.random.gumbel(size=len(action_prob))
         action = np.argmax(np.log(action_prob) + noise)
 
