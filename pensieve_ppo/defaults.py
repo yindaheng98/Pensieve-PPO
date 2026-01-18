@@ -78,6 +78,7 @@ def create_env_with_default(
         initial_level=initial_level,
         trace_folder=trace_folder,
         video_size_file_prefix=video_size_file_prefix,
+        bitrate_levels=len(levels_quality),
         max_chunks=max_chunks,
         train=train,
         **kwargs,
