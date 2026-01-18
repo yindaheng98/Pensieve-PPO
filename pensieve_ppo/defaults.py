@@ -200,10 +200,10 @@ def create_env_agent_with_default(
     # Create agent with derived compatibility parameters
     agent = create_agent(
         name=agent_name,
+        model_path=model_path,
         state_dim=state_dim,
         action_dim=action_dim,
         device=device,
-        model_path=model_path,
         **agent_options,
     )
 
