@@ -53,7 +53,7 @@ def create_env_with_default(
     state_history_len: int = S_LEN,
     buffer_norm_factor: float = BUFFER_NORM_FACTOR,
     # Env parameters
-    initial_level: int = 0,
+    initial_level: int = DEFAULT_QUALITY,
     **kwargs,
 ) -> ABREnv:
     """Create an ABREnv with default Pensieve parameters.
