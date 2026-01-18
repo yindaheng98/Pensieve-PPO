@@ -105,5 +105,7 @@ class AbstractAgent(ABC):
             Tuple of (selected_action_index, action_probabilities).
         """
         action_prob = self.predict(state)  # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
-        action = np.argmax(action_prob)
+        # action = np.argmax(action_prob)  # test with gumbel noise has better performance. why?
+        noise = np.random.gumbel(size=len(action_prob))
+        action = np.argmax(np.log(action_prob) + noise)
         return int(action), action_prob
