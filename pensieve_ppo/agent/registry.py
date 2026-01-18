@@ -104,22 +104,20 @@ def create_agent(
         ...     gamma=0.99,
         ... )
     """
-    name_lower = name.lower()
-
-    if name_lower not in AGENT_REGISTRY:
+    if name not in AGENT_REGISTRY:
         available = ", ".join(get_available_agents())
         raise ValueError(
             f"Unknown agent: '{name}'. Available agents: {available}"
         )
 
     # Check if model_path is provided but agent is not trainable
-    if model_path is not None and name_lower not in TRAINABLEAGENT_REGISTRY:
+    if model_path is not None and name not in TRAINABLEAGENT_REGISTRY:
         raise ValueError(
             f"Agent '{name}' is not a trainable agent and does not support loading models. "
             f"Available trainable agents: {', '.join(get_available_trainable_agents())}"
         )
 
-    agent_class = AGENT_REGISTRY[name_lower]
+    agent_class = AGENT_REGISTRY[name]
     agent = agent_class(
         state_dim=state_dim,
         action_dim=action_dim,
