@@ -141,17 +141,9 @@ def create_env_agent_factory_with_default(
 
 
 def create_env_agent_with_default(
-    trace_folder: Optional[str] = None,
+    *args,
     train: bool = False,
-    model_path: Optional[str] = None,
-    agent_name: str = 'ppo',
-    device: Optional[torch.device] = None,
-    # Compatibility parameters (shared between env and agent)
-    levels_quality: list = VIDEO_BIT_RATE,
-    state_history_len: int = S_LEN,
-    # Additional options
-    env_options: dict = {},
-    agent_options: dict = {},
+    **kwargs,
 ) -> Tuple[ABREnv, AbstractAgent]:
     """Create a compatible env and agent pair with default parameters.
 
@@ -161,30 +153,5 @@ def create_env_agent_with_default(
     Returns:
         (env, agent) - guaranteed to be compatible.
     """
-    # Derive compatibility parameters
-    # state_dim[0] is S_INFO (fixed at 6 in ABREnv)
-    # state_dim[1] is state_history_len
-    # action_dim is len(levels_quality)
-    state_dim = (S_INFO, state_history_len)
-    action_dim = len(levels_quality)
-
-    # Create environment with compatibility parameters
-    env = create_env_with_default(
-        levels_quality=levels_quality,
-        trace_folder=trace_folder,
-        train=train,
-        state_history_len=state_history_len,
-        **env_options,
-    )
-
-    # Create agent with derived compatibility parameters
-    agent = create_agent(
-        name=agent_name,
-        model_path=model_path,
-        state_dim=state_dim,
-        action_dim=action_dim,
-        device=device,
-        **agent_options,
-    )
-
-    return env, agent
+    env_factory, agent_factory = create_env_agent_factory_with_default(*args, train=train, **kwargs)
+    return env_factory(pid=0), agent_factory()
