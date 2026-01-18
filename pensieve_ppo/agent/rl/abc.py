@@ -200,22 +200,6 @@ class AbstractAgent(ABC):
 
         return int(action), action_prob
 
-    def create_action_vector(self, action: int) -> np.ndarray:
-        """Create a one-hot action vector.
-
-        Reference:
-            https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L154-L155
-
-        Args:
-            action: Action index.
-
-        Returns:
-            One-hot encoded action vector with shape (a_dim,).
-        """
-        action_vec = np.zeros(self.a_dim)
-        action_vec[action] = 1
-        return action_vec
-
     def produce_training_batch(
         self,
         trajectory: List[Step],

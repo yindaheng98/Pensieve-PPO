@@ -12,6 +12,7 @@ import multiprocessing as mp
 from typing import Callable, Dict, List, Optional
 
 import gymnasium as gym
+import numpy as np
 import torch
 
 from .abc import AbstractAgent, TrainingBatch, Step
@@ -171,7 +172,8 @@ class Trainer:
                 done = terminated or truncated
 
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L154-L155
-                action_vec = actor.create_action_vector(action)
+                action_vec = np.zeros(len(action_prob))
+                action_vec[action] = 1
 
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L143
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-158
