@@ -103,6 +103,6 @@ def create_agent(
     )
 
     if model_path is not None:
-        agent.load_model(model_path)
+        agent.load(model_path)
 
     return agent
