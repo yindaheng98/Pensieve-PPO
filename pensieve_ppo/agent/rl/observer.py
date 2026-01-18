@@ -97,6 +97,40 @@ class RLABRStateObserver(AbstractABRStateObserver):
         """Number of available bitrate levels."""
         return len(self.levels_quality)
 
+    def build_initial_state(
+        self,
+        env: ABREnv,
+        initial_bit_rate: int,
+    ) -> np.ndarray:
+        """Build initial state representation on reset.
+
+        Args:
+            env: The ABREnv instance to observe.
+            initial_bit_rate: Initial bitrate level index.
+
+        Returns:
+            Initial state array.
+        """
+        state = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
+        return state
+
+    def build_initial_info_dict(
+        self,
+        env: ABREnv,
+        initial_bit_rate: int,
+    ) -> Dict[str, Any]:
+        """Build initial info dictionary for logging on reset.
+
+        Args:
+            env: The ABREnv instance to observe.
+            initial_bit_rate: Initial bitrate level index.
+        """
+        # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
+        info = {
+            'quality': self.levels_quality[initial_bit_rate],
+        }
+        return info
+
     def reset(
         self,
         env: ABREnv,
@@ -119,40 +153,27 @@ class RLABRStateObserver(AbstractABRStateObserver):
             )
 
         self.last_bit_rate = initial_bit_rate
-        self.state = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
-        return self.state.copy(), {}
+        self.state = self.build_initial_state(env, initial_bit_rate)
+        info = self.build_initial_info_dict(env, initial_bit_rate)
+        return self.state.copy(), info
 
-    def observe(
+    def compute_reward(
         self,
         env: ABREnv,
         bit_rate: int,
         result: StepResult,
-    ) -> Tuple[np.ndarray, float, Dict[str, Any]]:
-        """Process simulator result: compute reward and update state.
+    ) -> float:
+        """Compute reward for the given action and simulator result.
 
         Args:
             env: The ABREnv instance to observe.
             bit_rate: Current bitrate level selected.
             result: Result from simulator.step().
-
-        Returns:
-            Tuple of (state, reward, info_dict).
         """
         # Unpack result (matches original variable names)
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L75-L78
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L48-L51
-        delay, sleep_time, buffer_size, rebuf, \
-            video_chunk_size, next_video_chunk_sizes, \
-            end_of_video, video_chunk_remain = (
-                result.delay,
-                result.sleep_time,
-                result.buffer_size,
-                result.rebuffer,
-                result.video_chunk_size,
-                result.next_video_chunk_sizes,
-                result.end_of_video,
-                result.video_chunk_remain,
-            )
+        rebuf = result.rebuffer
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L83-L87
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L80-L84
@@ -161,6 +182,34 @@ class RLABRStateObserver(AbstractABRStateObserver):
             - self.rebuf_penalty * rebuf \
             - self.smooth_penalty * np.abs(self.levels_quality[bit_rate] -
                                            self.levels_quality[self.last_bit_rate]) / M_IN_K
+
+        return reward
+
+    def compute_state(
+        self,
+        env: ABREnv,
+        bit_rate: int,
+        result: StepResult,
+    ) -> np.ndarray:
+        """Compute new state representation from simulator result.
+
+        Args:
+            env: The ABREnv instance to observe.
+            bit_rate: Current bitrate level selected.
+            result: Result from simulator.step().
+        """
+        # Unpack result (matches original variable names)
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L75-L78
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L48-L51
+        delay, buffer_size, \
+            video_chunk_size, next_video_chunk_sizes, \
+            video_chunk_remain = (
+                result.delay,
+                result.buffer_size,
+                result.video_chunk_size,
+                result.next_video_chunk_sizes,
+                result.video_chunk_remain,
+            )
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L90-L104
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L52-L66
@@ -178,13 +227,60 @@ class RLABRStateObserver(AbstractABRStateObserver):
         state[5, -1] = np.minimum(video_chunk_remain,
                                   env.simulator.video_player.total_chunks) / float(env.simulator.video_player.total_chunks)
 
+        return state
+
+    def build_info_dict(
+        self,
+        env: ABREnv,
+        bit_rate: int,
+        result: StepResult,
+    ) -> Dict[str, Any]:
+        """Build info dictionary for logging.
+
+        Args:
+            env: The ABREnv instance to observe.
+            bit_rate: Current bitrate level selected.
+            result: Result from simulator.step().
+
+        Returns:
+            Info dictionary.
+        """
+        # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
+        info = {
+            'quality': self.levels_quality[bit_rate],
+        }
+        return info
+
+    def observe(
+        self,
+        env: ABREnv,
+        bit_rate: int,
+        result: StepResult,
+    ) -> Tuple[np.ndarray, float, Dict[str, Any]]:
+        """Process simulator result: compute reward and update state.
+
+        Args:
+            env: The ABREnv instance to observe.
+            bit_rate: Current bitrate level selected.
+            result: Result from simulator.step().
+
+        Returns:
+            Tuple of (state, reward, info_dict).
+        """
+
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L83-L87
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L80-L84
+        reward = self.compute_reward(env, bit_rate, result)
+
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L90-L104
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L52-L66
+        state = self.compute_state(env, bit_rate, result)
+
         # Update internal state
         self.state = state
         self.last_bit_rate = bit_rate
 
         # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
-        info = {
-            'quality': self.levels_quality[bit_rate],
-        }
+        info = self.build_info_dict(env, bit_rate, result)
 
         return self.state.copy(), reward, info
