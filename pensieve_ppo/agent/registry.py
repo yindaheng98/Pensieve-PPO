@@ -6,7 +6,6 @@ allowing for easy switching between different agent implementations.
 
 from typing import Optional, Type, Dict
 
-import torch
 
 from .abc import AbstractAgent
 from .trainable import AbstractTrainableAgent
