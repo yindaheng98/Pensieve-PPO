@@ -66,7 +66,8 @@ class PPOAgent(AbstractRLAgent):
             h_target: Target entropy for adaptive entropy weight.
             device: PyTorch device for computations.
         """
-        super().__init__(state_dim, action_dim, device)
+        self.s_dim = state_dim
+        self.device = device if device is not None else torch.device('cpu')
 
         self._entropy_weight = np.log(action_dim)
         self.H_target = h_target

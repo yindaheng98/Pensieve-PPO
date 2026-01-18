@@ -44,10 +44,10 @@ class AbstractRLAgent(AbstractTrainableAgent):
         """Train the agent on a batch of experiences.
 
         Args:
-            s_batch: Batch of states with shape (batch_size, s_dim[0], s_dim[1]).
-            a_batch: Batch of actions (one-hot) with shape (batch_size, a_dim).
-            p_batch: Batch of action probabilities with shape (batch_size, a_dim).
-            v_batch: Batch of computed returns with shape (batch_size, 1).
+            s_batch: Batch of states.
+            a_batch: Batch of actions (one-hot).
+            p_batch: Batch of action probabilities.
+            v_batch: Batch of computed returns.
             epoch: Current training epoch.
 
         Returns:

@@ -1,6 +1,6 @@
-"""Abstract base classes for reinforcement learning agents.
+"""Abstract base classes for agents.
 
-This module provides the abstract base class hierarchy for all RL agents:
+This module provides the abstract base class hierarchy for all agents:
 - AbstractAgent: Base class with predict and select_action
 
 Reference:
@@ -9,10 +9,9 @@ Reference:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Tuple, List
+from typing import Tuple, List
 
 import numpy as np
-import torch
 
 
 @dataclass
@@ -55,40 +54,17 @@ class AbstractAgent(ABC):
 
     This class defines the minimal interface for agents that can predict
     actions from states.
-
-    Attributes:
-        s_dim: State dimension as [num_features, sequence_length].
-        a_dim: Action dimension (number of discrete actions).
-        device: PyTorch device for computations.
     """
-
-    def __init__(
-        self,
-        state_dim: tuple[int, int],
-        action_dim: int,
-        device: Optional[torch.device] = None,
-    ):
-        """Initialize the abstract agent.
-
-        Args:
-            state_dim: State dimension as [num_features, sequence_length].
-            action_dim: Action dimension (number of discrete actions).
-            device: PyTorch device for computations. If None, uses CPU.
-        """
-        self.s_dim = state_dim
-        self.a_dim = action_dim
-        self.device = device if device is not None else torch.device('cpu')
 
     @abstractmethod
     def predict(self, state: np.ndarray) -> List[float]:
         """Predict action probabilities for a given state.
 
         Args:
-            state: Input state with shape (s_dim[0], s_dim[1]).
-                   The batch dimension will be added internally.
+            state: Input state.
 
         Returns:
-            Action probability distribution as a 1D list with length a_dim.
+            Action probability distribution as a 1D list.
         """
         pass
 
