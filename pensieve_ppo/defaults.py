@@ -14,15 +14,9 @@ from typing import Callable, Optional, Tuple
 import torch
 
 from .agent import AbstractAgent, AbstractTrainableAgent, create_agent
-from .gym import ABREnv, create_env
-from .agent.rl.observer import (
-    RLABRStateObserver,
-    S_INFO,
-    S_LEN,
-    REBUF_PENALTY,
-    SMOOTH_PENALTY,
-    BUFFER_NORM_FACTOR,
-)
+from .agent.rl.env import create_rl_env
+from .agent.rl.observer import S_INFO, S_LEN
+from .gym import ABREnv
 
 
 # Default constants from original Pensieve-PPO implementation
@@ -47,40 +41,25 @@ def create_env_with_default(
     video_size_file_prefix: str = VIDEO_SIZE_FILE_PREFIX,
     max_chunks: int = TOTAL_VIDEO_CHUNKS,
     train: bool = True,
-    # Observer parameters
-    rebuf_penalty: float = REBUF_PENALTY,
-    smooth_penalty: float = SMOOTH_PENALTY,
-    state_history_len: int = S_LEN,
-    buffer_norm_factor: float = BUFFER_NORM_FACTOR,
     # Env parameters
     initial_level: int = DEFAULT_QUALITY,
     **kwargs,
 ) -> ABREnv:
     """Create an ABREnv with default Pensieve parameters.
 
-    Wraps `create_env` with default values matching the original Pensieve implementation.
+    Wraps `create_rl_env` with default values matching the original Pensieve implementation.
     If trace_folder is None, auto-selects TRAIN_TRACES or TEST_TRACES based on train flag.
     """
     if trace_folder is None:
         trace_folder = TRAIN_TRACES if train else TEST_TRACES
 
-    # Create the RL observer with specified parameters
-    observer = RLABRStateObserver(
+    return create_rl_env(
         levels_quality=levels_quality,
-        rebuf_penalty=rebuf_penalty,
-        smooth_penalty=smooth_penalty,
-        state_history_len=state_history_len,
-        buffer_norm_factor=buffer_norm_factor,
-    )
-
-    return create_env(
-        observer=observer,
-        initial_level=initial_level,
         trace_folder=trace_folder,
         video_size_file_prefix=video_size_file_prefix,
-        bitrate_levels=len(levels_quality),
         max_chunks=max_chunks,
         train=train,
+        initial_level=initial_level,
         **kwargs,
     )
 
