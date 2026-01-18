@@ -250,31 +250,6 @@ class PPOAgent(AbstractRLAgent):
         self.actor.load_state_dict(actor_net_params)
         self.critic.load_state_dict(critic_net_params)
 
-    def save_model(self, path: str) -> None:
-        """Save the model to a file.
-
-        Reference:
-            https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py#L142-L144
-
-        Args:
-            path: Path to save the model.
-        """
-        model_params = [self.actor.state_dict(), self.critic.state_dict()]
-        torch.save(model_params, path)
-
-    def load_model(self, path: str) -> None:
-        """Load the model from a file.
-
-        Reference:
-            https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py#L137-L140
-
-        Args:
-            path: Path to load the model from.
-        """
-        actor_model_params, critic_model_params = torch.load(path, map_location=self.device)
-        self.actor.load_state_dict(actor_model_params)
-        self.critic.load_state_dict(critic_model_params)
-
     def tensorboard_logging(self, writer: SummaryWriter, epoch: int) -> None:
         """Log PPO-specific metrics to TensorBoard.
 

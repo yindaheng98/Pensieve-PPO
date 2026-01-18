@@ -11,6 +11,7 @@ from abc import abstractmethod
 from typing import Any, Dict, Tuple, List, TYPE_CHECKING
 
 import numpy as np
+import torch
 
 if TYPE_CHECKING:
     from torch.utils.tensorboard import SummaryWriter
@@ -106,23 +107,27 @@ class AbstractTrainableAgent(AbstractAgent):
         """
         pass
 
-    @abstractmethod
     def save_model(self, path: str) -> None:
         """Save the model to a file.
+
+        Reference:
+            https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py#L142-L144
 
         Args:
             path: Path to save the model.
         """
-        pass
+        torch.save(self.get_network_params(), path)
 
-    @abstractmethod
     def load_model(self, path: str) -> None:
         """Load the model from a file.
+
+        Reference:
+            https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py#L137-L140
 
         Args:
             path: Path to load the model from.
         """
-        pass
+        self.set_network_params(torch.load(path))
 
     def tensorboard_logging(self, writer: 'SummaryWriter', epoch: int) -> None:
         """Log metrics to TensorBoard.
