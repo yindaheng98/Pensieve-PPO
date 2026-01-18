@@ -14,8 +14,7 @@ from typing import Callable, Dict, List, Optional
 import gymnasium as gym
 import torch
 
-from .abc import TrainingBatch, Step
-from .trainable import AbstractTrainableAgent
+from .trainable import AbstractTrainableAgent, Step, TrainingBatch
 
 
 class EpochEndCallback:

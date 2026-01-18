@@ -1,6 +1,8 @@
-"""Abstract base classes for reinforcement learning agents.
+"""Abstract base classes for trainable agents.
 
-This module provides the abstract base class hierarchy for all RL agents:
+This module provides the abstract base class hierarchy for all trainable agents:
+- Step: A single environment step data class
+- TrainingBatch: A batch of training data
 - AbstractTrainableAgent: Adds training infrastructure methods based on AbstractAgent
 
 Reference:
@@ -8,6 +10,7 @@ Reference:
 """
 
 from abc import abstractmethod
+from dataclasses import dataclass
 from typing import Any, Dict, Tuple, List, TYPE_CHECKING
 
 import numpy as np
@@ -16,7 +19,42 @@ import torch
 if TYPE_CHECKING:
     from torch.utils.tensorboard import SummaryWriter
 
-from .abc import Step, TrainingBatch, AbstractAgent
+from .abc import AbstractAgent
+
+
+@dataclass
+class Step:
+    """A single environment step.
+
+    Attributes:
+        observation: State observation.
+        action: Action (one-hot encoded).
+        action_prob: Action probability distribution.
+        reward: Reward received.
+    """
+    observation: np.ndarray
+    action: List[int]
+    action_prob: List[float]
+    reward: float
+
+
+@dataclass
+class TrainingBatch:
+    """A batch of training data produced from a trajectory.
+
+    Contains observations, actions, action probabilities, and computed value
+    targets, ready to be used for training the agent.
+
+    Attributes:
+        s_batch: List of observations (states).
+        a_batch: List of actions (one-hot encoded).
+        p_batch: List of action probabilities.
+        v_batch: List of computed value targets (returns).
+    """
+    s_batch: List[np.ndarray]
+    a_batch: List[List[int]]
+    p_batch: List[List[float]]
+    v_batch: List[float]
 
 
 class AbstractTrainableAgent(AbstractAgent):
