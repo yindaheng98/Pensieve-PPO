@@ -68,7 +68,6 @@ class RLABRStateObserver(AbstractABRStateObserver):
             state_history_len: Number of past observations to keep in state (default: 8)
             buffer_norm_factor: Normalization factor for buffer size in seconds (default: 10.0)
         """
-        self.s_info = S_INFO
 
         # Store reward parameters
         self.rebuf_penalty = rebuf_penalty
