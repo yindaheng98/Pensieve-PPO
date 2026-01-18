@@ -1,7 +1,7 @@
 """Abstract base classes for agents.
 
 This module provides the abstract base class hierarchy for all agents:
-- AbstractAgent: Base class with predict and select_action
+- AbstractAgent: Base class with select_action
 
 Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py
@@ -50,29 +50,15 @@ class TrainingBatch:
 
 
 class AbstractAgent(ABC):
-    """Abstract base class for agents with prediction capability.
+    """Abstract base class for agents with action selection capability.
 
-    This class defines the minimal interface for agents that can predict
+    This class defines the minimal interface for agents that can select
     actions from states.
     """
 
     @abstractmethod
-    def predict(self, state: np.ndarray) -> List[float]:
-        """Predict action probabilities for a given state.
-
-        Args:
-            state: Input state.
-
-        Returns:
-            Action probability distribution as a 1D list.
-        """
-        pass
-
     def select_action(self, state: np.ndarray) -> Tuple[int, List[float]]:
-        """Select an action deterministically (greedy policy).
-
-        This method selects the action with highest probability, without any
-        exploration noise. Use this for testing/evaluation.
+        """Select an action for a given state.
 
         Args:
             state: Input state with shape (s_dim[0], s_dim[1]).
@@ -80,8 +66,4 @@ class AbstractAgent(ABC):
         Returns:
             Tuple of (selected_action_index, action_probabilities).
         """
-        action_prob = self.predict(state)  # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
-        # action = np.argmax(action_prob)  # test with gumbel noise has better performance. why?
-        noise = np.random.gumbel(size=len(action_prob))
-        action = np.argmax(np.log(action_prob) + noise)
-        return int(action), action_prob
+        pass

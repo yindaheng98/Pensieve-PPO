@@ -190,6 +190,49 @@ class PPOAgent(AbstractRLAgent):
             pi = self.actor.forward(state)[0]
             return pi.cpu().tolist()
 
+    def select_action(self, state: np.ndarray) -> Tuple[int, List[float]]:
+        """Select an action using Gumbel-softmax sampling.
+
+        This method uses Gumbel noise for action selection, which has been
+        shown to have better performance than pure greedy selection.
+
+        Reference:
+            https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L117-L122
+
+        Args:
+            state: Input state with shape (s_dim[0], s_dim[1]).
+
+        Returns:
+            Tuple of (selected_action_index, action_probabilities).
+        """
+        action_prob = self.predict(state)
+        # action = np.argmax(action_prob)  # test with gumbel noise has better performance. why?
+        noise = np.random.gumbel(size=len(action_prob))
+        action = np.argmax(np.log(action_prob) + noise)
+        return int(action), action_prob
+
+    def select_action_for_training(self, state: np.ndarray) -> Tuple[int, List[float]]:
+        """Select an action using Gumbel-softmax sampling for exploration.
+
+        This implements the action selection strategy used in the original
+        Pensieve-PPO implementation, with Gumbel noise for exploration during
+        training.
+
+        Reference:
+            https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
+
+        Args:
+            state: Input state with shape (s_dim[0], s_dim[1]).
+
+        Returns:
+            Tuple of (selected_action_index, action_probabilities).
+        """
+        action_prob = self.predict(state)
+        # gumbel noise for exploration
+        noise = np.random.gumbel(size=len(action_prob))
+        action = np.argmax(np.log(action_prob) + noise)
+        return int(action), action_prob
+
     def compute_v(
         self,
         s_batch: List[np.ndarray],

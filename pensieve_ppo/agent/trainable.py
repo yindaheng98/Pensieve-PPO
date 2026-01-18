@@ -31,6 +31,7 @@ class AbstractTrainableAgent(AbstractAgent):
     methods are abstract here but implemented in AbstractRLAgent.
     """
 
+    @abstractmethod
     def select_action_for_training(self, state: np.ndarray) -> Tuple[int, List[float]]:
         """Select an action using Gumbel-softmax sampling for exploration.
 
@@ -47,13 +48,7 @@ class AbstractTrainableAgent(AbstractAgent):
         Returns:
             Tuple of (selected_action_index, action_probabilities).
         """
-        action_prob = self.predict(state)  # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
-
-        # gumbel noise for exploration
-        noise = np.random.gumbel(size=len(action_prob))
-        action = np.argmax(np.log(action_prob) + noise)
-
-        return int(action), action_prob
+        pass
 
     @abstractmethod
     def produce_training_batch(

@@ -1,7 +1,7 @@
 """Abstract base classes for reinforcement learning agents.
 
 This module provides the abstract base class hierarchy for all RL agents:
-- AbstractAgent: Base class with predict and select_action
+- AbstractAgent: Base class with select_action
 - AbstractTrainableAgent: Adds training infrastructure methods
 - AbstractRLAgent: Adds RL-specific training methods (train, compute_v)
 
