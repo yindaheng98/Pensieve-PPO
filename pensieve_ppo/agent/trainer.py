@@ -105,13 +105,13 @@ class Trainer:
         # restore neural net parameters
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L90-L100
         if self.nn_model is not None:
-            actor.load_model(self.nn_model)
+            actor.load(self.nn_model)
             print('Model restored.')
 
         # while True:  # assemble training batches from agents, compute the gradients
         for epoch in range(self.train_epochs):
             # synchronize the network parameters of work agent
-            actor_net_params = actor.get_network_params()
+            actor_net_params = actor.get_params()
             for i in range(self.num_agents):
                 net_params_queues[i].put(actor_net_params)
 
@@ -131,7 +131,7 @@ class Trainer:
             if epoch % self.model_save_interval == 0:
                 # Save the neural net parameters to disk.
                 model_path = f'{self.summary_dir}/nn_model_ep_{epoch}.pth'
-                actor.save_model(model_path)
+                actor.save(model_path)
 
                 # Callback for model saving (e.g., testing and logging)
                 self.on_save_model(epoch, model_path, actor)
@@ -158,7 +158,7 @@ class Trainer:
 
         # initial synchronization of the network parameters from the coordinator
         actor_net_params = net_params_queue.get()
-        actor.set_network_params(actor_net_params)
+        actor.set_params(actor_net_params)
 
         for epoch in range(self.train_epochs):
             obs, _ = env.reset()
@@ -188,7 +188,7 @@ class Trainer:
             exp_queue.put(training_batch)
 
             actor_net_params = net_params_queue.get()
-            actor.set_network_params(actor_net_params)
+            actor.set_params(actor_net_params)
 
     def train(self) -> None:
         """Start distributed training.

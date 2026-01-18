@@ -114,7 +114,7 @@ class TestPPOAgentWithPretrainedModel(unittest.TestCase):
             action_dim=ACTION_DIM,
             learning_rate=LEARNING_RATE,
         )
-        cls.our_agent.load_model(PRETRAINED_MODEL)
+        cls.our_agent.load(PRETRAINED_MODEL)
 
         # Create original Network
         cls.original_network = src_ppo2.Network(
@@ -280,7 +280,7 @@ class TestPPOAgentComputeV(unittest.TestCase):
             action_dim=ACTION_DIM,
             learning_rate=LEARNING_RATE,
         )
-        cls.our_agent.load_model(PRETRAINED_MODEL)
+        cls.our_agent.load(PRETRAINED_MODEL)
 
         # Create original Network
         cls.original_network = src_ppo2.Network(
@@ -392,7 +392,7 @@ class TestPPOAgentTraining(unittest.TestCase):
             action_dim=ACTION_DIM,
             learning_rate=LEARNING_RATE,
         )
-        self.our_agent.load_model(PRETRAINED_MODEL)
+        self.our_agent.load(PRETRAINED_MODEL)
 
         # Reset seeds before creating original network
         np.random.seed(RANDOM_SEED)
@@ -510,7 +510,7 @@ class TestPPOAgentModelSaveLoad(unittest.TestCase):
             action_dim=ACTION_DIM,
             learning_rate=LEARNING_RATE,
         )
-        our_agent.load_model(PRETRAINED_MODEL)
+        our_agent.load(PRETRAINED_MODEL)
 
         original_network = src_ppo2.Network(
             state_dim=STATE_DIM,
@@ -551,8 +551,8 @@ class TestPPOAgentModelSaveLoad(unittest.TestCase):
             action_dim=ACTION_DIM,
             learning_rate=LEARNING_RATE,
         )
-        our_agent.load_model(PRETRAINED_MODEL)
-        our_agent.save_model(our_save_path)
+        our_agent.load(PRETRAINED_MODEL)
+        our_agent.save(our_save_path)
 
         # Create and save using original network
         original_network = src_ppo2.Network(
@@ -577,7 +577,7 @@ class TestPPOAgentModelSaveLoad(unittest.TestCase):
             action_dim=ACTION_DIM,
             learning_rate=LEARNING_RATE,
         )
-        our_loaded_original.load_model(original_save_path)
+        our_loaded_original.load(original_save_path)
 
         # Test state for comparison
         np.random.seed(RANDOM_SEED)
@@ -610,7 +610,7 @@ class TestPPOAgentGetSetParams(unittest.TestCase):
             learning_rate=LEARNING_RATE,
         )
 
-        our_params = our_agent.get_network_params()
+        our_params = our_agent.get_params()
         original_params = original_network.get_network_params()
 
         # Check structure
@@ -639,7 +639,7 @@ class TestPPOAgentGetSetParams(unittest.TestCase):
 
         # Get params from original and set to ours
         params = original_network.get_network_params()
-        our_agent.set_network_params(params)
+        our_agent.set_params(params)
 
         # Verify by predicting
         np.random.seed(RANDOM_SEED)
@@ -668,7 +668,7 @@ class TestPPOAgentDeterminism(unittest.TestCase):
             action_dim=ACTION_DIM,
             learning_rate=LEARNING_RATE,
         )
-        cls.our_agent.load_model(PRETRAINED_MODEL)
+        cls.our_agent.load(PRETRAINED_MODEL)
 
         cls.original_network = src_ppo2.Network(
             state_dim=STATE_DIM,

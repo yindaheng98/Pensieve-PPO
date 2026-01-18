@@ -90,24 +90,24 @@ class AbstractTrainableAgent(AbstractAgent):
         pass
 
     @abstractmethod
-    def get_network_params(self) -> Any:
+    def get_params(self) -> Any:
         """Get the current network parameters.
 
         Returns:
-            Network parameters in a format suitable for set_network_params.
+            Network parameters in a format suitable for set_params.
         """
         pass
 
     @abstractmethod
-    def set_network_params(self, params: Any) -> None:
+    def set_params(self, params: Any) -> None:
         """Set the network parameters.
 
         Args:
-            params: Network parameters from get_network_params.
+            params: Network parameters from get_params.
         """
         pass
 
-    def save_model(self, path: str) -> None:
+    def save(self, path: str) -> None:
         """Save the model to a file.
 
         Reference:
@@ -116,9 +116,9 @@ class AbstractTrainableAgent(AbstractAgent):
         Args:
             path: Path to save the model.
         """
-        torch.save(self.get_network_params(), path)
+        torch.save(self.get_params(), path)
 
-    def load_model(self, path: str) -> None:
+    def load(self, path: str) -> None:
         """Load the model from a file.
 
         Reference:
@@ -127,7 +127,7 @@ class AbstractTrainableAgent(AbstractAgent):
         Args:
             path: Path to load the model from.
         """
-        self.set_network_params(torch.load(path))
+        self.set_params(torch.load(path))
 
     def tensorboard_logging(self, writer: 'SummaryWriter', epoch: int) -> None:
         """Log metrics to TensorBoard.

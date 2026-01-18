@@ -226,7 +226,7 @@ class PPOAgent(AbstractRLAgent):
 
         return list(R_batch)
 
-    def get_network_params(self) -> Tuple[Dict, Dict]:
+    def get_params(self) -> Tuple[Dict, Dict]:
         """Get the current network parameters.
 
         Reference:
@@ -237,7 +237,7 @@ class PPOAgent(AbstractRLAgent):
         """
         return [self.actor.state_dict(), self.critic.state_dict()]
 
-    def set_network_params(self, params: Tuple[Dict, Dict]) -> None:
+    def set_params(self, params: Tuple[Dict, Dict]) -> None:
         """Set the network parameters.
 
         Reference:
