@@ -14,20 +14,20 @@ from typing import Callable, Dict, List, Optional
 import gymnasium as gym
 import torch
 
-from .abc import AbstractAgent, TrainingBatch, Step
+from .abc import AbstractTrainableAgent, TrainingBatch, Step
 
 
 class EpochEndCallback:
     """No-op callback for trainer events."""
 
-    def __call__(self, epoch: int, agent: AbstractAgent, info: Dict) -> None:
+    def __call__(self, epoch: int, agent: AbstractTrainableAgent, info: Dict) -> None:
         pass
 
 
 class SaveModelCallback:
     """No-op callback for trainer events."""
 
-    def __call__(self, epoch: int, model_path: str, agent: AbstractAgent) -> None:
+    def __call__(self, epoch: int, model_path: str, agent: AbstractTrainableAgent) -> None:
         pass
 
 
@@ -45,21 +45,21 @@ class Trainer:
     def __init__(
         self,
         env_factory: Callable[[int], gym.Env],
-        agent_factory: Callable[[], AbstractAgent],
+        agent_factory: Callable[[], AbstractTrainableAgent],
         parallel_workers: int = 16,
         steps_per_epoch: int = 1000,
         train_epochs: int = 500000,
         model_save_interval: int = 300,
         output_dir: str = './ppo',
         pretrained_model_path: Optional[str] = None,
-        on_epoch_end: Callable[[int, AbstractAgent, Dict], None] = EpochEndCallback(),
-        on_save_model: Callable[[int, str, AbstractAgent], None] = SaveModelCallback(),
+        on_epoch_end: Callable[[int, AbstractTrainableAgent, Dict], None] = EpochEndCallback(),
+        on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = SaveModelCallback(),
     ):
         """Initialize the trainer.
 
         Args:
             env_factory: Factory function (agent_id: int) -> env.
-            agent_factory: Factory function () -> AbstractAgent.
+            agent_factory: Factory function () -> AbstractTrainableAgent.
             parallel_workers: Number of parallel worker agents for distributed training.
             steps_per_epoch: Number of environment steps each worker collects per epoch.
             train_epochs: Total number of training epochs.

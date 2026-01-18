@@ -1,8 +1,12 @@
-"""Abstract base class for reinforcement learning agents.
+"""Abstract base classes for reinforcement learning agents.
 
-This module provides the AbstractAgent base class that defines the interface
-for all RL agents in this project. Specific algorithms (e.g., PPO, A2C)
-should inherit from this class and implement the abstract methods.
+This module provides the abstract base class hierarchy for all RL agents:
+- AbstractAgent: Base class with predict and select_action
+- AbstractTrainableAgent: Adds training infrastructure methods
+- AbstractRLAgent: Adds RL-specific training methods (train, compute_v)
+
+Specific algorithms (e.g., PPO, A2C) should inherit from AbstractRLAgent
+and implement the abstract methods.
 
 Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py
@@ -55,11 +59,10 @@ class TrainingBatch:
 
 
 class AbstractAgent(ABC):
-    """Abstract base class for RL agents.
+    """Abstract base class for agents with prediction capability.
 
-    This class defines the common interface that all RL agents must implement.
-    It provides some common functionality and defines abstract methods for
-    algorithm-specific operations.
+    This class defines the minimal interface for agents that can predict
+    actions from states.
 
     Attributes:
         s_dim: State dimension as [num_features, sequence_length].
@@ -96,6 +99,152 @@ class AbstractAgent(ABC):
             Action probability distribution as a 1D list with length a_dim.
         """
         pass
+
+    def select_action(self, state: np.ndarray) -> Tuple[int, List[float]]:
+        """Select an action deterministically (greedy policy).
+
+        This method selects the action with highest probability, without any
+        exploration noise. Use this for testing/evaluation.
+
+        Args:
+            state: Input state with shape (s_dim[0], s_dim[1]).
+
+        Returns:
+            Tuple of (selected_action_index, action_probabilities).
+        """
+        action_prob = self.predict(state)  # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
+        action = np.argmax(action_prob)
+        return int(action), action_prob
+
+
+class AbstractTrainableAgent(AbstractAgent):
+    """Abstract base class for trainable agents.
+
+    This class extends AbstractAgent with training infrastructure methods
+    including model persistence, network parameter access, and training batch
+    handling.
+
+    Subclasses must implement the abstract methods for model saving/loading
+    and network parameter access. The produce_training_batch and train_batch
+    methods are abstract here but implemented in AbstractRLAgent.
+    """
+
+    def select_action_for_training(self, state: np.ndarray) -> Tuple[int, List[float]]:
+        """Select an action using Gumbel-softmax sampling for exploration.
+
+        This implements the action selection strategy used in the original
+        Pensieve-PPO implementation, with Gumbel noise for exploration during
+        training.
+
+        Reference:
+            https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
+
+        Args:
+            state: Input state with shape (s_dim[0], s_dim[1]).
+
+        Returns:
+            Tuple of (selected_action_index, action_probabilities).
+        """
+        action_prob = self.predict(state)  # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
+
+        # gumbel noise for exploration
+        noise = np.random.gumbel(size=len(action_prob))
+        action = np.argmax(np.log(action_prob) + noise)
+
+        return int(action), action_prob
+
+    @abstractmethod
+    def produce_training_batch(
+        self,
+        trajectory: List[Step],
+        done: bool,
+    ) -> TrainingBatch:
+        """Produce a training batch from a trajectory.
+
+        Args:
+            trajectory: List of steps collected during environment rollout.
+            done: Whether the trajectory ended in a terminal state.
+
+        Returns:
+            Training batch with computed value targets.
+        """
+        pass
+
+    @abstractmethod
+    def train_batch(
+        self,
+        training_batches: List[TrainingBatch],
+        epoch: int,
+    ) -> Dict[str, float]:
+        """Train on multiple training batches.
+
+        Args:
+            training_batches: List of training batches from workers.
+            epoch: Current training epoch.
+
+        Returns:
+            Dictionary containing training metrics.
+        """
+        pass
+
+    @abstractmethod
+    def get_network_params(self) -> Any:
+        """Get the current network parameters.
+
+        Returns:
+            Network parameters in a format suitable for set_network_params.
+        """
+        pass
+
+    @abstractmethod
+    def set_network_params(self, params: Any) -> None:
+        """Set the network parameters.
+
+        Args:
+            params: Network parameters from get_network_params.
+        """
+        pass
+
+    @abstractmethod
+    def save_model(self, path: str) -> None:
+        """Save the model to a file.
+
+        Args:
+            path: Path to save the model.
+        """
+        pass
+
+    @abstractmethod
+    def load_model(self, path: str) -> None:
+        """Load the model from a file.
+
+        Args:
+            path: Path to load the model from.
+        """
+        pass
+
+    def tensorboard_logging(self, writer: 'SummaryWriter', epoch: int) -> None:
+        """Log metrics to TensorBoard.
+
+        This method can be overridden by subclasses to log agent-specific metrics.
+
+        Args:
+            writer: TensorBoard SummaryWriter instance.
+            epoch: Current training epoch.
+        """
+        pass
+
+
+class AbstractRLAgent(AbstractTrainableAgent):
+    """Abstract base class for RL agents.
+
+    This class extends AbstractTrainableAgent with reinforcement learning
+    specific methods (train, compute_v) and provides implementations of
+    produce_training_batch and train_batch using these RL methods.
+
+    Specific RL algorithms (e.g., PPO, A2C) should inherit from this class
+    and implement the abstract methods.
+    """
 
     @abstractmethod
     def train(
@@ -140,82 +289,6 @@ class AbstractAgent(ABC):
             List of computed returns for each timestep.
         """
         pass
-
-    @abstractmethod
-    def get_network_params(self) -> Any:
-        """Get the current network parameters.
-
-        Returns:
-            Network parameters in a format suitable for set_network_params.
-        """
-        pass
-
-    @abstractmethod
-    def set_network_params(self, params: Any) -> None:
-        """Set the network parameters.
-
-        Args:
-            params: Network parameters from get_network_params.
-        """
-        pass
-
-    @abstractmethod
-    def save_model(self, path: str) -> None:
-        """Save the model to a file.
-
-        Args:
-            path: Path to save the model.
-        """
-        pass
-
-    @abstractmethod
-    def load_model(self, path: str) -> None:
-        """Load the model from a file.
-
-        Args:
-            path: Path to load the model from.
-        """
-        pass
-
-    def select_action(self, state: np.ndarray) -> Tuple[int, List[float]]:
-        """Select an action deterministically (greedy policy).
-
-        This method selects the action with highest probability, without any
-        exploration noise. Use this for testing/evaluation.
-
-        Args:
-            state: Input state with shape (s_dim[0], s_dim[1]).
-
-        Returns:
-            Tuple of (selected_action_index, action_probabilities).
-        """
-        action_prob = self.predict(state)  # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
-        action = np.argmax(action_prob)
-        return int(action), action_prob
-
-    def select_action_for_training(self, state: np.ndarray) -> Tuple[int, List[float]]:
-        """Select an action using Gumbel-softmax sampling for exploration.
-
-        This implements the action selection strategy used in the original
-        Pensieve-PPO implementation, with Gumbel noise for exploration during
-        training.
-
-        Reference:
-            https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
-
-        Args:
-            state: Input state with shape (s_dim[0], s_dim[1]).
-
-        Returns:
-            Tuple of (selected_action_index, action_probabilities).
-        """
-        action_prob = self.predict(state)  # np.reshape(state, (1, S_INFO, S_LEN)) inside predict
-
-        # gumbel noise for exploration
-        noise = np.random.gumbel(size=len(action_prob))
-        action = np.argmax(np.log(action_prob) + noise)
-
-        return int(action), action_prob
 
     def produce_training_batch(
         self,
@@ -286,14 +359,3 @@ class AbstractAgent(ABC):
         v_batch = np.vstack(v)
 
         return self.train(s_batch, a_batch, p_batch, v_batch, epoch)
-
-    def tensorboard_logging(self, writer: 'SummaryWriter', epoch: int) -> None:
-        """Log metrics to TensorBoard.
-
-        This method can be overridden by subclasses to log agent-specific metrics.
-
-        Args:
-            writer: TensorBoard SummaryWriter instance.
-            epoch: Current training epoch.
-        """
-        pass

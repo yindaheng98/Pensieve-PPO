@@ -15,7 +15,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
-from ..abc import AbstractAgent
+from ..abc import AbstractRLAgent
 from .model import Actor, Critic
 
 
@@ -27,7 +27,7 @@ EPS = 0.2  # PPO2 epsilon
 ACTOR_LR_RATE = 1e-4
 
 
-class PPOAgent(AbstractAgent):
+class PPOAgent(AbstractRLAgent):
     """PPO (Proximal Policy Optimization) Agent.
 
     This agent implements the PPO algorithm with:
