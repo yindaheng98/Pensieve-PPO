@@ -18,8 +18,7 @@ from typing import Dict, List
 import numpy as np
 
 
-from .abc import Step, TrainingBatch
-from .trainable import AbstractTrainableAgent
+from .. import Step, TrainingBatch, AbstractTrainableAgent
 
 
 class AbstractRLAgent(AbstractTrainableAgent):

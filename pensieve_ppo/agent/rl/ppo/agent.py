@@ -7,7 +7,7 @@ Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -15,7 +15,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
-from ..abc import AbstractRLAgent
+from .. import AbstractRLAgent
 from .model import Actor, Critic
 
 

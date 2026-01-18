@@ -1,26 +1,26 @@
 """Agent module for Pensieve PPO.
 
-This module re-exports RL agent components from the rl submodule.
+This module provides the base classes and implementations for RL agents.
 """
 
-from .rl import (
-    AbstractAgent,
-    Trainer,
-    EpochEndCallback,
-    SaveModelCallback,
-    create_agent,
-    register_agent,
-    get_available_agents,
-    ppo,
-)
+from .abc import AbstractAgent, Step, TrainingBatch
+from .trainable import AbstractTrainableAgent
+from .trainer import Trainer, EpochEndCallback, SaveModelCallback
+from .registry import create_agent, register_agent, get_available_agents
+
+# Import agent implementations to trigger registration
+from . import rl  # noqa: F401
 
 __all__ = [
     'AbstractAgent',
+    'Step',
+    'TrainingBatch',
+    'AbstractTrainableAgent',
     'Trainer',
     'EpochEndCallback',
     'SaveModelCallback',
     'create_agent',
     'register_agent',
     'get_available_agents',
-    'ppo',
+    'rl',
 ]

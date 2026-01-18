@@ -13,7 +13,7 @@ from typing import Dict, Tuple
 
 import numpy as np
 
-from .agent.rl.abc import AbstractAgent
+from .agent import AbstractAgent
 from .defaults import create_env_agent_with_default
 from .gym.env import ABREnv
 from .agent.rl.observer import M_IN_K

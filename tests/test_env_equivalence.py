@@ -22,7 +22,7 @@ Note on API differences:
 - Tests account for this by calling step() with DEFAULT_QUALITY after gym reset()
 
 Note on constants:
-- Constants are imported from pensieve_ppo.agent.rl.observer and pensieve_ppo.defaults
+- Constants are imported from pensieve_ppo.agent.observer and pensieve_ppo.defaults
   to verify equivalence with the original src_env.
 - TestConstantsMatch class explicitly verifies these values match between
   our implementation and src_env to ensure consistency with the original

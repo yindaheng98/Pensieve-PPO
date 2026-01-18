@@ -2,11 +2,6 @@
 
 This module provides the abstract base class hierarchy for all RL agents:
 - AbstractAgent: Base class with predict and select_action
-- AbstractTrainableAgent: Adds training infrastructure methods
-- AbstractRLAgent: Adds RL-specific training methods (train, compute_v)
-
-Specific algorithms (e.g., PPO, A2C) should inherit from AbstractRLAgent
-and implement the abstract methods.
 
 Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py
