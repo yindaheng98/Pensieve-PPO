@@ -13,7 +13,7 @@ from typing import Callable, Optional, Tuple
 
 import torch
 
-from .agent import AbstractAgent, create_agent
+from .agent import AbstractAgent, AbstractTrainableAgent, create_agent
 from .gym import ABREnv, create_env
 from .agent.rl.observer import (
     RLABRStateObserver,
@@ -100,15 +100,15 @@ class PicklableEnvFactory:
 
 
 class PicklableAgentFactory:
-    """Callable factory for creating AbstractAgent instances."""
+    """Callable factory for creating AbstractTrainableAgent instances (for training)."""
 
     def __init__(self, *args, agent_options: dict = {}, **kwargs):
         self.args = args
         self.agent_options = agent_options
         self.kwargs = kwargs
 
-    def __call__(self) -> AbstractAgent:
-        return create_agent(*self.args, **self.kwargs, **self.agent_options)
+    def __call__(self) -> AbstractTrainableAgent:
+        return create_agent(*self.args, **self.kwargs, **self.agent_options)  # type: ignore[return-value]
 
 
 def create_env_agent_factory_with_default(
@@ -123,7 +123,7 @@ def create_env_agent_factory_with_default(
     # Additional options
     env_options: dict = {},
     agent_options: dict = {},
-) -> Tuple[Callable[[int], ABREnv], Callable[[], AbstractAgent]]:
+) -> Tuple[Callable[[int], ABREnv], Callable[[], AbstractTrainableAgent]]:
     """Create env_factory and agent_factory with default parameters.
 
     Ensures env-agent compatibility by deriving shared parameters:
@@ -132,7 +132,7 @@ def create_env_agent_factory_with_default(
     Returns:
         (env_factory, agent_factory):
         - env_factory(agent_id: int) -> ABREnv
-        - agent_factory() -> AbstractAgent
+        - agent_factory() -> AbstractTrainableAgent
     """
     # Derive compatibility parameters
     state_dim = (S_INFO, state_history_len)

@@ -15,7 +15,7 @@ from typing import Callable
 
 from torch.utils.tensorboard import SummaryWriter
 
-from .agent import AbstractAgent, Trainer, SaveModelCallback
+from .agent import AbstractTrainableAgent, Trainer, SaveModelCallback, get_available_trainable_agents
 from .defaults import create_env_agent_factory_with_default, TRAIN_TRACES
 from .args import add_env_agent_arguments, parse_env_agent_args
 from .test import main as test_main, calculate_test_statistics, add_testing_arguments
@@ -42,7 +42,7 @@ class TestingCallback(SaveModelCallback):
             pass
         self.args = args
 
-    def __call__(self, epoch: int, model_path: str, agent: AbstractAgent) -> None:
+    def __call__(self, epoch: int, model_path: str, agent: AbstractTrainableAgent) -> None:
         """Callback invoked when model is saved.
 
         This function runs testing using test.py's main function and logs the results
@@ -109,7 +109,7 @@ def prepare_training(
     train_epochs: int = TRAIN_EPOCH,
     model_save_interval: int = MODEL_SAVE_INTERVAL,
     pretrained_model_path: str = None,
-    on_save_model: Callable[[int, str, AbstractAgent], None] = None,
+    on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = None,
     **kwargs,
 ) -> Trainer:
     """Prepare trainer for distributed training.
@@ -129,7 +129,7 @@ def prepare_training(
         model_save_interval: Interval for saving model checkpoints.
         pretrained_model_path: Path to pre-trained model to resume from.
         on_save_model: Callback function invoked when model is saved.
-                     Signature: (epoch: int, model_path: str, agent: AbstractAgent) -> None
+                     Signature: (epoch: int, model_path: str, agent: AbstractTrainableAgent) -> None
         **kwargs: Keyword arguments passed to create_env_agent_factory_with_default.
 
     Returns:
@@ -185,7 +185,7 @@ def add_training_arguments(parser: argparse.ArgumentParser) -> None:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train Pensieve PPO agent')
-    add_env_agent_arguments(parser)
+    add_env_agent_arguments(parser, available_agents=get_available_trainable_agents())
     add_testing_arguments(parser)
     add_training_arguments(parser)
     args = parser.parse_args()

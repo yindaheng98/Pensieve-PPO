@@ -6,7 +6,7 @@ This module provides the base classes and implementations for RL agents.
 from .abc import AbstractAgent, Step, TrainingBatch
 from .trainable import AbstractTrainableAgent
 from .trainer import Trainer, EpochEndCallback, SaveModelCallback
-from .registry import create_agent, register_agent, get_available_agents
+from .registry import create_agent, register_agent, get_available_agents, get_available_trainable_agents
 
 # Import agent implementations to trigger registration
 from . import rl  # noqa: F401
@@ -22,5 +22,6 @@ __all__ = [
     'create_agent',
     'register_agent',
     'get_available_agents',
+    'get_available_trainable_agents',
     'rl',
 ]

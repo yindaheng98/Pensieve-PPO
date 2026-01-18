@@ -13,7 +13,7 @@ from typing import Dict, Tuple
 
 import numpy as np
 
-from .agent import AbstractAgent
+from .agent import AbstractAgent, get_available_agents
 from .defaults import create_env_agent_with_default
 from .gym.env import ABREnv
 from .agent.rl.observer import M_IN_K
@@ -246,7 +246,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test Pensieve PPO agent')
-    add_env_agent_arguments(parser)
+    add_env_agent_arguments(parser, available_agents=get_available_agents())
     add_testing_arguments(parser)
     args = parser.parse_args()
 

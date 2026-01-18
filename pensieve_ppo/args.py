@@ -5,7 +5,6 @@ from typing import Any, Dict
 
 import numpy as np
 
-from .agent import get_available_agents
 from .defaults import VIDEO_BIT_RATE, TEST_TRACES, DEFAULT_QUALITY
 from .agent.rl.observer import S_INFO, S_LEN
 
@@ -13,7 +12,7 @@ from .agent.rl.observer import S_INFO, S_LEN
 RANDOM_SEED = 42
 
 
-def add_env_agent_arguments(parser: argparse.ArgumentParser) -> None:
+def add_env_agent_arguments(parser: argparse.ArgumentParser, available_agents=list[str]) -> None:
     """Add arguments for environment and agent configuration.
 
     These arguments correspond to the parameters of create_env_agent_with_default and
@@ -23,9 +22,9 @@ def add_env_agent_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--test-trace-folder', type=str, default=TEST_TRACES,
                         help=f"Folder containing network bandwidth trace files for testing "
                              f"(default: '{TEST_TRACES}')")
-    parser.add_argument('--agent-name', type=str, default='ppo',
-                        choices=get_available_agents(),
-                        help="RL algorithm to use (default: 'ppo')")
+    parser.add_argument('--agent-name', type=str, default=available_agents[0],
+                        choices=available_agents,
+                        help=f"RL algorithm to use (default: '{available_agents[0]}')")
     parser.add_argument('--model-path', type=str, default=None,
                         help="Path to load pre-trained model weights (default: None)")
     parser.add_argument('--device', type=str, default=None,

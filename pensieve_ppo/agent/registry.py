@@ -9,10 +9,14 @@ from typing import Optional, Type, Dict
 import torch
 
 from .abc import AbstractAgent
+from .trainable import AbstractTrainableAgent
 
 
 # Registry of available agents
 AGENT_REGISTRY: Dict[str, Type[AbstractAgent]] = {}
+
+# Registry of trainable agents (subset of AGENT_REGISTRY)
+TRAINABLEAGENT_REGISTRY: Dict[str, Type[AbstractTrainableAgent]] = {}
 
 
 def register_agent(name: str, agent_class: Type[AbstractAgent]) -> None:
@@ -29,6 +33,10 @@ def register_agent(name: str, agent_class: Type[AbstractAgent]) -> None:
         raise ValueError(f"Agent class must be a subclass of AbstractAgent, got {agent_class}")
     AGENT_REGISTRY[name.lower()] = agent_class
 
+    # Also register in TRAINABLEAGENT_REGISTRY if it's a trainable agent
+    if issubclass(agent_class, AbstractTrainableAgent):
+        TRAINABLEAGENT_REGISTRY[name.lower()] = agent_class
+
 
 def get_available_agents() -> list[str]:
     """Get a list of available agent names.
@@ -37,6 +45,15 @@ def get_available_agents() -> list[str]:
         List of registered agent names.
     """
     return list(AGENT_REGISTRY.keys())
+
+
+def get_available_trainable_agents() -> list[str]:
+    """Get a list of available trainable agent names.
+
+    Returns:
+        List of registered trainable agent names.
+    """
+    return list(TRAINABLEAGENT_REGISTRY.keys())
 
 
 def create_agent(
@@ -60,7 +77,7 @@ def create_agent(
         action_dim: Number of discrete actions.
         device: PyTorch device for computations. If None, uses CPU.
         model_path: Path to a saved model file. If provided, loads the model
-            parameters after creating the agent.
+            parameters after creating the agent. Only supported for trainable agents.
         **kwargs: Additional agent-specific parameters.
             For PPO agent:
                 - learning_rate (float): Learning rate for the optimizer. Default: 1e-4.
@@ -73,7 +90,8 @@ def create_agent(
         An instance of the requested agent.
 
     Raises:
-        ValueError: If the agent name is not recognized.
+        ValueError: If the agent name is not recognized, or if model_path is
+            provided but the agent is not a trainable agent.
 
     Example:
         >>> agent = create_agent(
@@ -92,6 +110,13 @@ def create_agent(
         available = ", ".join(get_available_agents())
         raise ValueError(
             f"Unknown agent: '{name}'. Available agents: {available}"
+        )
+
+    # Check if model_path is provided but agent is not trainable
+    if model_path is not None and name_lower not in TRAINABLEAGENT_REGISTRY:
+        raise ValueError(
+            f"Agent '{name}' is not a trainable agent and does not support loading models. "
+            f"Available trainable agents: {', '.join(get_available_trainable_agents())}"
         )
 
     agent_class = AGENT_REGISTRY[name_lower]
