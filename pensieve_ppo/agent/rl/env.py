@@ -17,9 +17,7 @@ from .observer import (
 
 def create_rl_env(
     levels_quality: list,
-    trace_folder: str,
-    video_size_file_prefix: str,
-    max_chunks: int,
+    *args,
     train: bool = True,
     # Observer parameters
     rebuf_penalty: float = REBUF_PENALTY,
@@ -38,9 +36,6 @@ def create_rl_env(
 
     Args:
         levels_quality: Quality metric list for each bitrate level.
-        trace_folder: Path to network trace folder.
-        video_size_file_prefix: Prefix for video size files.
-        max_chunks: Maximum number of video chunks.
         train: Whether in training mode (affects trace iteration).
         rebuf_penalty: Penalty coefficient for rebuffering (default: 4.3).
         smooth_penalty: Penalty coefficient for quality changes (default: 1.0).
@@ -62,12 +57,10 @@ def create_rl_env(
     )
 
     return create_env(
-        observer=observer,
+        observer,
+        *args,
         initial_level=initial_level,
-        trace_folder=trace_folder,
-        video_size_file_prefix=video_size_file_prefix,
         bitrate_levels=len(levels_quality),
-        max_chunks=max_chunks,
         train=train,
         **kwargs,
     )
