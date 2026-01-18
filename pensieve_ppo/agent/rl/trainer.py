@@ -12,7 +12,6 @@ import multiprocessing as mp
 from typing import Callable, Dict, List, Optional
 
 import gymnasium as gym
-import numpy as np
 import torch
 
 from .abc import AbstractAgent, TrainingBatch, Step
