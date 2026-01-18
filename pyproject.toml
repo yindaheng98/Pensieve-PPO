@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pensieve-ppo"
+version = "1.0.0"
+description = "A PyTorch implementation of Pensieve using Proximal Policy Optimization (PPO) for neural adaptive video streaming"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "yindaheng98", email = "yindaheng98@gmail.com"}
+]
+maintainers = [
+    {name = "yindaheng98", email = "yindaheng98@gmail.com"}
+]
+keywords = [
+    "reinforcement-learning",
+    "ppo",
+    "video-streaming",
+    "adaptive-bitrate",
+    "abr",
+    "pensieve",
+    "pytorch",
+    "gymnasium",
+    "deep-learning",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Multimedia :: Video",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "torch>=2.0.0",
+    "numpy>=1.21.0",
+    "gymnasium>=0.28.0",
+    "tensorboard>=2.10.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yindaheng98/Pensieve-PPO"
+Documentation = "https://github.com/yindaheng98/Pensieve-PPO#readme"
+Repository = "https://github.com/yindaheng98/Pensieve-PPO"
+Issues = "https://github.com/yindaheng98/Pensieve-PPO/issues"
+
+[tool.setuptools.packages.find]
+include = ["pensieve_ppo*"]
