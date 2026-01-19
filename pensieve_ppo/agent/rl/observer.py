@@ -38,13 +38,19 @@ class RLABRStateObserver(AbstractABRStateObserver):
     This class handles state representation and reward computation,
     decoupled from the environment dynamics.
 
+    Note:
+        The internal state (self.state) and the state returned to external
+        callers can be different. The internal state is updated by
+        compute_and_update_state(), while the observe() method returns a copy
+        that may be modified or transformed before being returned.
+
     Attributes:
         levels_quality: Quality metric list for each bitrate level.
         rebuf_penalty: Penalty coefficient for rebuffering.
         smooth_penalty: Penalty coefficient for quality changes.
         state_history_len: Number of past observations in state.
         buffer_norm_factor: Normalization factor for buffer size.
-        state: Current state array.
+        state: Internal state array (may differ from returned state).
         last_bit_rate: Last selected bitrate level.
     """
 
@@ -79,6 +85,8 @@ class RLABRStateObserver(AbstractABRStateObserver):
         self.buffer_norm_factor = buffer_norm_factor
 
         # State tracking (initialized in reset)
+        # Note: self.state is the internal state, which may differ from
+        # the state returned to external callers (see observe() method)
         self.state: Optional[np.ndarray] = None
         self.last_bit_rate: int = 0
 
@@ -195,10 +203,17 @@ class RLABRStateObserver(AbstractABRStateObserver):
     ) -> np.ndarray:
         """Compute new state representation from simulator result.
 
+        This method updates the internal state (self.state) and returns it.
+        Note that the returned state may be modified or transformed before
+        being returned to external callers in the observe() method.
+
         Args:
             env: The ABREnv instance to observe.
             bit_rate: Current bitrate level selected.
             result: Result from simulator.step().
+
+        Returns:
+            The computed state array (same reference as self.state).
         """
         # Unpack result (matches original variable names)
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L75-L78
@@ -264,13 +279,19 @@ class RLABRStateObserver(AbstractABRStateObserver):
     ) -> Tuple[np.ndarray, float, Dict[str, Any]]:
         """Process simulator result: compute reward and update state.
 
+        Note:
+            The returned state is a copy of the internal state and may differ
+            from self.state. This allows the internal state to be preserved
+            while returning a potentially modified version to external callers.
+
         Args:
             env: The ABREnv instance to observe.
             bit_rate: Current bitrate level selected.
             result: Result from simulator.step().
 
         Returns:
-            Tuple of (state, reward, info_dict).
+            Tuple of (state_copy, reward, info_dict), where state_copy may
+            differ from the internal self.state.
         """
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L83-L87
