@@ -45,6 +45,7 @@ class PredictionState:
     state: np.ndarray
     trace_simulator: TraceSimulator
     video_player: VideoPlayer
+    bit_rate: int
     virtual_mahimahi_ptr: int
     virtual_last_mahimahi_time: float
 
@@ -202,6 +203,7 @@ class MPCABRStateObserver(RLABRStateObserver):
             state=super().build_initial_state(env, initial_bit_rate),
             trace_simulator=env.simulator.trace_simulator,
             video_player=env.simulator.video_player,
+            bit_rate=initial_bit_rate,
             virtual_mahimahi_ptr=None,
             virtual_last_mahimahi_time=None,
         )
@@ -228,6 +230,7 @@ class MPCABRStateObserver(RLABRStateObserver):
             state=super().compute_state(env, bit_rate, result),
             trace_simulator=env.simulator,
             video_player=env.simulator.video_player,
+            bit_rate=bit_rate,
             virtual_mahimahi_ptr=None,
             virtual_last_mahimahi_time=None,
         )
