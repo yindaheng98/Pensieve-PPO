@@ -70,6 +70,14 @@ class TraceSimulator(AbstractTraceSimulator):
         # Initialize with first trace
         self.reset()
 
+    @property
+    def unwrapped(self) -> 'TraceSimulator':
+        """Get the underlying TraceSimulator for accessing state variables.
+
+        All state (buffer_size, trace_idx, etc.) lives on the unwrapped simulator.
+        """
+        return self
+
     # ==================== Methods for logging ====================
 
     def get_trace_progress(self) -> TraceProgress:

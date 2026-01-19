@@ -38,10 +38,7 @@ class TraceSimulatorWrapper(AbstractTraceSimulator):
 
         All state (buffer_size, trace_idx, etc.) lives on the unwrapped simulator.
         """
-        if isinstance(self.__base, TraceSimulatorWrapper):
-            return self.__base.unwrapped
-        # __base is TraceSimulator
-        return self.__base  # type: ignore[return-value]
+        return self.__base.unwrapped
 
     # ==================== Delegated methods (use super() in subclasses) ====================
 

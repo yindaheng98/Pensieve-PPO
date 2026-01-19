@@ -2,6 +2,10 @@
 
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .simulator import TraceSimulator
 
 
 @dataclass
@@ -102,6 +106,20 @@ class AbstractTraceSimulator(ABC):
 
         Returns:
             Current buffer size in milliseconds
+        """
+        ...
+
+    # ==================== Unwrapped property ====================
+
+    @property
+    @abstractmethod
+    def unwrapped(self) -> 'TraceSimulator':
+        """Get the underlying TraceSimulator for accessing state variables.
+
+        All state (buffer_size, trace_idx, etc.) lives on the unwrapped simulator.
+
+        Returns:
+            The underlying TraceSimulator instance
         """
         ...
 
