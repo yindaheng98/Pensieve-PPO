@@ -1,11 +1,12 @@
-"""Agent factory for creating different types of RL agents.
+"""Agent and environment factory for creating different types of RL agents and environments.
 
-This module provides a factory function to create agents by name,
-allowing for easy switching between different agent implementations.
+This module provides factory functions to create agents and environments by name,
+allowing for easy switching between different implementations.
 """
 
 from typing import Optional, Type, Dict
 
+import gymnasium as gym
 
 from .abc import AbstractAgent
 from .trainable import AbstractTrainableAgent
@@ -17,12 +18,15 @@ AGENT_REGISTRY: Dict[str, Type[AbstractAgent]] = {}
 # Registry of trainable agents (subset of AGENT_REGISTRY)
 TRAINABLEAGENT_REGISTRY: Dict[str, Type[AbstractTrainableAgent]] = {}
 
+# Registry of available environments
+ENV_REGISTRY: Dict[str, Type[gym.Env]] = {}
+
 
 def register_agent(name: str, agent_class: Type[AbstractAgent]) -> None:
     """Register a new agent type.
 
     Args:
-        name: Name to register the agent under (case-insensitive).
+        name: Name to register the agent under (case-sensitive).
         agent_class: The agent class to register.
 
     Raises:
@@ -30,11 +34,11 @@ def register_agent(name: str, agent_class: Type[AbstractAgent]) -> None:
     """
     if not issubclass(agent_class, AbstractAgent):
         raise ValueError(f"Agent class must be a subclass of AbstractAgent, got {agent_class}")
-    AGENT_REGISTRY[name.lower()] = agent_class
+    AGENT_REGISTRY[name] = agent_class
 
     # Also register in TRAINABLEAGENT_REGISTRY if it's a trainable agent
     if issubclass(agent_class, AbstractTrainableAgent):
-        TRAINABLEAGENT_REGISTRY[name.lower()] = agent_class
+        TRAINABLEAGENT_REGISTRY[name] = agent_class
 
 
 def get_available_agents() -> list[str]:
@@ -113,3 +117,67 @@ def create_agent(
         agent.load(model_path)
 
     return agent
+
+
+def register_env(name: str, env_class: Type[gym.Env]) -> None:
+    """Register a new environment type.
+
+    Args:
+        name: Name to register the environment under (case-sensitive).
+        env_class: The environment class to register.
+
+    Raises:
+        ValueError: If the env class is not a subclass of gym.Env.
+    """
+    if not issubclass(env_class, gym.Env):
+        raise ValueError(f"Environment class must be a subclass of gym.Env, got {env_class}")
+    ENV_REGISTRY[name] = env_class
+
+
+def get_available_envs() -> list[str]:
+    """Get a list of available environment names.
+
+    Returns:
+        List of registered environment names.
+    """
+    return list(ENV_REGISTRY.keys())
+
+
+def create_env(
+    name: str,
+    *args,
+    **kwargs,
+) -> gym.Env:
+    """Create an environment by name.
+
+    This factory function creates an environment instance based on the given name.
+    Since different environments may have different constructor signatures, all
+    positional and keyword arguments are passed directly to the environment class.
+
+    Args:
+        name: Name of the environment to create (case-insensitive).
+        *args: Positional arguments passed to the environment constructor.
+        **kwargs: Keyword arguments passed to the environment constructor.
+
+    Returns:
+        An instance of the requested environment.
+
+    Raises:
+        ValueError: If the environment name is not recognized.
+
+    Example:
+        >>> env = create_env(
+        ...     name="abr",
+        ...     simulator=simulator,
+        ...     observer=observer,
+        ...     initial_level=0,
+        ... )
+    """
+    if name not in ENV_REGISTRY:
+        available = ", ".join(get_available_envs())
+        raise ValueError(
+            f"Unknown environment: '{name}'. Available environments: {available}"
+        )
+
+    env_class = ENV_REGISTRY[name]
+    return env_class(*args, **kwargs)
