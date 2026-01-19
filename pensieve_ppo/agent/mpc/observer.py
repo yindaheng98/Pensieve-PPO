@@ -46,6 +46,7 @@ class PredictionState:
     trace_simulator: TraceSimulator
     video_player: VideoPlayer
     bit_rate: int
+    levels_quality: list[float]
     virtual_mahimahi_ptr: int
     virtual_last_mahimahi_time: float
 
@@ -63,6 +64,8 @@ class PredictionState:
             state=self.state.copy(),
             trace_simulator=self.trace_simulator,
             video_player=self.video_player,
+            bit_rate=self.bit_rate,
+            levels_quality=self.levels_quality,
             virtual_mahimahi_ptr=self.virtual_mahimahi_ptr,
             virtual_last_mahimahi_time=self.virtual_last_mahimahi_time,
         )
@@ -204,6 +207,7 @@ class MPCABRStateObserver(RLABRStateObserver):
             trace_simulator=env.simulator.trace_simulator,
             video_player=env.simulator.video_player,
             bit_rate=initial_bit_rate,
+            levels_quality=self.levels_quality,
             virtual_mahimahi_ptr=None,
             virtual_last_mahimahi_time=None,
         )
@@ -231,6 +235,7 @@ class MPCABRStateObserver(RLABRStateObserver):
             trace_simulator=env.simulator,
             video_player=env.simulator.video_player,
             bit_rate=bit_rate,
+            levels_quality=self.levels_quality,
             virtual_mahimahi_ptr=None,
             virtual_last_mahimahi_time=None,
         )
