@@ -13,8 +13,7 @@ from typing import Callable, Optional, Tuple
 
 import torch
 
-from .agent import AbstractAgent, AbstractTrainableAgent, create_agent
-from .agent.rl.env import create_rl_env
+from .agent import AbstractAgent, AbstractTrainableAgent, create_agent, create_env
 from .agent.rl.observer import S_INFO, S_LEN
 from .gym import ABREnv
 
@@ -36,6 +35,7 @@ TEST_TRACES = './src/test/'  # https://github.com/godka/Pensieve-PPO/blob/a1b257
 
 
 def create_env_with_default(
+    name: str = 'ppo',
     levels_quality: list = VIDEO_BIT_RATE,
     trace_folder: Optional[str] = None,
     video_size_file_prefix: str = VIDEO_SIZE_FILE_PREFIX,
@@ -47,13 +47,14 @@ def create_env_with_default(
 ) -> ABREnv:
     """Create an ABREnv with default Pensieve parameters.
 
-    Wraps `create_rl_env` with default values matching the original Pensieve implementation.
+    Wraps `create_env` with default values matching the original Pensieve implementation.
     If trace_folder is None, auto-selects TRAIN_TRACES or TEST_TRACES based on train flag.
     """
     if trace_folder is None:
         trace_folder = TRAIN_TRACES if train else TEST_TRACES
 
-    return create_rl_env(
+    return create_env(
+        name=name,
         levels_quality=levels_quality,
         trace_folder=trace_folder,
         video_size_file_prefix=video_size_file_prefix,
@@ -76,7 +77,7 @@ class PicklableEnvFactory:
         env_options = self.env_options.copy()
         random_seed = env_options['random_seed'] + pid if 'random_seed' in env_options and env_options['random_seed'] is not None else None
         env_options = {**env_options, 'random_seed': random_seed}
-        return create_env_with_default(*self.args, **self.kwargs, **env_options)
+        return create_env_with_default(name=self.name, *self.args, **self.kwargs, **env_options)
 
 
 class PicklableAgentFactory:
@@ -95,7 +96,7 @@ def create_env_agent_factory_with_default(
     trace_folder: Optional[str] = None,
     train: bool = True,
     model_path: Optional[str] = None,
-    agent_name: str = 'ppo',
+    name: str = 'ppo',
     device: Optional[torch.device] = None,
     # Compatibility parameters (shared between env and agent)
     levels_quality: list = VIDEO_BIT_RATE,
@@ -120,6 +121,7 @@ def create_env_agent_factory_with_default(
 
     # Create environment factory
     env_factory = PicklableEnvFactory(
+        name=name,
         levels_quality=levels_quality,
         trace_folder=trace_folder,
         train=train,
@@ -129,7 +131,7 @@ def create_env_agent_factory_with_default(
 
     # Create agent factory
     agent_factory = PicklableAgentFactory(
-        name=agent_name,
+        name=name,
         state_dim=state_dim,
         action_dim=action_dim,
         device=device,
