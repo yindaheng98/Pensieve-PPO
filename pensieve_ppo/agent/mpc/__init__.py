@@ -10,7 +10,7 @@ Reference:
 """
 
 from .agent_oracle import OracleMPCAgent
-from .observer import OracleMPCABRStateObserver, OracleMPCState
+from .observer_oracle import OracleMPCABRStateObserver, OracleMPCState
 from .env import create_oracle_mpc_env
 from ..registry import register_agent, register_env
 

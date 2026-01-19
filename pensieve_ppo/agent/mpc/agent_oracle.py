@@ -13,7 +13,7 @@ from typing import List, Tuple
 
 
 from ..abc import AbstractAgent
-from .observer import OracleMPCState
+from .observer_oracle import OracleMPCState
 
 
 # MPC Parameters
