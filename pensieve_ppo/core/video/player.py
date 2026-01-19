@@ -28,7 +28,7 @@ class VideoPlayer:
         """
         self.video_chunk_counter = 0
 
-    def get_chunk_size(self, quality: int) -> int:
+    def get_chunk_size(self, quality: int, chunk_idx: int = None) -> int:
         """Get the size of current chunk at given quality level.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L54
@@ -39,7 +39,7 @@ class VideoPlayer:
         Returns:
             Chunk size in bytes
         """
-        return self._video_data.get_chunk_size(quality, self.video_chunk_counter)
+        return self._video_data.get_chunk_size(quality, chunk_idx or self.video_chunk_counter)
 
     def get_next_chunk_sizes(self) -> List[int]:
         """Get sizes of next chunk at all quality levels.
