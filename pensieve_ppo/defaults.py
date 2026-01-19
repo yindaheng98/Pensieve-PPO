@@ -68,28 +68,25 @@ def create_env_with_default(
 class PicklableEnvFactory:
     """Callable factory for creating ABREnv instances."""
 
-    def __init__(self, *args, env_options: dict = {}, **kwargs):
+    def __init__(self, *args, random_seed=None, **kwargs):
         self.args = args
-        self.env_options = env_options
         self.kwargs = kwargs
+        self.random_seed = random_seed
 
     def __call__(self, pid: int) -> ABREnv:
-        env_options = self.env_options.copy()
-        random_seed = env_options['random_seed'] + pid if 'random_seed' in env_options and env_options['random_seed'] is not None else None
-        env_options = {**env_options, 'random_seed': random_seed}
-        return create_env_with_default(name=self.name, *self.args, **self.kwargs, **env_options)
+        random_seed = (self.random_seed + pid) if self.random_seed is not None else None
+        return create_env_with_default(*self.args, random_seed=random_seed, **self.kwargs)
 
 
 class PicklableAgentFactory:
     """Callable factory for creating AbstractTrainableAgent instances (for training)."""
 
-    def __init__(self, *args, agent_options: dict = {}, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.args = args
-        self.agent_options = agent_options
         self.kwargs = kwargs
 
     def __call__(self) -> AbstractTrainableAgent:
-        return create_agent(*self.args, **self.kwargs, **self.agent_options)  # type: ignore[return-value]
+        return create_agent(*self.args, **self.kwargs)  # type: ignore[return-value]
 
 
 def create_env_agent_factory_with_default(
@@ -126,7 +123,7 @@ def create_env_agent_factory_with_default(
         trace_folder=trace_folder,
         train=train,
         state_history_len=state_history_len,
-        env_options=env_options,
+        **env_options,
     )
 
     # Create agent factory
@@ -136,7 +133,7 @@ def create_env_agent_factory_with_default(
         action_dim=action_dim,
         device=device,
         model_path=model_path,
-        agent_options=agent_options,
+        **agent_options,
     )
 
     return env_factory, agent_factory
