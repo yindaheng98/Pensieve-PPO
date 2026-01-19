@@ -57,7 +57,8 @@ class BBAAgent(AbstractAgent):
         self.action_dim = action_dim
         self.reservoir = reservoir
         self.cushion = cushion
-        logging.warning(f"kwargs are ignored in BBAAgent: {kwargs}")
+        if kwargs:
+            logging.warning(f"kwargs are ignored in BBAAgent: {kwargs}")
 
     def get_bitrate_from_buffer(self, buffer_size: float) -> int:
         """Compute bitrate level from buffer size using BBA algorithm.

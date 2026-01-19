@@ -85,7 +85,8 @@ class OracleMPCAgent(AbstractAgent):
         self.chunk_combo_options = list(
             itertools.product(range(action_dim), repeat=future_chunk_count)
         )
-        logging.warning(f"kwargs are ignored in OracleMPCAgent: {kwargs}")
+        if kwargs:
+            logging.warning(f"kwargs are ignored in OracleMPCAgent: {kwargs}")
 
     def compute_combo_reward(
         self,
