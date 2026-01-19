@@ -6,19 +6,19 @@ configured with MPC-specific observers.
 
 from ...gym import ABREnv
 from ..rl.env import create_rl_env_with_observer_cls
-from .observer import MPCABRStateObserver
+from .observer import OracleABRStateObserver
 
 
-def create_mpc_env(*args, **kwargs) -> ABREnv:
+def create_oracle_env(*args, **kwargs) -> ABREnv:
     """Create an ABREnv with MPC-specific state observer.
 
-    This function creates an ABREnv configured with MPCABRStateObserver,
-    which provides a PredictionState that includes methods for computing
+    This function creates an ABREnv configured with OracleABRStateObserver,
+    which provides an OracleState that includes methods for computing
     future download times, enabling the MPC algorithm to plan ahead using
     actual future bandwidth information.
 
     This is a convenience wrapper around create_rl_env_with_observer_cls
-    with observer_cls=MPCABRStateObserver. See that function for full
+    with observer_cls=OracleABRStateObserver. See that function for full
     parameter documentation.
 
     Args:
@@ -32,10 +32,10 @@ def create_mpc_env(*args, **kwargs) -> ABREnv:
             - initial_level: Initial quality level index on reset.
 
     Returns:
-        Configured ABREnv instance with MPCABRStateObserver.
+        Configured ABREnv instance with OracleABRStateObserver.
     """
     return create_rl_env_with_observer_cls(
-        observer_cls=MPCABRStateObserver,
+        observer_cls=OracleABRStateObserver,
         *args,
         **kwargs,
     )

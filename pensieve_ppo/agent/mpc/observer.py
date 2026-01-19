@@ -27,7 +27,7 @@ BITS_IN_BYTE = 8.0
 
 
 @dataclass
-class PredictionState:
+class OracleState:
     """State class for MPC algorithm with future prediction capabilities.
 
     This is a mostly read-only dataclass that wraps the numpy state array
@@ -50,17 +50,17 @@ class PredictionState:
     virtual_mahimahi_ptr: int
     virtual_last_mahimahi_time: float
 
-    def copy(self) -> 'PredictionState':
-        """Create a copy of this PredictionState.
+    def copy(self) -> 'OracleState':
+        """Create a copy of this OracleState.
 
         Creates a deep copy of the state array while sharing references to
         trace_simulator and video_player. Virtual pointers are copied so each
         instance maintains its own prediction state.
 
         Returns:
-            A new PredictionState with copied state array and virtual pointers.
+            A new OracleState with copied state array and virtual pointers.
         """
-        return PredictionState(
+        return OracleState(
             state=self.state.copy(),
             trace_simulator=self.trace_simulator,
             video_player=self.video_player,
@@ -185,15 +185,15 @@ class PredictionState:
         return buffer_size_ms / MILLISECONDS_IN_SECOND
 
 
-class MPCABRStateObserver(RLABRStateObserver):
+class OracleABRStateObserver(RLABRStateObserver):
     """State observer for MPC algorithm with future bandwidth prediction.
 
-    This observer extends RLABRStateObserver to provide PredictionState objects
+    This observer extends RLABRStateObserver to provide OracleState objects
     that include methods for computing future download times, enabling the
     MPC algorithm to plan ahead using actual future bandwidth information.
 
     The observer maintains virtual mahimahi pointers that are synchronized with
-    the actual trace simulator pointers. These are copied to PredictionState
+    the actual trace simulator pointers. These are copied to OracleState
     instances when they are created.
     """
 
@@ -201,17 +201,17 @@ class MPCABRStateObserver(RLABRStateObserver):
         self,
         env: ABREnv,
         initial_bit_rate: int,
-    ) -> PredictionState:
-        """Build initial PredictionState on reset.
+    ) -> OracleState:
+        """Build initial OracleState on reset.
 
         Args:
             env: The ABREnv instance to observe.
             initial_bit_rate: Initial bitrate level index.
 
         Returns:
-            Initial PredictionState with zero state array and synchronized virtual pointers.
+            Initial OracleState with zero state array and synchronized virtual pointers.
         """
-        state = PredictionState(
+        state = OracleState(
             state=super().build_and_set_initial_state(env, initial_bit_rate),
             trace_simulator=env.simulator.trace_simulator.unwrapped,
             video_player=env.simulator.video_player,
@@ -228,8 +228,8 @@ class MPCABRStateObserver(RLABRStateObserver):
         env: ABREnv,
         bit_rate: int,
         result: StepResult,
-    ) -> PredictionState:
-        """Compute new PredictionState from simulator result.
+    ) -> OracleState:
+        """Compute new OracleState from simulator result.
 
         Args:
             env: The ABREnv instance to observe.
@@ -237,9 +237,9 @@ class MPCABRStateObserver(RLABRStateObserver):
             result: Result from simulator.step().
 
         Returns:
-            New PredictionState with updated observation and synchronized virtual pointers.
+            New OracleState with updated observation and synchronized virtual pointers.
         """
-        state = PredictionState(
+        state = OracleState(
             state=super().compute_and_update_state(env, bit_rate, result),
             trace_simulator=env.simulator.trace_simulator.unwrapped,
             video_player=env.simulator.video_player,

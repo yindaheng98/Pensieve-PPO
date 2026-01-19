@@ -13,7 +13,7 @@ from typing import List, Tuple
 
 
 from ..abc import AbstractAgent
-from .observer import PredictionState
+from .observer import OracleState
 
 
 # MPC Parameters
@@ -31,7 +31,7 @@ REBUF_PENALTY = 4.3
 SMOOTH_PENALTY = 1.0
 
 
-class MPCAgent(AbstractAgent):
+class OracleMPCAgent(AbstractAgent):
     """MPC (Model Predictive Control) Agent.
 
     This agent implements the MPC algorithm that uses future bandwidth
@@ -85,11 +85,11 @@ class MPCAgent(AbstractAgent):
         self.chunk_combo_options = list(
             itertools.product(range(action_dim), repeat=future_chunk_count)
         )
-        logging.warning(f"kwargs are ignored in MPCAgent: {kwargs}")
+        logging.warning(f"kwargs are ignored in OracleMPCAgent: {kwargs}")
 
     def compute_combo_reward(
         self,
-        state: PredictionState,
+        state: OracleState,
         combo: Tuple[int, ...],
         last_index: int,
         start_buffer: float,
@@ -104,7 +104,7 @@ class MPCAgent(AbstractAgent):
             https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py#L190-L223
 
         Args:
-            state: PredictionState with future prediction capabilities.
+            state: OracleState with future prediction capabilities.
                    Virtual pointers should be reset before calling.
             combo: Tuple of bitrate levels for future chunks.
             last_index: Index of the last downloaded chunk.
@@ -151,7 +151,7 @@ class MPCAgent(AbstractAgent):
 
         return reward
 
-    def select_action(self, state: PredictionState) -> Tuple[int, List[float]]:
+    def select_action(self, state: OracleState) -> Tuple[int, List[float]]:
         """Select an action using MPC algorithm with future bandwidth.
 
         This method iterates through all possible combinations of bitrate
@@ -165,18 +165,18 @@ class MPCAgent(AbstractAgent):
             https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py#L145-L237
 
         Args:
-            state: PredictionState containing current observation and
+            state: OracleState containing current observation and
                    methods for future prediction.
 
         Returns:
             Tuple of (selected_action_index, action_probabilities).
             The action_prob is a one-hot encoding since MPC is deterministic.
         """
-        # Check if state is PredictionState
-        if not isinstance(state, PredictionState):
+        # Check if state is OracleState
+        if not isinstance(state, OracleState):
             raise TypeError(
-                f"MPCAgent requires PredictionState, got {type(state).__name__}. "
-                "Use MPCABRStateObserver with this agent."
+                f"OracleMPCAgent requires OracleState, got {type(state).__name__}. "
+                "Use OracleABRStateObserver with this agent."
             )
 
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py#L176-L189
