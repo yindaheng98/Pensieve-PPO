@@ -8,12 +8,17 @@ Reference:
 
 from .agent import BBAAgent
 from .observer import BBAStateObserver
-from ..registry import register_agent
+from .env import create_bba_env
+from ..registry import register_agent, register_env
 
 # Register BBA agent
 register_agent("bba", BBAAgent)
 
+# Register BBA environment
+register_env("bba", create_bba_env)
+
 __all__ = [
     'BBAAgent',
     'BBAStateObserver',
+    'create_bba_env',
 ]
