@@ -129,8 +129,6 @@ def register_env(name: str, env_class: Type[gym.Env]) -> None:
     Raises:
         ValueError: If the env class is not a subclass of gym.Env.
     """
-    if not issubclass(env_class, gym.Env):
-        raise ValueError(f"Environment class must be a subclass of gym.Env, got {env_class}")
     ENV_REGISTRY[name] = env_class
 
 
@@ -180,4 +178,7 @@ def create_env(
         )
 
     env_class = ENV_REGISTRY[name]
-    return env_class(*args, **kwargs)
+    env = env_class(*args, **kwargs)
+    if not isinstance(env, gym.Env):
+        raise ValueError(f"Environment class must be a subclass of gym.Env, got {env.__class__}")
+    return env
