@@ -8,6 +8,7 @@ Reference:
 """
 
 import itertools
+import logging
 from typing import List, Tuple
 
 
@@ -61,6 +62,7 @@ class MPCAgent(AbstractAgent):
         rebuf_penalty: float = REBUF_PENALTY,
         smooth_penalty: float = SMOOTH_PENALTY,
         video_chunk_len: float = VIDEO_CHUNK_LEN,
+        **kwargs,
     ):
         """Initialize the MPC agent.
 
@@ -83,6 +85,7 @@ class MPCAgent(AbstractAgent):
         self.chunk_combo_options = list(
             itertools.product(range(action_dim), repeat=future_chunk_count)
         )
+        logging.warning(f"kwargs are ignored in MPCAgent: {kwargs}")
 
     def compute_combo_reward(
         self,
