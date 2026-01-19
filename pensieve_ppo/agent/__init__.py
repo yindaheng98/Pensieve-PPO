@@ -11,6 +11,7 @@ from .registry import create_agent, register_agent, get_available_agents, get_av
 # Import agent implementations to trigger registration
 from . import rl  # noqa: F401
 from . import bba  # noqa: F401
+from . import mpc  # noqa: F401
 
 __all__ = [
     'AbstractAgent',
@@ -29,4 +30,5 @@ __all__ = [
     'get_available_envs',
     'rl',
     'bba',
+    'mpc',
 ]
