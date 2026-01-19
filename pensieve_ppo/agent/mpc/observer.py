@@ -188,7 +188,7 @@ class MPCABRStateObserver(RLABRStateObserver):
     instances when they are created.
     """
 
-    def build_initial_state(
+    def build_and_set_initial_state(
         self,
         env: ABREnv,
         initial_bit_rate: int,
@@ -203,7 +203,7 @@ class MPCABRStateObserver(RLABRStateObserver):
             Initial PredictionState with zero state array and synchronized virtual pointers.
         """
         state = PredictionState(
-            state=super().build_initial_state(env, initial_bit_rate),
+            state=super().build_and_set_initial_state(env, initial_bit_rate),
             trace_simulator=env.simulator.trace_simulator,
             video_player=env.simulator.video_player,
             bit_rate=initial_bit_rate,
@@ -214,7 +214,7 @@ class MPCABRStateObserver(RLABRStateObserver):
         state.reset_download_time()
         return state
 
-    def compute_state(
+    def compute_and_update_state(
         self,
         env: ABREnv,
         bit_rate: int,
@@ -231,7 +231,7 @@ class MPCABRStateObserver(RLABRStateObserver):
             New PredictionState with updated observation and synchronized virtual pointers.
         """
         state = PredictionState(
-            state=super().compute_state(env, bit_rate, result),
+            state=super().compute_and_update_state(env, bit_rate, result),
             trace_simulator=env.simulator,
             video_player=env.simulator.video_player,
             bit_rate=bit_rate,

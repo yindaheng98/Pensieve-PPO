@@ -97,7 +97,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         """Number of available bitrate levels."""
         return len(self.levels_quality)
 
-    def build_initial_state(
+    def build_and_set_initial_state(
         self,
         env: ABREnv,
         initial_bit_rate: int,
@@ -112,6 +112,8 @@ class RLABRStateObserver(AbstractABRStateObserver):
             Initial state array.
         """
         state = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
+        # Set internal state
+        self.state = state
         return state
 
     def build_initial_info_dict(
@@ -153,9 +155,9 @@ class RLABRStateObserver(AbstractABRStateObserver):
             )
 
         self.last_bit_rate = initial_bit_rate
-        self.state = self.build_initial_state(env, initial_bit_rate)
+        state = self.build_and_set_initial_state(env, initial_bit_rate)
         info = self.build_initial_info_dict(env, initial_bit_rate)
-        return self.state.copy(), info
+        return state.copy(), info
 
     def compute_reward(
         self,
@@ -185,7 +187,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
 
         return reward
 
-    def compute_state(
+    def compute_and_update_state(
         self,
         env: ABREnv,
         bit_rate: int,
@@ -226,6 +228,9 @@ class RLABRStateObserver(AbstractABRStateObserver):
             next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
         state[5, -1] = np.minimum(video_chunk_remain,
                                   env.simulator.video_player.total_chunks) / float(env.simulator.video_player.total_chunks)
+
+        # Update internal state
+        self.state = state
 
         return state
 
@@ -274,13 +279,12 @@ class RLABRStateObserver(AbstractABRStateObserver):
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L90-L104
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L52-L66
-        state = self.compute_state(env, bit_rate, result)
+        state = self.compute_and_update_state(env, bit_rate, result)
 
         # Update internal state
-        self.state = state
         self.last_bit_rate = bit_rate
 
         # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
         info = self.build_info_dict(env, bit_rate, result)
 
-        return self.state.copy(), reward, info
+        return state.copy(), reward, info

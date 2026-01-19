@@ -40,7 +40,7 @@ class BBAStateObserver(RLABRStateObserver):
             dtype=np.float32
         )
 
-    def build_initial_state(
+    def build_and_set_initial_state(
         self,
         env: ABREnv,
         initial_bit_rate: int,
@@ -57,9 +57,12 @@ class BBAStateObserver(RLABRStateObserver):
             Initial state array with shape (1,) containing buffer_size.
         """
         # Initial buffer is empty (0 seconds)
-        return np.array([0.0], dtype=np.float32)
+        state = np.array([0.0], dtype=np.float32)
+        # Set internal state
+        self.state = state
+        return state
 
-    def compute_state(
+    def compute_and_update_state(
         self,
         env: ABREnv,
         bit_rate: int,
@@ -79,4 +82,7 @@ class BBAStateObserver(RLABRStateObserver):
         """
         # BBA only needs buffer_size (in seconds, not normalized)
         buffer_size = result.buffer_size
-        return np.array([buffer_size], dtype=np.float32)
+        state = np.array([buffer_size], dtype=np.float32)
+        # Set internal state
+        self.state = state
+        return state
