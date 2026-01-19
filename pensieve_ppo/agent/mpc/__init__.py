@@ -10,8 +10,9 @@ Reference:
 """
 
 from .agent_oracle import OracleMPCAgent
+from .observer import MPCABRStateObserver, MPCState
 from .observer_oracle import OracleMPCABRStateObserver, OracleMPCState
-from .env import create_oracle_mpc_env
+from .env import create_mpc_env, create_oracle_mpc_env
 from ..registry import register_agent, register_env
 
 # Register MPC agent
@@ -22,7 +23,10 @@ register_env("mpc-oracle", create_oracle_mpc_env)
 
 __all__ = [
     'OracleMPCAgent',
+    'MPCABRStateObserver',
+    'MPCState',
     'OracleMPCABRStateObserver',
     'OracleMPCState',
+    'create_mpc_env',
     'create_oracle_mpc_env',
 ]
