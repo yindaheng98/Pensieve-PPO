@@ -7,7 +7,7 @@ Reference:
     https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py
 """
 
-from .agent import OracleMPCAgent
+from .agent_oracle import OracleMPCAgent
 from .observer import OracleABRStateObserver, OracleState
 from .env import create_oracle_env
 from ..registry import register_agent, register_env
