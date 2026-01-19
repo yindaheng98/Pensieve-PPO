@@ -8,6 +8,7 @@ Reference:
     https://github.com/GenetProject/Genet/blob/main/src/simulator/abr_simulator/bba.py
 """
 
+import logging
 from typing import List, Tuple
 
 import numpy as np
@@ -43,6 +44,7 @@ class BBAAgent(AbstractAgent):
         action_dim: int,
         reservoir: float = RESERVOIR,
         cushion: float = CUSHION,
+        **kwargs,
     ):
         """Initialize the BBA agent.
 
@@ -55,6 +57,7 @@ class BBAAgent(AbstractAgent):
         self.action_dim = action_dim
         self.reservoir = reservoir
         self.cushion = cushion
+        logging.warning(f"kwargs are ignored in BBAAgent: {kwargs}")
 
     def get_bitrate_from_buffer(self, buffer_size: float) -> int:
         """Compute bitrate level from buffer size using BBA algorithm.
