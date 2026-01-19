@@ -6,10 +6,10 @@ configured with MPC-specific observers.
 
 from ...gym import ABREnv
 from ..rl.env import create_rl_env_with_observer_cls
-from .observer import OracleABRStateObserver
+from .observer import OracleMPCABRStateObserver
 
 
-def create_oracle_env(*args, **kwargs) -> ABREnv:
+def create_oracle_mpc_env(*args, **kwargs) -> ABREnv:
     """Create an ABREnv with MPC-specific state observer.
 
     This function creates an ABREnv configured with OracleABRStateObserver,
@@ -35,7 +35,7 @@ def create_oracle_env(*args, **kwargs) -> ABREnv:
         Configured ABREnv instance with OracleABRStateObserver.
     """
     return create_rl_env_with_observer_cls(
-        observer_cls=OracleABRStateObserver,
+        observer_cls=OracleMPCABRStateObserver,
         *args,
         **kwargs,
     )

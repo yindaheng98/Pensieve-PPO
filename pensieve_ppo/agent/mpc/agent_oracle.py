@@ -13,7 +13,7 @@ from typing import List, Tuple
 
 
 from ..abc import AbstractAgent
-from .observer import OracleState
+from .observer import OracleMPCState
 
 
 # MPC Parameters
@@ -90,7 +90,7 @@ class OracleMPCAgent(AbstractAgent):
 
     def compute_combo_reward(
         self,
-        state: OracleState,
+        state: OracleMPCState,
         combo: Tuple[int, ...],
         last_index: int,
         start_buffer: float,
@@ -152,7 +152,7 @@ class OracleMPCAgent(AbstractAgent):
 
         return reward
 
-    def select_action(self, state: OracleState) -> Tuple[int, List[float]]:
+    def select_action(self, state: OracleMPCState) -> Tuple[int, List[float]]:
         """Select an action using MPC algorithm with future bandwidth.
 
         This method iterates through all possible combinations of bitrate
@@ -174,7 +174,7 @@ class OracleMPCAgent(AbstractAgent):
             The action_prob is a one-hot encoding since MPC is deterministic.
         """
         # Check if state is OracleState
-        if not isinstance(state, OracleState):
+        if not isinstance(state, OracleMPCState):
             raise TypeError(
                 f"OracleMPCAgent requires OracleState, got {type(state).__name__}. "
                 "Use OracleABRStateObserver with this agent."
