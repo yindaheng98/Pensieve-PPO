@@ -154,8 +154,17 @@ class PredictionState:
 
     @property
     def video_chunk_counter(self) -> int:
-        """Get current video chunk index from video player."""
-        return self.video_player.video_chunk_counter - 1
+        """Get current video chunk index from video player.
+
+        This corresponds to last_index in the original MPC code:
+        last_index = int(CHUNK_TIL_VIDEO_END_CAP - video_chunk_remain)
+                   = TOTAL_CHUNKS - (TOTAL_CHUNKS - video_chunk_counter)
+                   = video_chunk_counter
+
+        Reference:
+            https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py#L177
+        """
+        return self.video_player.video_chunk_counter
 
     @property
     def total_chunks(self) -> int:
@@ -204,7 +213,7 @@ class MPCABRStateObserver(RLABRStateObserver):
         """
         state = PredictionState(
             state=super().build_and_set_initial_state(env, initial_bit_rate),
-            trace_simulator=env.simulator.trace_simulator,
+            trace_simulator=env.simulator.trace_simulator.unwrapped,
             video_player=env.simulator.video_player,
             bit_rate=initial_bit_rate,
             levels_quality=self.levels_quality,
@@ -232,7 +241,7 @@ class MPCABRStateObserver(RLABRStateObserver):
         """
         state = PredictionState(
             state=super().compute_and_update_state(env, bit_rate, result),
-            trace_simulator=env.simulator,
+            trace_simulator=env.simulator.trace_simulator.unwrapped,
             video_player=env.simulator.video_player,
             bit_rate=bit_rate,
             levels_quality=self.levels_quality,

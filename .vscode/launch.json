@@ -30,7 +30,8 @@
             "module": "pensieve_ppo.test",
             "args": [
                 // "--model-path=src/pretrain/nn_model_ep_155400.pth",
-                "--agent-name=bba",
+                // "--agent-name=bba",
+                "--agent-name=mpc",
             ],
             "cwd": "${workspaceFolder}",
         },

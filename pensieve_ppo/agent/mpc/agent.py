@@ -181,10 +181,22 @@ class MPCAgent(AbstractAgent):
 
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py#L176-L189
         # future chunks length (try 4 if that many remaining)
-        last_index = state.video_chunk_counter
+        #
+        # Bug fix: The original pensieve code has an off-by-one error.
+        # After get_video_chunk(), video_chunk_counter is incremented, so it points to the
+        # NEXT chunk to download. The original code computes:
+        #   last_index = CHUNK_TIL_VIDEO_END_CAP - video_chunk_remain = video_chunk_counter
+        # Then uses: index = last_index + position + 1
+        # This means for position=0, it predicts for chunk (video_chunk_counter + 1),
+        # but the next download is actually for chunk video_chunk_counter.
+        #
+        # Fix: Subtract 1 so last_index represents the last DOWNLOADED chunk index.
+        # Then index = last_index + position + 1 correctly gives video_chunk_counter for position=0.
+        last_index = state.video_chunk_counter - 1
+        # Remaining chunks = total - video_chunk_counter = total - (last_index + 1)
         future_chunk_length = self.future_chunk_count
-        if (state.total_chunks - last_index < self.future_chunk_count):
-            future_chunk_length = state.total_chunks - last_index
+        if (state.total_chunks - state.video_chunk_counter < self.future_chunk_count):
+            future_chunk_length = state.total_chunks - state.video_chunk_counter
 
         # all possible combinations of 5 chunk bitrates (9^5 options)
         # iterate over list and for each, compute reward and store max reward combination
@@ -202,7 +214,6 @@ class MPCAgent(AbstractAgent):
                 combo=combo,
                 last_index=last_index,
                 start_buffer=start_buffer,
-                last_quality=state.bit_rate,
             )
 
             # Update best if this is better
