@@ -200,7 +200,7 @@ if __name__ == '__main__':
     trainer = prepare_training(
         trace_folder=args.train_trace_folder,
         model_path=None,
-        agent_name=args.agent_name,
+        name=args.agent_name,
         device=args.device,
         levels_quality=args.levels_quality,
         state_history_len=args.state_history_len,

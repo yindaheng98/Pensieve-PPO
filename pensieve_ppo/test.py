@@ -225,7 +225,7 @@ def main(args):
     env, agent = prepare_testing(
         trace_folder=args.test_trace_folder,
         model_path=args.model_path,
-        agent_name=args.agent_name,
+        name=args.agent_name,
         device=args.device,
         levels_quality=args.levels_quality,
         state_history_len=args.state_history_len,
