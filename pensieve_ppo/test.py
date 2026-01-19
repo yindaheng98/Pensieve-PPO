@@ -8,6 +8,7 @@ Reference:
 """
 
 import argparse
+import glob
 import os
 from typing import Dict, Tuple
 
@@ -175,12 +176,11 @@ def calculate_test_statistics(log_file_prefix: str) -> Dict[str, float]:
         Dictionary with statistics: min, 5th percentile, mean, median, 
         95th percentile, max rewards, and avg entropy.
     """
-    log_folder = os.path.dirname(log_file_prefix)
     rewards, entropies = [], []
-    test_log_files = os.listdir(log_folder)
+    test_log_files = glob.glob(log_file_prefix + "*")
     for test_log_file in test_log_files:
         reward, entropy = [], []
-        with open(os.path.join(log_folder, test_log_file), 'rb') as f:
+        with open(test_log_file, 'rb') as f:
             for line in f:
                 parse = line.split()
                 try:
