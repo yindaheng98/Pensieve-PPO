@@ -4,16 +4,15 @@ This module provides a state observer for MPC (Model Predictive Control) algorit
 that includes future bandwidth information for decision making.
 
 Reference:
-    https://github.com/godka/pensieve/test/mpc_future_bandwidth.py
-    https://github.com/godka/pensieve/test/fixed_env_future_bandwidth.py
+    https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py
+    https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/fixed_env_future_bandwidth.py
 """
 
 from dataclasses import dataclass
 
 import numpy as np
-from gymnasium import spaces
 
-from ..rl.observer import RLABRStateObserver, S_INFO
+from ..rl import RLABRStateObserver
 from ...core.simulator import StepResult
 from ...gym import ABREnv
 
@@ -152,7 +151,7 @@ class PredictionState:
     @property
     def video_chunk_counter(self) -> int:
         """Get current video chunk index from video player."""
-        return self.video_player.video_chunk_counter
+        return self.video_player.video_chunk_counter - 1
 
     @property
     def total_chunks(self) -> int:
