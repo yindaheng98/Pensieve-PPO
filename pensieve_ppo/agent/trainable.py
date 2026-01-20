@@ -40,23 +40,17 @@ class Step:
     done: bool
 
 
-@dataclass
 class TrainingBatch:
-    """A batch of training data produced from a trajectory.
+    """Abstract base class for training batches.
 
-    Contains observations, actions, action probabilities, and computed value
-    targets, ready to be used for training the agent.
+    This is an abstract container for training data produced from a trajectory.
+    Subclasses should define the specific data fields needed for their training
+    algorithm.
 
-    Attributes:
-        s_batch: List of observations (states).
-        a_batch: List of actions (one-hot encoded).
-        p_batch: List of action probabilities.
-        v_batch: List of computed value targets (returns).
+    For RL algorithms, see RLTrainingBatch in abcrl.py which contains
+    observations, actions, action probabilities, and computed value targets.
     """
-    s_batch: List[np.ndarray]
-    a_batch: List[List[int]]
-    p_batch: List[List[float]]
-    v_batch: List[float]
+    pass
 
 
 class AbstractTrainableAgent(AbstractAgent):

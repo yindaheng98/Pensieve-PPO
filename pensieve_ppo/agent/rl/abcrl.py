@@ -4,6 +4,7 @@ This module provides the abstract base class hierarchy for all RL agents:
 - AbstractAgent: Base class with select_action
 - AbstractTrainableAgent: Adds training infrastructure methods
 - AbstractRLAgent: Adds RL-specific training methods (train, compute_v)
+- RLTrainingBatch: Training batch with RL-specific data fields
 
 Specific algorithms (e.g., PPO, A2C) should inherit from AbstractRLAgent
 and implement the abstract methods.
@@ -13,12 +14,32 @@ Reference:
 """
 
 from abc import abstractmethod
+from dataclasses import dataclass
 from typing import Dict, List
 
 import numpy as np
 
 
 from .. import Step, TrainingBatch, AbstractTrainableAgent
+
+
+@dataclass
+class RLTrainingBatch(TrainingBatch):
+    """A batch of training data for reinforcement learning.
+
+    Contains observations, actions, action probabilities, and computed value
+    targets, ready to be used for training RL agents.
+
+    Attributes:
+        s_batch: List of observations (states).
+        a_batch: List of actions (one-hot encoded).
+        p_batch: List of action probabilities.
+        v_batch: List of computed value targets (returns).
+    """
+    s_batch: List[np.ndarray]
+    a_batch: List[List[int]]
+    p_batch: List[List[float]]
+    v_batch: List[float]
 
 
 class AbstractRLAgent(AbstractTrainableAgent):
@@ -80,7 +101,7 @@ class AbstractRLAgent(AbstractTrainableAgent):
         self,
         trajectory: List[Step],
         done: bool,
-    ) -> TrainingBatch:
+    ) -> RLTrainingBatch:
         """Produce a training batch from a trajectory.
 
         Extracts observations, actions, rewards, and action probabilities from
@@ -106,7 +127,7 @@ class AbstractRLAgent(AbstractTrainableAgent):
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L161
         v_batch = self.compute_v(s_batch, a_batch, r_batch, done)
 
-        return TrainingBatch(
+        return RLTrainingBatch(
             s_batch=s_batch,
             a_batch=a_batch,
             p_batch=p_batch,
@@ -115,7 +136,7 @@ class AbstractRLAgent(AbstractTrainableAgent):
 
     def train_batch(
         self,
-        training_batches: List[TrainingBatch],
+        training_batches: List[RLTrainingBatch],
         epoch: int,
     ) -> Dict[str, float]:
         """Train on multiple training batches.
