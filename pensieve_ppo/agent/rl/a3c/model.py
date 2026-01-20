@@ -13,6 +13,7 @@ import torch.nn.functional as F
 
 
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/a3c.py#L7
+# https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/multi_agent.py#L14
 A_DIM = 6
 
 # Feature number for hidden layers (from original TF implementation)
@@ -83,12 +84,13 @@ class Actor(nn.Module):
         self.fc3 = nn.Linear(1, feature_num)
 
         # Calculate convolution output sizes
-        # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/a3c.py#L72-L74
+        # Note: conv output length calculation (not explicitly in TF code, handled by tflearn.flatten)
         conv_out_len = self.s_dim[1] - kernel_size + 1  # For s_len history
         conv_out_len_action = action_dim - kernel_size + 1  # For action dim input
 
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/a3c.py#L76
         # Merge layer input size: 2 fc outputs + 3 flattened conv outputs + 1 fc output
+        # Corresponds to: tflearn.merge([split_0, split_1, split_2_flat, split_3_flat, split_4_flat, split_5], 'concat')
         merge_size = (feature_num +  # split_0 (fc)
                       feature_num +  # split_1 (fc)
                       feature_num * conv_out_len +  # split_2 (conv flattened)
@@ -212,12 +214,13 @@ class Critic(nn.Module):
         self.fc3 = nn.Linear(1, feature_num)
 
         # Calculate convolution output sizes
-        # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/a3c.py#L170-L172
+        # Note: conv output length calculation (not explicitly in TF code, handled by tflearn.flatten)
         conv_out_len = self.s_dim[1] - kernel_size + 1  # For s_len history
         conv_out_len_action = action_dim - kernel_size + 1  # For action dim input
 
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/a3c.py#L174
         # Merge layer input size
+        # Corresponds to: tflearn.merge([split_0, split_1, split_2_flat, split_3_flat, split_4_flat, split_5], 'concat')
         merge_size = (feature_num +  # split_0 (fc)
                       feature_num +  # split_1 (fc)
                       feature_num * conv_out_len +  # split_2 (conv flattened)
