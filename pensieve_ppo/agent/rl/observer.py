@@ -215,6 +215,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         Returns:
             The computed state array (same reference as self.state).
         """
+        chunk_til_video_end_cap = env.simulator.video_player.total_chunks
         # Unpack result (matches original variable names)
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L75-L78
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L48-L51
@@ -242,7 +243,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         state[4, :self.bitrate_levels] = np.array(
             next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
         state[5, -1] = np.minimum(video_chunk_remain,
-                                  env.simulator.video_player.total_chunks) / float(env.simulator.video_player.total_chunks)
+                                  chunk_til_video_end_cap) / float(chunk_til_video_end_cap)
 
         # Update internal state
         self.state = state
