@@ -184,7 +184,7 @@ def add_training_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Train Pensieve PPO agent')
+    parser = argparse.ArgumentParser(description='Train Pensieve agent')
     add_env_agent_arguments(parser, available_agents=get_available_trainable_agents())
     add_testing_arguments(parser)
     add_training_arguments(parser)

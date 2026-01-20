@@ -245,7 +245,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Test Pensieve PPO agent')
+    parser = argparse.ArgumentParser(description='Test Pensieve agent')
     add_env_agent_arguments(parser, available_agents=get_available_agents())
     add_testing_arguments(parser)
     args = parser.parse_args()
