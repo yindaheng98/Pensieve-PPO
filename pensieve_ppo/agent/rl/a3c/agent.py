@@ -17,6 +17,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 from .. import AbstractRLAgent
+from ..observer import RLState
 from .model import Actor, Critic
 
 
@@ -212,7 +213,7 @@ class A3CAgent(AbstractRLAgent):
             action_prob = self.actor(state)[0]
             return action_prob.cpu().tolist()
 
-    def select_action(self, state: np.ndarray) -> Tuple[int, List[float]]:
+    def select_action(self, state: RLState) -> Tuple[int, List[float]]:
         """Select an action using probability-based sampling.
 
         This method uses cumulative distribution function sampling as in the
@@ -236,7 +237,7 @@ class A3CAgent(AbstractRLAgent):
         action = (action_cumsum > np.random.randint(1, RAND_RANGE) / float(RAND_RANGE)).argmax()
         return int(action), action_prob
 
-    def select_action_for_training(self, state: np.ndarray) -> Tuple[int, List[float]]:
+    def select_action_for_training(self, state: RLState) -> Tuple[int, List[float]]:
         """Select an action using probability-based sampling for training.
 
         Same as select_action for A3C (no separate exploration strategy like Gumbel noise).
@@ -254,7 +255,7 @@ class A3CAgent(AbstractRLAgent):
 
     def compute_v(
         self,
-        s_batch: List[np.ndarray],
+        s_batch: List[RLState],
         a_batch: List[List[int]],
         r_batch: List[float],
         terminal: bool,
@@ -286,7 +287,8 @@ class A3CAgent(AbstractRLAgent):
         else:
             with torch.no_grad():
                 # Bootstrap from last state's value
-                s_tensor = torch.from_numpy(np.array(s_batch)).to(torch.float32).to(self.device)
+                # Extract state arrays from RLState objects
+                s_tensor = torch.from_numpy(np.array([np.asarray(state) for state in s_batch])).to(torch.float32).to(self.device)
                 val = self.critic(s_tensor)
                 R_batch[-1, 0] = val[-1, 0].item()  # boot strap from last state
 

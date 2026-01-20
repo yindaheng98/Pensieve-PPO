@@ -18,6 +18,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 from .. import AbstractRLAgent
+from ..observer import RLState
 from .model import QNetwork
 
 
@@ -286,7 +287,7 @@ class DQNAgent(AbstractRLAgent):
             q_values = self.eval_net(state)[0]
             return q_values.cpu().numpy()
 
-    def select_action(self, state: np.ndarray) -> Tuple[int, List[float]]:
+    def select_action(self, state: RLState) -> Tuple[int, List[float]]:
         """Select an action using greedy policy (for testing).
 
         Reference:
@@ -305,7 +306,7 @@ class DQNAgent(AbstractRLAgent):
 
     def select_action_for_training(
         self,
-        state: np.ndarray,
+        state: RLState,
         epsilon: float = 0.0,
     ) -> Tuple[int, List[float]]:
         """Select an action using epsilon-greedy policy (for training).
@@ -332,7 +333,7 @@ class DQNAgent(AbstractRLAgent):
 
     def compute_v(
         self,
-        s_batch: List[np.ndarray],
+        s_batch: List[RLState],
         a_batch: List[List[int]],
         r_batch: List[float],
         terminal: bool,

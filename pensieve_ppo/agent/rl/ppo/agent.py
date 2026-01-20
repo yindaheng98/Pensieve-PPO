@@ -16,6 +16,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 from .. import AbstractRLAgent
+from ..observer import RLState
 from .model import Actor, Critic
 
 
@@ -190,7 +191,7 @@ class PPOAgent(AbstractRLAgent):
             pi = self.actor.forward(state)[0]
             return pi.cpu().tolist()
 
-    def select_action(self, state: np.ndarray) -> Tuple[int, List[float]]:
+    def select_action(self, state: RLState) -> Tuple[int, List[float]]:
         """Select an action using Gumbel-softmax sampling.
 
         This method uses Gumbel noise for action selection, which has been
@@ -211,7 +212,7 @@ class PPOAgent(AbstractRLAgent):
         action = np.argmax(np.log(action_prob) + noise)
         return int(action), action_prob
 
-    def select_action_for_training(self, state: np.ndarray) -> Tuple[int, List[float]]:
+    def select_action_for_training(self, state: RLState) -> Tuple[int, List[float]]:
         """Select an action using Gumbel-softmax sampling for exploration.
 
         This implements the action selection strategy used in the original
@@ -235,7 +236,7 @@ class PPOAgent(AbstractRLAgent):
 
     def compute_v(
         self,
-        s_batch: List[np.ndarray],
+        s_batch: List[RLState],
         a_batch: List[List[int]],
         r_batch: List[float],
         terminal: bool,
@@ -261,7 +262,8 @@ class PPOAgent(AbstractRLAgent):
             R_batch[-1] = r_batch[-1]  # terminal state
         else:
             with torch.no_grad():
-                s_tensor = torch.from_numpy(np.array(s_batch)).to(torch.float32).to(self.device)
+                # Extract state arrays from RLState objects
+                s_tensor = torch.from_numpy(np.array([np.asarray(state) for state in s_batch])).to(torch.float32).to(self.device)
                 val = self.critic.forward(s_tensor)
                 R_batch[-1] = val[-1].item()  # bootstrap from last state
 

@@ -16,6 +16,11 @@ from ...core.simulator import StepResult
 from ...gym.env import AbstractABRStateObserver, ABREnv
 
 
+# Type alias for RL state representation.
+# RL agents use numpy arrays directly as state observations.
+RLState = np.ndarray
+
+
 # State dimensions
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L8
 S_INFO = 6  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
@@ -87,7 +92,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         # State tracking (initialized in reset)
         # Note: self.state is the internal state, which may differ from
         # the state returned to external callers (see observe() method)
-        self.state: Optional[np.ndarray] = None
+        self.state: Optional[RLState] = None
         self.last_bit_rate: int = 0
 
     @property
@@ -109,7 +114,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         self,
         env: ABREnv,
         initial_bit_rate: int,
-    ) -> np.ndarray:
+    ) -> RLState:
         """Build initial state representation on reset.
 
         Args:
@@ -117,7 +122,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
             initial_bit_rate: Initial bitrate level index.
 
         Returns:
-            Initial state array.
+            Initial state as RLState (np.ndarray).
         """
         state = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
         # Set internal state
@@ -145,7 +150,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         self,
         env: ABREnv,
         initial_bit_rate: int = 0,
-    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+    ) -> Tuple[RLState, Dict[str, Any]]:
         """Reset observer state and return initial observation.
 
         Args:
@@ -200,7 +205,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         env: ABREnv,
         bit_rate: int,
         result: StepResult,
-    ) -> np.ndarray:
+    ) -> RLState:
         """Compute new state representation from simulator result.
 
         This method updates the internal state (self.state) and returns it.
@@ -213,7 +218,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
             result: Result from simulator.step().
 
         Returns:
-            The computed state array (same reference as self.state).
+            The computed state as RLState (np.ndarray) (same reference as self.state).
         """
         chunk_til_video_end_cap = env.simulator.video_player.total_chunks
         # Unpack result (matches original variable names)
@@ -277,7 +282,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         env: ABREnv,
         bit_rate: int,
         result: StepResult,
-    ) -> Tuple[np.ndarray, float, Dict[str, Any]]:
+    ) -> Tuple[RLState, float, Dict[str, Any]]:
         """Process simulator result: compute reward and update state.
 
         Note:

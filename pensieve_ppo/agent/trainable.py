@@ -13,13 +13,13 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Tuple, List, TYPE_CHECKING
 
-import numpy as np
 import torch
 
 if TYPE_CHECKING:
     from torch.utils.tensorboard import SummaryWriter
 
 from .abc import AbstractAgent
+from ..gym import State
 
 
 @dataclass
@@ -27,12 +27,12 @@ class Step:
     """A single environment step.
 
     Attributes:
-        observation: State observation.
+        state: State observation.
         action: Action (one-hot encoded).
         action_prob: Action probability distribution.
         reward: Reward received.
     """
-    observation: np.ndarray
+    state: State
     action: List[int]
     action_prob: List[float]
     reward: float
@@ -66,7 +66,7 @@ class AbstractTrainableAgent(AbstractAgent):
     """
 
     @abstractmethod
-    def select_action_for_training(self, state: np.ndarray) -> Tuple[int, List[float]]:
+    def select_action_for_training(self, state: State) -> Tuple[int, List[float]]:
         """Select an action using Gumbel-softmax sampling for exploration.
 
         This implements the action selection strategy used in the original
@@ -77,7 +77,7 @@ class AbstractTrainableAgent(AbstractAgent):
             https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
 
         Args:
-            state: Input state with shape (s_dim[0], s_dim[1]).
+            state: Input state.
 
         Returns:
             Tuple of (selected_action_index, action_probabilities).

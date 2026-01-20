@@ -10,7 +10,7 @@ Reference:
 from abc import ABC, abstractmethod
 from typing import Tuple, List
 
-import numpy as np
+from ..gym import State
 
 
 class AbstractAgent(ABC):
@@ -21,11 +21,11 @@ class AbstractAgent(ABC):
     """
 
     @abstractmethod
-    def select_action(self, state: np.ndarray) -> Tuple[int, List[float]]:
+    def select_action(self, state: State) -> Tuple[int, List[float]]:
         """Select an action for a given state.
 
         Args:
-            state: Input state with shape (s_dim[0], s_dim[1]).
+            state: Input state.
 
         Returns:
             Tuple of (selected_action_index, action_probabilities).

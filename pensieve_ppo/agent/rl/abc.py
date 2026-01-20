@@ -21,6 +21,7 @@ import numpy as np
 
 
 from .. import Step, TrainingBatch, AbstractTrainableAgent
+from .observer import RLState
 
 
 @dataclass
@@ -36,7 +37,7 @@ class RLTrainingBatch(TrainingBatch):
         p_batch: List of action probabilities.
         v_batch: List of computed value targets (returns).
     """
-    s_batch: List[np.ndarray]
+    s_batch: List[RLState]
     a_batch: List[List[int]]
     p_batch: List[List[float]]
     v_batch: List[float]
@@ -79,7 +80,7 @@ class AbstractRLAgent(AbstractTrainableAgent):
     @abstractmethod
     def compute_v(
         self,
-        s_batch: List[np.ndarray],
+        s_batch: List[RLState],
         a_batch: List[List[int]],
         r_batch: List[float],
         terminal: bool,
@@ -117,7 +118,7 @@ class AbstractRLAgent(AbstractTrainableAgent):
         """
         # Extract data from steps
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L143
-        s_batch = [step.observation for step in trajectory]
+        s_batch = [step.state for step in trajectory]
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-158
         a_batch = [step.action for step in trajectory]
         r_batch = [step.reward for step in trajectory]
@@ -160,7 +161,8 @@ class AbstractRLAgent(AbstractTrainableAgent):
             p += batch.p_batch
             v += batch.v_batch
 
-        s_batch = np.stack(s, axis=0)
+        # Extract state arrays from RLState objects for stacking
+        s_batch = np.stack([np.asarray(state) for state in s], axis=0)
         a_batch = np.vstack(a)
         p_batch = np.vstack(p)
         v_batch = np.vstack(v)
