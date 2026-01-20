@@ -21,11 +21,13 @@ class QNetwork(nn.Module):
 
     This network takes a state as input and outputs Q-values for each action.
     The architecture processes different parts of the state separately
-    using fully connected layers and then merges them.
+    using fully connected layers and 1D convolutions, then merges them.
 
-    Note: Unlike the A3C implementation which uses 1D convolutions, the original
-    DQN implementation uses fully connected layers for all state components.
-    This follows the exact architecture from dqn.py.
+    Note: The original TensorFlow implementation uses tflearn.conv_1d with
+    kernel_size=1. In TF, conv_1d interprets input as (batch, steps, channels),
+    so (batch, 1, s_len) means 1 step and s_len channels. With kernel_size=1,
+    this is equivalent to a Linear layer from s_len to feature_num.
+    We use Linear layers here to match this behavior exactly.
 
     Reference:
         https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L16-L52
@@ -52,43 +54,44 @@ class QNetwork(nn.Module):
         self.a_dim = action_dim
         self.feature_num = feature_num
 
-        # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L18-L23
+        # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L18
         # split_0: last quality (scalar -> feature_num)
         # inputs[:, 0:1, -1] -> (batch, 1)
-        self.fc1 = nn.Linear(1, feature_num)
+        self.fc0 = nn.Linear(1, feature_num)
 
+        # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L19
         # split_1: buffer size (scalar -> feature_num)
         # inputs[:, 1:2, -1] -> (batch, 1)
-        self.fc2 = nn.Linear(1, feature_num)
+        self.fc1 = nn.Linear(1, feature_num)
 
-        # split_2: throughput history (1D conv with kernel=1)
-        # inputs[:, 2:3, :] -> (batch, 1, s_len)
-        # tflearn.conv_1d with kernel=1 is equivalent to Linear on last dim
-        self.conv1 = nn.Conv1d(1, feature_num, kernel_size=1)
+        # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L20
+        # split_2: throughput history
+        # In TF: tflearn.conv_1d(inputs[:, 2:3, :], FEATURE_NUM, 1)
+        # Input (batch, 1, s_len) in TF is (batch, 1 step, s_len channels)
+        # conv_1d with kernel=1 outputs (batch, 1, FEATURE_NUM), flattened to (batch, FEATURE_NUM)
+        # This is equivalent to Linear(s_len, feature_num)
+        self.fc2 = nn.Linear(state_dim[1], feature_num)
 
-        # split_3: download time history (1D conv with kernel=1)
-        # inputs[:, 3:4, :] -> (batch, 1, s_len)
-        self.conv2 = nn.Conv1d(1, feature_num, kernel_size=1)
+        # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L21
+        # split_3: download time history
+        # Same structure as split_2
+        self.fc3 = nn.Linear(state_dim[1], feature_num)
 
-        # split_4: next chunk sizes (1D conv with kernel=1)
-        # inputs[:, 4:5, :a_dim] -> (batch, 1, a_dim)
-        self.conv3 = nn.Conv1d(1, feature_num, kernel_size=1)
+        # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L22
+        # split_4: next chunk sizes
+        # Input: inputs[:, 4:5, :a_dim] -> (batch, 1, a_dim)
+        # Equivalent to Linear(a_dim, feature_num)
+        self.fc4 = nn.Linear(action_dim, feature_num)
 
+        # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L23
         # split_5: chunks remaining (scalar -> feature_num)
         # inputs[:, 5:6, -1] -> (batch, 1)
-        self.fc3 = nn.Linear(1, feature_num)
+        self.fc5 = nn.Linear(1, feature_num)
 
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L29
         # Merge layer input size:
-        # split_0 (feature_num) + split_1 (feature_num) +
-        # split_2 (feature_num * s_len) + split_3 (feature_num * s_len) +
-        # split_4 (feature_num * a_dim) + split_5 (feature_num)
-        merge_size = (feature_num +  # split_0
-                      feature_num +  # split_1
-                      feature_num * self.s_dim[1] +  # split_2 flattened
-                      feature_num * self.s_dim[1] +  # split_3 flattened
-                      feature_num * action_dim +  # split_4 flattened
-                      feature_num)  # split_5
+        # All 6 splits output feature_num each, so total is 6 * feature_num
+        merge_size = feature_num * 6
 
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L30
         self.fc_merge = nn.Linear(merge_size, feature_num)
@@ -111,34 +114,30 @@ class QNetwork(nn.Module):
         """
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L18
         # split_0: inputs[:, 0:1, -1] -> last quality (batch, 1)
-        split_0 = F.relu(self.fc1(inputs[:, 0:1, -1]))
+        split_0 = F.relu(self.fc0(inputs[:, 0:1, -1]))
 
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L19
         # split_1: inputs[:, 1:2, -1] -> buffer size (batch, 1)
-        split_1 = F.relu(self.fc2(inputs[:, 1:2, -1]))
+        split_1 = F.relu(self.fc1(inputs[:, 1:2, -1]))
 
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L20
-        # split_2: inputs[:, 2:3, :] -> throughput history
-        # Conv1d expects (batch, channels, length)
-        split_2 = F.relu(self.conv1(inputs[:, 2:3, :]))
-        split_2_flat = split_2.view(split_2.size(0), -1)
+        # split_2: inputs[:, 2, :] -> throughput history (batch, s_len)
+        split_2 = F.relu(self.fc2(inputs[:, 2, :]))
 
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L21
-        # split_3: inputs[:, 3:4, :] -> download time history
-        split_3 = F.relu(self.conv2(inputs[:, 3:4, :]))
-        split_3_flat = split_3.view(split_3.size(0), -1)
+        # split_3: inputs[:, 3, :] -> download time history (batch, s_len)
+        split_3 = F.relu(self.fc3(inputs[:, 3, :]))
 
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L22
-        # split_4: inputs[:, 4:5, :self.a_dim] -> next chunk sizes
-        split_4 = F.relu(self.conv3(inputs[:, 4:5, :self.a_dim]))
-        split_4_flat = split_4.view(split_4.size(0), -1)
+        # split_4: inputs[:, 4, :a_dim] -> next chunk sizes (batch, a_dim)
+        split_4 = F.relu(self.fc4(inputs[:, 4, :self.a_dim]))
 
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L23
-        # split_5: inputs[:, 5:6, -1] -> chunks remaining
-        split_5 = F.relu(self.fc3(inputs[:, 5:6, -1]))
+        # split_5: inputs[:, 5:6, -1] -> chunks remaining (batch, 1)
+        split_5 = F.relu(self.fc5(inputs[:, 5:6, -1]))
 
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L29
-        merge_net = torch.cat([split_0, split_1, split_2_flat, split_3_flat, split_4_flat, split_5], dim=1)
+        merge_net = torch.cat([split_0, split_1, split_2, split_3, split_4, split_5], dim=1)
 
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L30-L31
         net = F.relu(self.fc_merge(merge_net))

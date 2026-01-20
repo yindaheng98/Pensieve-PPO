@@ -10,6 +10,7 @@ from .observer import RLABRStateObserver
 # Import agent implementations to trigger registration
 from . import ppo  # noqa: F401
 from . import a3c  # noqa: F401
+from . import dqn  # noqa: F401
 
 __all__ = [
     'AbstractRLAgent',
@@ -18,4 +19,5 @@ __all__ = [
     'create_rl_env',
     'ppo',
     'a3c',
+    'dqn',
 ]
