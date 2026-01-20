@@ -20,7 +20,9 @@
             "type": "debugpy",
             "request": "launch",
             "module": "pensieve_ppo.train",
-            "args": [],
+            "args": [
+                "--agent-name=a3c",
+            ],
             "cwd": "${workspaceFolder}",
         },
         {
