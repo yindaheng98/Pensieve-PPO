@@ -47,6 +47,8 @@ class OracleMPCState(MPCState):
             video_player=self.video_player,
             bit_rate=self.bit_rate,
             levels_quality=self.levels_quality,
+            rebuf_penalty=self.rebuf_penalty,
+            smooth_penalty=self.smooth_penalty,
             virtual_mahimahi_ptr=self.virtual_mahimahi_ptr,
             virtual_last_mahimahi_time=self.virtual_last_mahimahi_time,
         )

@@ -27,8 +27,6 @@ VIDEO_CHUNK_LEN = 4.0  # seconds
 # Reward parameters
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py#L19-L21
 M_IN_K = 1000.0
-REBUF_PENALTY = 4.3
-SMOOTH_PENALTY = 1.0
 
 
 class OracleMPCAgent(AbstractAgent):
@@ -46,12 +44,14 @@ class OracleMPCAgent(AbstractAgent):
     4. Compute total reward for the combination
     5. Select the bitrate for the current chunk from the best combination
 
+    Note:
+        rebuf_penalty and smooth_penalty are obtained from OracleMPCState, which
+        inherits these values from RLABRStateObserver via MPCState.
+
     Attributes:
         action_dim: Number of available bitrate levels.
         video_bit_rate: List of bitrate values in Kbps for each level.
         future_chunk_count: Number of future chunks to consider (default: 7).
-        rebuf_penalty: Penalty coefficient for rebuffering (default: 4.3).
-        smooth_penalty: Penalty coefficient for bitrate changes (default: 1.0).
         video_chunk_len: Video chunk length in seconds (default: 4.0).
     """
 
@@ -59,8 +59,6 @@ class OracleMPCAgent(AbstractAgent):
         self,
         action_dim: int,
         future_chunk_count: int = MPC_FUTURE_CHUNK_COUNT,
-        rebuf_penalty: float = REBUF_PENALTY,
-        smooth_penalty: float = SMOOTH_PENALTY,
         video_chunk_len: float = VIDEO_CHUNK_LEN,
         **kwargs,
     ):
@@ -69,15 +67,11 @@ class OracleMPCAgent(AbstractAgent):
         Args:
             action_dim: Number of discrete actions (bitrate levels).
             future_chunk_count: Number of future chunks to consider in MPC.
-            rebuf_penalty: Penalty coefficient for rebuffering.
-            smooth_penalty: Penalty coefficient for bitrate changes.
             video_chunk_len: Video chunk length in seconds.
             **kwargs: Additional arguments (ignored for compatibility).
         """
         self.action_dim = action_dim
         self.future_chunk_count = future_chunk_count
-        self.rebuf_penalty = rebuf_penalty
-        self.smooth_penalty = smooth_penalty
         self.video_chunk_len = video_chunk_len
 
         # Pre-compute all possible combinations of chunk bitrates
@@ -147,7 +141,7 @@ class OracleMPCAgent(AbstractAgent):
         # Compute reward for this combination
         # bitrates are in Mbits/s, rebuffer in seconds, and smoothness_diffs in Mbits/s
 
-        reward = (bitrate_sum / M_IN_K) - (self.rebuf_penalty * curr_rebuffer_time) - (smoothness_diffs / M_IN_K)
+        reward = (bitrate_sum / M_IN_K) - (state.rebuf_penalty * curr_rebuffer_time) - (state.smooth_penalty * smoothness_diffs / M_IN_K)
         # reward = bitrate_sum - (8*curr_rebuffer_time) - (smoothness_diffs)
 
         return reward

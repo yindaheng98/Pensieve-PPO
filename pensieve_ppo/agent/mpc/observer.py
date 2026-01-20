@@ -38,12 +38,16 @@ class MPCState:
         video_player: Reference to the video player for chunk information.
         bit_rate: Current bitrate level.
         levels_quality: Quality metric list for each bitrate level.
+        rebuf_penalty: Penalty coefficient for rebuffering.
+        smooth_penalty: Penalty coefficient for bitrate changes.
     """
     state: np.ndarray
     trace_simulator: TraceSimulator
     video_player: VideoPlayer
     bit_rate: int
     levels_quality: list[float]
+    rebuf_penalty: float
+    smooth_penalty: float
 
     def copy(self) -> 'MPCState':
         """Create a copy of this MPCState.
@@ -60,6 +64,8 @@ class MPCState:
             video_player=self.video_player,
             bit_rate=self.bit_rate,
             levels_quality=self.levels_quality,
+            rebuf_penalty=self.rebuf_penalty,
+            smooth_penalty=self.smooth_penalty,
         )
 
     def get_chunk_size(self, quality: int, chunk_idx: int) -> int:
@@ -139,6 +145,8 @@ class MPCABRStateObserver(RLABRStateObserver):
             video_player=env.simulator.video_player,
             bit_rate=initial_bit_rate,
             levels_quality=self.levels_quality,
+            rebuf_penalty=self.rebuf_penalty,
+            smooth_penalty=self.smooth_penalty,
         )
         return state
 
@@ -164,5 +172,7 @@ class MPCABRStateObserver(RLABRStateObserver):
             video_player=env.simulator.video_player,
             bit_rate=bit_rate,
             levels_quality=self.levels_quality,
+            rebuf_penalty=self.rebuf_penalty,
+            smooth_penalty=self.smooth_penalty,
         )
         return state

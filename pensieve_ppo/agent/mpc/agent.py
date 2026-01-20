@@ -27,8 +27,6 @@ VIDEO_CHUNK_LEN = 4.0  # seconds
 # Reward parameters
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L19-L21
 M_IN_K = 1000.0
-REBUF_PENALTY = 4.3
-SMOOTH_PENALTY = 1.0
 
 # Bandwidth history length for harmonic mean calculation
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L153
@@ -55,11 +53,14 @@ class MPCAgent(AbstractAgent):
        - Compute total reward for the combination
     4. Select the bitrate for the current chunk from the best combination
 
+    Note:
+        rebuf_penalty and smooth_penalty are obtained from MPCState, which
+        inherits these values from RLABRStateObserver.
+
     Attributes:
         action_dim: Number of available bitrate levels.
         future_chunk_count: Number of future chunks to consider (default: 5).
-        rebuf_penalty: Penalty coefficient for rebuffering (default: 4.3).
-        smooth_penalty: Penalty coefficient for bitrate changes (default: 1.0).
+        bandwidth_history_len: Number of past bandwidths for harmonic mean (default: 5).
         video_chunk_len: Video chunk length in seconds (default: 4.0).
         past_errors: List of past bandwidth prediction errors.
         past_bandwidth_ests: List of past bandwidth estimates (harmonic mean).
@@ -69,8 +70,7 @@ class MPCAgent(AbstractAgent):
         self,
         action_dim: int,
         future_chunk_count: int = MPC_FUTURE_CHUNK_COUNT,
-        rebuf_penalty: float = REBUF_PENALTY,
-        smooth_penalty: float = SMOOTH_PENALTY,
+        bandwidth_history_len: int = BANDWIDTH_HISTORY_LEN,
         video_chunk_len: float = VIDEO_CHUNK_LEN,
         **kwargs,
     ):
@@ -79,15 +79,13 @@ class MPCAgent(AbstractAgent):
         Args:
             action_dim: Number of discrete actions (bitrate levels).
             future_chunk_count: Number of future chunks to consider in MPC.
-            rebuf_penalty: Penalty coefficient for rebuffering.
-            smooth_penalty: Penalty coefficient for bitrate changes.
+            bandwidth_history_len: Number of past bandwidths for harmonic mean calculation.
             video_chunk_len: Video chunk length in seconds.
             **kwargs: Additional arguments (ignored for compatibility).
         """
         self.action_dim = action_dim
         self.future_chunk_count = future_chunk_count
-        self.rebuf_penalty = rebuf_penalty
-        self.smooth_penalty = smooth_penalty
+        self.bandwidth_history_len = bandwidth_history_len
         self.video_chunk_len = video_chunk_len
 
         # Pre-compute all possible combinations of chunk bitrates
@@ -124,11 +122,11 @@ class MPCAgent(AbstractAgent):
         Returns:
             Harmonic mean bandwidth in MB/s.
         """
-        # Get past bandwidths from state (last 5 values)
+        # Get past bandwidths from state (last N values based on bandwidth_history_len)
         # state.state[2, :] contains throughput: float(video_chunk_size) / float(delay) / M_IN_K
         # which is in units of kilo bytes / ms = MB/s
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L153
-        past_bandwidths = state.state[STATE_THROUGHPUT_IDX, -BANDWIDTH_HISTORY_LEN:]
+        past_bandwidths = state.state[STATE_THROUGHPUT_IDX, -self.bandwidth_history_len:]
 
         # Remove leading zeros (from initial state)
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L154-L155
@@ -168,11 +166,11 @@ class MPCAgent(AbstractAgent):
         # Compute harmonic mean of past bandwidths
         harmonic_bandwidth = self.compute_harmonic_mean_bandwidth(state)
 
-        # Compute max error from last 5 errors
+        # Compute max error from last N errors (based on bandwidth_history_len)
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L167-L173
         max_error = 0.0
-        error_pos = -BANDWIDTH_HISTORY_LEN
-        if len(self.past_errors) < BANDWIDTH_HISTORY_LEN:
+        error_pos = -self.bandwidth_history_len
+        if len(self.past_errors) < self.bandwidth_history_len:
             error_pos = -len(self.past_errors)
         max_error = float(max(self.past_errors[error_pos:]))
         future_bandwidth = harmonic_bandwidth / (1.0 + max_error)  # robustMPC here
@@ -228,7 +226,7 @@ class MPCAgent(AbstractAgent):
         # compute reward for this combination (one reward per 5-chunk combo)
         # bitrates are in Mbits/s, rebuffer in seconds, and smoothness_diffs in Mbits/s
 
-        reward = (bitrate_sum / M_IN_K) - (self.rebuf_penalty * curr_rebuffer_time) - (smoothness_diffs / M_IN_K)
+        reward = (bitrate_sum / M_IN_K) - (state.rebuf_penalty * curr_rebuffer_time) - (state.smooth_penalty * smoothness_diffs / M_IN_K)
         # reward = bitrate_sum - (8*curr_rebuffer_time) - (smoothness_diffs)
 
         return reward
