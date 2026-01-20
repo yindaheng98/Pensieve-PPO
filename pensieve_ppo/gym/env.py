@@ -17,6 +17,12 @@ from gymnasium import spaces
 from ..core.simulator import Simulator, StepResult
 
 
+# Type alias for state representation.
+# Each observer implementation defines its own concrete state type
+# (e.g., np.ndarray for RL agents, custom dataclass for other agents).
+State = Any
+
+
 class AbstractABRStateObserver(ABC):
     """Abstract base class for ABR state observers.
 
@@ -40,7 +46,7 @@ class AbstractABRStateObserver(ABC):
         self,
         env: "ABREnv",
         initial_bit_rate: int = 0,
-    ) -> Tuple[Any, Dict[str, Any]]:
+    ) -> Tuple[State, Dict[str, Any]]:
         """Reset observer state and return initial observation.
 
         Args:
@@ -58,7 +64,7 @@ class AbstractABRStateObserver(ABC):
         env: "ABREnv",
         bit_rate: int,
         result: StepResult,
-    ) -> Tuple[Any, float, Dict[str, Any]]:
+    ) -> Tuple[State, float, Dict[str, Any]]:
         """Process simulator result: compute reward and update state.
 
         Args:
@@ -136,7 +142,7 @@ class ABREnv(gym.Env):
         *,
         seed: Optional[int] = None,
         options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[Any, Dict[str, Any]]:
+    ) -> Tuple[State, Dict[str, Any]]:
         """Reset the environment to initial state.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L42-L47
@@ -181,7 +187,7 @@ class ABREnv(gym.Env):
 
     def step(
         self, action: Union[int, np.ndarray]
-    ) -> Tuple[Any, float, bool, bool, Dict[str, Any]]:
+    ) -> Tuple[State, float, bool, bool, Dict[str, Any]]:
         """Execute one step in the environment.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L72-L106
