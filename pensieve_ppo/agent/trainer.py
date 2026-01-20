@@ -176,7 +176,7 @@ class Trainer:
 
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L143
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-158
-                trajectory.append(Step(observation=obs, action=action_vec, action_prob=action_prob, reward=rew))
+                trajectory.append(Step(observation=obs, action=action_vec, action_prob=action_prob, reward=rew, step=step, done=done))
 
                 obs = next_obs
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L159-160

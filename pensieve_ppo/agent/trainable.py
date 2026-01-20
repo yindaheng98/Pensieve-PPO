@@ -36,6 +36,8 @@ class Step:
     action: List[int]
     action_prob: List[float]
     reward: float
+    step: int
+    done: bool
 
 
 @dataclass
