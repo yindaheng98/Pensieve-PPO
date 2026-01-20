@@ -32,8 +32,9 @@
                 // "--agent-name=ppo",
                 // "--model-path=src/pretrain/nn_model_ep_155400.pth",
                 // "--agent-name=bba",
-                "--agent-name=mpc-oracle",
-                "-ofuture_chunk_count=5"
+                // "--agent-name=mpc-oracle",
+                "--agent-name=mpc",
+                "-ofuture_chunk_count=3",
             ],
             "cwd": "${workspaceFolder}",
         },
