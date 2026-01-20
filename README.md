@@ -100,6 +100,153 @@ pensieve_ppo/
 └── test.py                # Testing script
 ```
 
+## Architecture
+
+### Agent Class Hierarchy
+
+The agent system follows a hierarchical inheritance structure:
+
+```
+AbstractAgent
+    ├── select_action(state) -> (action, action_prob)
+    │
+    └── AbstractTrainableAgent
+        ├── select_action_for_training(state) -> (action, action_prob)
+        ├── produce_training_batch(trajectory, done) -> TrainingBatch
+        ├── train_batch(training_batches, epoch) -> metrics
+        ├── get_params() -> params
+        ├── set_params(params) -> None
+        ├── save(path) -> None
+        └── load(path) -> None
+            │
+            └── AbstractRLAgent
+                ├── train(s_batch, a_batch, p_batch, v_batch, epoch) -> metrics
+                ├── compute_v(s_batch, a_batch, r_batch, terminal) -> v_batch
+                ├── produce_training_batch(trajectory, done) -> RLTrainingBatch  # Implemented
+                └── train_batch(training_batches, epoch) -> metrics  # Implemented
+```
+
+**AbstractAgent** (`pensieve_ppo.agent.abc.AbstractAgent`):
+- Base class for all agents
+- Defines the minimal interface: `select_action(state)` method
+- Used for inference-only agents that don't require training
+
+**AbstractTrainableAgent** (`pensieve_ppo.agent.trainable.AbstractTrainableAgent`):
+- Extends `AbstractAgent` with training infrastructure
+- Adds methods for:
+  - Training-time action selection (`select_action_for_training`)
+  - Converting trajectories to training batches (`produce_training_batch`)
+  - Training on batches (`train_batch`)
+  - Model persistence (`save`, `load`, `get_params`, `set_params`)
+- Abstract methods must be implemented by subclasses
+
+**AbstractRLAgent** (`pensieve_ppo.agent.rl.abc.AbstractRLAgent`):
+- Extends `AbstractTrainableAgent` with RL-specific functionality
+- Implements `produce_training_batch` and `train_batch` using RL methods
+- Requires subclasses to implement:
+  - `train()`: Core training logic (e.g., PPO, A3C, DQN)
+  - `compute_v()`: Value target computation (returns/advantages)
+- Concrete implementations: `PPOAgent`, `A3CAgent`, `DQNAgent`, etc.
+
+### Agent, Observer, and Trainer Relationships
+
+**AbstractABRStateObserver** (`pensieve_ppo.gym.env.AbstractABRStateObserver`):
+- Abstract interface for state observation and reward calculation
+- Decouples state representation from environment dynamics
+- Methods:
+  - `reset(env, initial_bit_rate) -> (state, info)`: Initialize state
+  - `observe(env, bit_rate, result) -> (state, reward, info)`: Update state and compute reward
+- Implementations:
+  - `RLABRStateObserver`: For RL agents (returns `np.ndarray` states)
+  - `MPCABRStateObserver`: For MPC-based agents (returns `MPCState` dataclass)
+  - `NetLLMABRStateObserver`: For NetLLM agents (returns `NetLLMState`)
+
+**ABREnv** (`pensieve_ppo.gym.env.ABREnv`):
+- Gymnasium-compatible environment wrapper
+- Uses an `AbstractABRStateObserver` instance to:
+  - Observe states from simulator results
+  - Compute rewards based on actions and results
+- The observer is injected via constructor, allowing different state representations for different agent types
+
+**Trainer** (`pensieve_ppo.agent.trainer.Trainer`):
+- Coordinates distributed training with multiple parallel workers
+- Architecture:
+  - **Central Agent**: Aggregates experiences from workers, updates model, distributes parameters
+  - **Worker Agents**: Collect experiences by interacting with environments
+- Uses `AbstractTrainableAgent` interface:
+  - Workers call `select_action_for_training()` for exploration
+  - Workers call `produce_training_batch()` to convert trajectories
+  - Central agent calls `train_batch()` to update the model
+  - Parameters synchronized via `get_params()` and `set_params()`
+
+**Relationship Flow**:
+```
+Trainer
+  ├── Creates multiple (env, agent) pairs via factories
+  ├── Workers: env.step(action) -> observer.observe() -> state, reward
+  ├── Workers: agent.select_action_for_training(state) -> action
+  ├── Workers: agent.produce_training_batch(trajectory) -> TrainingBatch
+  └── Central: agent.train_batch(batches) -> updates model
+```
+
+### State, Step, and TrainingBatch
+
+**State** (`pensieve_ppo.gym.env.State`):
+- Type alias: `State = Any`
+- Represents environment observations
+- Concrete type depends on the observer:
+  - `RLState` (`np.ndarray`) for RL agents: shape `(S_INFO, S_LEN)` = `(6, 8)`
+  - `MPCState` (dataclass) for MPC agents
+  - `NetLLMState` (dataclass) for NetLLM agents
+- Used in:
+  - `AbstractAgent.select_action(state)`
+  - `AbstractTrainableAgent.select_action_for_training(state)`
+  - `Step.state` field
+
+**Step** (`pensieve_ppo.agent.trainable.Step`):
+- Dataclass representing a single environment step
+- Fields:
+  - `state: State`: Observation at this step
+  - `action: List[int]`: One-hot encoded action (e.g., `[0, 0, 1, 0, 0, 0]`)
+  - `action_prob: List[float]`: Action probability distribution from agent
+  - `reward: float`: Reward received
+  - `step: int`: Step index within trajectory
+  - `done: bool`: Whether episode terminated/truncated
+- Usage:
+  - Collected during environment rollout in `Trainer._agent_worker()`
+  - Stored in `trajectory: List[Step]`
+  - Converted to `TrainingBatch` via `produce_training_batch()`
+
+**TrainingBatch** (`pensieve_ppo.agent.trainable.TrainingBatch`):
+- Abstract base class for training data containers
+- Subclasses define algorithm-specific fields:
+  - **RLTrainingBatch** (`pensieve_ppo.agent.rl.abc.RLTrainingBatch`):
+    - `s_batch: List[RLState]`: States
+    - `a_batch: List[List[int]]`: One-hot actions
+    - `p_batch: List[List[float]]`: Action probabilities
+    - `v_batch: List[float]`: Computed value targets (returns)
+  - **NetLLMTrainingBatch** (`pensieve_ppo.agent.netllm.abc.NetLLMTrainingBatch`):
+    - `states: List[torch.Tensor]`: State tensors
+    - `actions: List[int]`: Action indices
+    - `returns: List[float]`: Return-to-go values
+    - `timesteps: List[int]`: Timestep indices
+    - `labels: List[int]`: Target labels
+- Usage:
+  - Created by `produce_training_batch(trajectory)` from `List[Step]`
+  - Multiple batches aggregated in `train_batch(List[TrainingBatch])`
+  - Converted to numpy arrays/tensors for actual training
+
+**Data Flow**:
+```
+Environment Step
+  → Step(state, action, action_prob, reward, step, done)
+  → Collected in trajectory: List[Step]
+  → produce_training_batch(trajectory)
+  → TrainingBatch (e.g., RLTrainingBatch)
+  → train_batch([TrainingBatch, ...])
+  → Model update
+```
+
 ## API Reference
 
 ### Creating Environment and Agent

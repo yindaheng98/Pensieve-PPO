@@ -118,7 +118,8 @@ class AbstractRLAgent(AbstractTrainableAgent):
         """
         # Extract data from steps
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L143
-        s_batch = [step.state for step in trajectory]
+        # Note: step.state is State (Any), but for RL agents it should be RLState (np.ndarray)
+        s_batch: List[RLState] = [step.state for step in trajectory]  # type: ignore[assignment]
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-158
         a_batch = [step.action for step in trajectory]
         r_batch = [step.reward for step in trajectory]

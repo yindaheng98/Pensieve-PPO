@@ -27,10 +27,12 @@ class Step:
     """A single environment step.
 
     Attributes:
-        state: State observation.
-        action: Action (one-hot encoded).
-        action_prob: Action probability distribution.
-        reward: Reward received.
+        state: State observation (type depends on observer, e.g., RLState for RL agents).
+        action: Action (one-hot encoded as List[int]).
+        action_prob: Action probability distribution from the agent.
+        reward: Reward received from the environment.
+        step: Step index within the trajectory (0-indexed).
+        done: Whether the episode terminated or was truncated.
     """
     state: State
     action: List[int]
