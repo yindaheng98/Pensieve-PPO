@@ -22,6 +22,9 @@ from ..rl import RLABRStateObserver
 from ...core.simulator import StepResult
 from ...gym import ABREnv
 
+# Reference: NetLLM/adaptive_bitrate_streaming/baseline_special/utils/constants.py#L15
+S_LEN = 6
+
 
 @dataclass
 class NetLLMState:
@@ -71,6 +74,7 @@ class NetLLMABRStateObserver(RLABRStateObserver):
     def __init__(
         self,
         *args,
+        state_history_len: int = S_LEN,
         max_return: float = 0.0,
         **kwargs,
     ):
@@ -81,7 +85,7 @@ class NetLLMABRStateObserver(RLABRStateObserver):
                        Copy from: evaluate.py#L13 target_return parameter
             *args, **kwargs: Passed to RLABRStateObserver.
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, state_history_len=state_history_len, **kwargs)
 
         self.max_return = max_return
 
