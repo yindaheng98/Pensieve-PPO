@@ -9,11 +9,12 @@ Reference:
 """
 
 import multiprocessing as mp
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Union
 
 import gymnasium as gym
 import torch
 
+from .abc import AbstractAgent
 from .trainable import AbstractTrainableAgent, Step, TrainingBatch
 
 
@@ -54,12 +55,15 @@ class Trainer:
         pretrained_model_path: Optional[str] = None,
         on_epoch_end: Callable[[int, AbstractTrainableAgent, Dict], None] = EpochEndCallback(),
         on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = SaveModelCallback(),
+        # additional parameter to allow different agent implementations for workers
+        agent_factory_for_worker: Optional[Callable[[], Union[AbstractAgent, AbstractTrainableAgent]]] = None,
+        sync_params: bool = True,
     ):
         """Initialize the trainer.
 
         Args:
             env_factory: Factory function (agent_id: int) -> env.
-            agent_factory: Factory function () -> AbstractTrainableAgent.
+            agent_factory: Factory function () -> AbstractTrainableAgent for central agent.
             parallel_workers: Number of parallel worker agents for distributed training.
             steps_per_epoch: Number of environment steps each worker collects per epoch.
             train_epochs: Total number of training epochs.
@@ -68,6 +72,12 @@ class Trainer:
             pretrained_model_path: Path to pre-trained model to load (optional).
             on_epoch_end: Callback invoked at the end of each epoch.
             on_save_model: Callback invoked when model is saved.
+            agent_factory_for_worker: Factory function () -> AbstractAgent | AbstractTrainableAgent
+                for worker agents. If None, uses agent_factory. This allows workers to use a
+                different (possibly lighter) agent implementation than the central agent.
+            sync_params: Whether to synchronize network parameters from central agent to workers.
+                If True, workers must use AbstractTrainableAgent (requires set_params).
+                If False, workers can use any AbstractAgent and params sync is skipped.
         """
         self.env_factory = env_factory
         self.agent_factory = agent_factory
@@ -79,6 +89,11 @@ class Trainer:
         self.nn_model = pretrained_model_path
         self.on_epoch_end = on_epoch_end
         self.on_save_model = on_save_model
+
+        # additional parameter to allow different agent implementations for workers
+        # If agent_factory_for_worker is not provided, default to agent_factory
+        self.agent_factory_for_worker = agent_factory_for_worker if agent_factory_for_worker is not None else agent_factory
+        self.sync_params = sync_params
 
     def central_agent(
         self,
@@ -109,8 +124,11 @@ class Trainer:
 
         # while True:  # assemble training batches from agents, compute the gradients
         for epoch in range(self.train_epochs):
-            # synchronize the network parameters of work agent
-            actor_net_params = actor.get_params()
+            # Synchronize the network parameters to worker agents.
+            # If sync_params=True, send actual params for workers to update their models.
+            # If sync_params=False, send None as a signal to proceed (no param sync needed,
+            # e.g., when workers use a different non-trainable agent like LLM-based agent).
+            actor_net_params = actor.get_params() if self.sync_params else None
             for i in range(self.num_agents):
                 net_params_queues[i].put(actor_net_params)
 
@@ -146,28 +164,54 @@ class Trainer:
     ) -> None:
         """Worker agent that collects experiences.
 
+        The worker can use either AbstractTrainableAgent or AbstractAgent depending on
+        agent_factory_for_worker and sync_params settings:
+
+        - If sync_params=True: Worker agent must be AbstractTrainableAgent because we need
+          set_params() to synchronize network parameters from central agent. Action selection
+          uses select_action_for_training() for exploration.
+
+        - If sync_params=False: Worker agent can be any AbstractAgent (including non-trainable
+          agents like LLM-based agents). No parameter sync occurs. Action selection uses
+          select_action() if the agent is not AbstractTrainableAgent, or
+          select_action_for_training() if it is.
+
         Reference:
             https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L130-L165
 
         Args:
             agent_id: Unique identifier for this agent.
-            net_params_queue: Queue for receiving network parameters.
+            net_params_queue: Queue for receiving network parameters (or None if sync_params=False).
             exp_queue: Queue for sending experiences.
         """
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L131-L140
         env = self.env_factory(agent_id)
-        actor = self.agent_factory()
+        # Use agent_factory_for_worker to create the worker agent.
+        # This allows workers to use a different agent implementation than the central agent.
+        actor = self.agent_factory_for_worker()
 
-        # initial synchronization of the network parameters from the coordinator
         actor_net_params = net_params_queue.get()
-        actor.set_params(actor_net_params)
+        if self.sync_params:
+            # If sync_params=True, the worker agent MUST be AbstractTrainableAgent because we need set_params() to synchronize network parameters.
+            assert isinstance(actor, AbstractTrainableAgent), (
+                "sync_params=True requires worker agent to be AbstractTrainableAgent "
+                "(needs set_params() for parameter synchronization). "
+                f"Got {type(actor).__name__} instead."
+            )
+            actor.set_params(actor_net_params)
 
         for epoch in range(self.train_epochs):
             obs, _ = env.reset()
             trajectory: List[Step] = []
             for step in range(self.train_seq_len):
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
-                action, action_prob = actor.select_action_for_training(obs)
+                # Action selection strategy depends on whether the actor is trainable:
+                # - AbstractTrainableAgent: use select_action_for_training() which includes exploration noise (e.g., Gumbel-softmax sampling)
+                # - AbstractAgent: use select_action() which is typically deterministic (e.g., for LLM-based agents that don't need exploration noise)
+                if isinstance(actor, AbstractTrainableAgent):
+                    action, action_prob = actor.select_action_for_training(obs)
+                else:
+                    action, action_prob = actor.select_action(obs)
 
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L152
                 next_obs, rew, terminated, truncated, info = env.step(action)
@@ -185,12 +229,19 @@ class Trainer:
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L159-160
                 if done:
                     break
-            # as the actor in central agent and worker agent may be different, we should not produce the training batch here
+            # As the actor in central agent and worker agent may be different, we should not produce the training batch here
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L162
             exp_queue.put((trajectory, done))
 
             actor_net_params = net_params_queue.get()
-            actor.set_params(actor_net_params)
+            if self.sync_params:
+                # If sync_params=True, the worker agent MUST be AbstractTrainableAgent because we need set_params() to synchronize network parameters.
+                assert isinstance(actor, AbstractTrainableAgent), (
+                    "sync_params=True requires worker agent to be AbstractTrainableAgent "
+                    "(needs set_params() for parameter synchronization). "
+                    f"Got {type(actor).__name__} instead."
+                )
+                actor.set_params(actor_net_params)
 
     def train(self) -> None:
         """Start distributed training.
