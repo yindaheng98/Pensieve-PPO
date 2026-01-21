@@ -26,6 +26,14 @@
             "cwd": "${workspaceFolder}",
         },
         {
+            "name": "imitate",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pensieve_ppo.imitate",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+        },
+        {
             "name": "test",
             "type": "debugpy",
             "request": "launch",
