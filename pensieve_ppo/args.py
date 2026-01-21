@@ -25,9 +25,9 @@ def add_env_agent_arguments(parser: argparse.ArgumentParser, available_agents: L
     parser.add_argument('--test-trace-folder', type=str, default=TEST_TRACES,
                         help=f"Folder containing network bandwidth trace files for testing "
                              f"(default: '{TEST_TRACES}')")
-    parser.add_argument('--agent-name', type=str, default=available_agents[0],
+    parser.add_argument('--agent-name', type=str, default='ppo',
                         choices=available_agents,
-                        help=f"Algorithm to use (default: '{available_agents[0]}')")
+                        help=f"Algorithm to use (default: 'ppo')")
     parser.add_argument('--model-path', type=str, default=None,
                         help="Path to load pre-trained model weights (default: None)")
     parser.add_argument('--device', type=str, default=None,
