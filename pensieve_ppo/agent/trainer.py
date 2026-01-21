@@ -117,7 +117,10 @@ class Trainer:
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L102-L112
             training_batches: List[TrainingBatch] = []
             for i in range(self.num_agents):
-                training_batch = exp_queues[i].get()
+                trajectory, done = exp_queues[i].get()
+                # as the actor in central agent and worker agent may be different, we should produce the training batch here
+                # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L161-L165
+                training_batch = actor.produce_training_batch(trajectory, done)
                 training_batches.append(training_batch)
 
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L102-L114
@@ -176,15 +179,15 @@ class Trainer:
 
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L143
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-158
-                trajectory.append(Step(state=obs, action=action_vec, action_prob=action_prob, reward=rew, step=step, done=done))
+                trajectory.append(Step(state=obs, action=action_vec, action_prob=action_prob, reward=rew, step=step))
 
                 obs = next_obs
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L159-160
                 if done:
                     break
-            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L161-L165
-            training_batch = actor.produce_training_batch(trajectory, done)
-            exp_queue.put(training_batch)
+            # as the actor in central agent and worker agent may be different, we should not produce the training batch here
+            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L162
+            exp_queue.put((trajectory, done))
 
             actor_net_params = net_params_queue.get()
             actor.set_params(actor_net_params)
