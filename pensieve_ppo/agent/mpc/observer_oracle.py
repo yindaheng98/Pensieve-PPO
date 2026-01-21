@@ -24,6 +24,9 @@ class OracleMPCState(MPCState):
     using virtual pointers. The virtual pointers are copied from the Observer
     when the state is created, and only modified within this instance.
 
+    By inheriting from MPCState (which inherits from RLState), OracleMPCState
+    is compatible with RL training, enabling imitation learning.
+
     Attributes:
         virtual_mahimahi_ptr: Virtual pointer for future prediction (internal).
         virtual_last_mahimahi_time: Virtual time for future prediction (internal).
@@ -34,15 +37,15 @@ class OracleMPCState(MPCState):
     def copy(self) -> 'OracleMPCState':
         """Create a copy of this OracleState.
 
-        Creates a deep copy of the state array while sharing references to
+        Creates a deep copy of the state_matrix array while sharing references to
         trace_simulator and video_player. Virtual pointers are copied so each
         instance maintains its own prediction state.
 
         Returns:
-            A new OracleState with copied state array and virtual pointers.
+            A new OracleState with copied state_matrix array and virtual pointers.
         """
         return OracleMPCState(
-            state=self.state.copy(),
+            state_matrix=self.state_matrix.copy(),
             trace_simulator=self.trace_simulator,
             video_player=self.video_player,
             bit_rate=self.bit_rate,

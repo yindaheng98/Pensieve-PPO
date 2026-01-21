@@ -155,15 +155,18 @@ class AbstractRLAgent(AbstractTrainableAgent):
         Returns:
             Dictionary containing training metrics.
         """
-        s, a, p, v = [], [], [], []
+        s: List[RLState] = []
+        a, p, v = [], [], []
         for batch in training_batches:
             s += batch.s_batch
             a += batch.a_batch
             p += batch.p_batch
             v += batch.v_batch
 
-        # Extract state arrays from RLState objects for stacking
-        s_batch = np.stack([np.asarray(state) for state in s], axis=0)
+        # Extract state_matrix arrays from RLState objects for stacking.
+        # All State subclasses (RLState, MPCState, BBAState) have state_matrix attribute,
+        # enabling imitation learning where trajectories from one agent type can train another.
+        s_batch = np.stack([state.state_matrix for state in s], axis=0)
         a_batch = np.vstack(a)
         p_batch = np.vstack(p)
         v_batch = np.vstack(v)

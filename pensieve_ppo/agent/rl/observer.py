@@ -7,18 +7,37 @@ Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py
 """
 
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from gymnasium import spaces
 
 from ...core.simulator import StepResult
-from ...gym.env import AbstractABRStateObserver, ABREnv
+from ...gym.env import AbstractABRStateObserver, ABREnv, State
 
 
-# Type alias for RL state representation.
-# RL agents use numpy arrays directly as state observations.
-RLState = np.ndarray
+@dataclass
+class RLState(State):
+    """State class for RL agents.
+
+    This dataclass wraps the numpy state array used by RL agents for training.
+    By inheriting from State, it ensures compatibility with other agent types
+    (e.g., MPC, BBA) for imitation learning scenarios.
+
+    Attributes:
+        state_matrix: The numpy array representing the observation state.
+            Shape is (S_INFO, state_history_len), e.g., (6, 8) by default.
+    """
+    state_matrix: np.ndarray
+
+    def copy(self) -> 'RLState':
+        """Create a copy of this RLState.
+
+        Returns:
+            A new RLState with copied state_matrix array.
+        """
+        return RLState(state_matrix=self.state_matrix.copy())
 
 
 # State dimensions
@@ -90,9 +109,9 @@ class RLABRStateObserver(AbstractABRStateObserver):
         self.buffer_norm_factor = buffer_norm_factor
 
         # State tracking (initialized in reset)
-        # Note: self.state is the internal state, which may differ from
-        # the state returned to external callers (see observe() method)
-        self.state: Optional[RLState] = None
+        # Note: self._state_matrix is the internal numpy array for manipulation,
+        # while methods return RLState objects wrapping this array.
+        self.state_matrix: Optional[np.ndarray] = None
         self.last_bit_rate: int = 0
 
     @property
@@ -122,12 +141,12 @@ class RLABRStateObserver(AbstractABRStateObserver):
             initial_bit_rate: Initial bitrate level index.
 
         Returns:
-            Initial state as RLState (np.ndarray).
+            Initial state as RLState dataclass.
         """
-        state = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
-        # Set internal state
-        self.state = state
-        return state
+        state_matrix = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
+        # Set internal state matrix
+        self.state_matrix = state_matrix
+        return RLState(state_matrix=state_matrix)
 
     def build_initial_info_dict(
         self,
@@ -208,7 +227,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
     ) -> RLState:
         """Compute new state representation from simulator result.
 
-        This method updates the internal state (self.state) and returns it.
+        This method updates the internal state matrix and returns an RLState object.
         Note that the returned state may be modified or transformed before
         being returned to external callers in the observe() method.
 
@@ -218,7 +237,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
             result: Result from simulator.step().
 
         Returns:
-            The computed state as RLState (np.ndarray) (same reference as self.state).
+            The computed state as RLState dataclass.
         """
         chunk_til_video_end_cap = env.simulator.video_player.total_chunks
         # Unpack result (matches original variable names)
@@ -236,7 +255,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L90-L104
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L52-L66
-        state = np.roll(self.state, -1, axis=1)
+        state = np.roll(self.state_matrix, -1, axis=1)
 
         # this should be S_INFO number of terms
         state[0, -1] = self.levels_quality[bit_rate] / \
@@ -250,10 +269,10 @@ class RLABRStateObserver(AbstractABRStateObserver):
         state[5, -1] = np.minimum(video_chunk_remain,
                                   chunk_til_video_end_cap) / float(chunk_til_video_end_cap)
 
-        # Update internal state
-        self.state = state
+        # Update internal state matrix
+        self.state_matrix = state
 
-        return state
+        return RLState(state_matrix=state)
 
     def build_info_dict(
         self,

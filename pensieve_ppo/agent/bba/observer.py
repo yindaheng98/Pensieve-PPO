@@ -1,65 +1,85 @@
 """BBA State Observer.
 
-This module provides a simplified state observer for BBA algorithm.
-BBA only needs buffer_size to make decisions, so the state is simplified
-to a single value instead of the full RL state representation.
+This module provides a state observer for BBA algorithm that is compatible
+with RL training for imitation learning.
+
+BBA only needs buffer_size to make decisions, but the state also contains
+the full RL state_matrix for training RL agents via imitation learning.
 
 Reference:
     https://github.com/hongzimao/Genet/blob/main/src/simulator/abr_simulator/bba.py
 """
 
+from dataclasses import dataclass
 
 import numpy as np
 from gymnasium import spaces
 
-from ..rl.observer import RLABRStateObserver
+from ..rl.observer import RLABRStateObserver, RLState
 from ...core.simulator import StepResult
 from ...gym.env import ABREnv
+
+
+@dataclass
+class BBAState(RLState):
+    """State class for BBA algorithm.
+
+    This dataclass extends RLState to provide the buffer_size field that
+    BBA needs for decision making, while also maintaining the full state_matrix
+    for RL training compatibility.
+
+    By inheriting from RLState, BBAState is compatible with RL training,
+    enabling imitation learning where an RL agent learns from BBA decisions.
+
+    Attributes:
+        state_matrix: The numpy array representing the observation state (inherited from RLState).
+        buffer_size: Current buffer size in seconds (for BBA decision making).
+    """
+    buffer_size: float
+
+    def copy(self) -> 'BBAState':
+        """Create a copy of this BBAState.
+
+        Returns:
+            A new BBAState with copied state_matrix array.
+        """
+        return BBAState(
+            state_matrix=self.state_matrix.copy(),
+            buffer_size=self.buffer_size,
+        )
 
 
 class BBAStateObserver(RLABRStateObserver):
     """State observer for BBA algorithm.
 
-    BBA only needs buffer_size to make bitrate decisions, so this observer
-    outputs a simplified state containing only the buffer_size (in seconds).
+    This observer extends RLABRStateObserver to provide BBAState objects that:
+    1. Contain buffer_size for BBA's decision making (simple and direct)
+    2. Contain state_matrix for RL training compatibility (imitation learning)
 
-    This simplifies the BBA agent implementation by providing the buffer_size
-    directly without normalization.
+    This allows trajectories collected by BBA agents to be used for training
+    RL agents via imitation learning / behavioral cloning.
     """
-
-    @property
-    def observation_space(self) -> spaces.Box:
-        """Gymnasium observation space for the BBA state.
-
-        Returns a 1D space containing only buffer_size.
-        """
-        return spaces.Box(
-            low=0.0,
-            high=np.inf,
-            shape=(1,),
-            dtype=np.float32
-        )
 
     def build_and_set_initial_state(
         self,
         env: ABREnv,
         initial_bit_rate: int,
-    ) -> np.ndarray:
-        """Build initial state representation on reset.
-
-        For BBA, the initial state is just buffer_size = 0.
+    ) -> BBAState:
+        """Build initial BBAState on reset.
 
         Args:
             env: The ABREnv instance to observe.
-            initial_bit_rate: Initial bitrate level index (unused for BBA state).
+            initial_bit_rate: Initial bitrate level index.
 
         Returns:
-            Initial state array with shape (1,) containing buffer_size.
+            Initial BBAState with zero state_matrix and buffer_size=0.
         """
-        # Initial buffer is empty (0 seconds)
-        state = np.array([0.0], dtype=np.float32)
-        # Set internal state
-        self.state = state
+        # Get the RLState from parent, extract state_matrix for BBAState
+        rl_state = super().build_and_set_initial_state(env, initial_bit_rate)
+        state = BBAState(
+            state_matrix=rl_state.state_matrix,
+            buffer_size=0.0,  # Initial buffer is empty
+        )
         return state
 
     def compute_and_update_state(
@@ -67,22 +87,21 @@ class BBAStateObserver(RLABRStateObserver):
         env: ABREnv,
         bit_rate: int,
         result: StepResult,
-    ) -> np.ndarray:
-        """Compute new state representation from simulator result.
-
-        For BBA, the state is simply the current buffer_size in seconds.
+    ) -> BBAState:
+        """Compute new BBAState from simulator result.
 
         Args:
             env: The ABREnv instance to observe.
-            bit_rate: Current bitrate level selected (unused for BBA state).
+            bit_rate: Current bitrate level selected.
             result: Result from simulator.step().
 
         Returns:
-            State array with shape (1,) containing buffer_size in seconds.
+            New BBAState with updated state_matrix and buffer_size.
         """
-        # BBA only needs buffer_size (in seconds, not normalized)
-        buffer_size = result.buffer_size
-        state = np.array([buffer_size], dtype=np.float32)
-        # Set internal state
-        self.state = state
+        # Get the RLState from parent, extract state_matrix for BBAState
+        rl_state = super().compute_and_update_state(env, bit_rate, result)
+        state = BBAState(
+            state_matrix=rl_state.state_matrix,
+            buffer_size=result.buffer_size,  # BBA uses buffer_size directly (in seconds)
+        )
         return state

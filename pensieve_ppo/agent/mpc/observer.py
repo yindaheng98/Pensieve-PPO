@@ -9,9 +9,8 @@ Reference:
 
 from dataclasses import dataclass
 
-import numpy as np
 
-from ..rl import RLABRStateObserver
+from ..rl import RLABRStateObserver, RLState
 from ...core.simulator import StepResult
 from ...gym import ABREnv
 
@@ -26,14 +25,17 @@ BITS_IN_BYTE = 8.0
 
 
 @dataclass
-class MPCState:
+class MPCState(RLState):
     """State class for MPC algorithm.
 
-    This is a dataclass that wraps the numpy state array and provides methods
-    for accessing video and simulator information.
+    This dataclass extends RLState to provide additional methods for accessing
+    video and simulator information needed by the MPC algorithm.
+
+    By inheriting from RLState, MPCState is compatible with RL training,
+    enabling imitation learning where an RL agent learns from MPC decisions.
 
     Attributes:
-        state: The numpy array representing the observation state.
+        state_matrix: The numpy array representing the observation state (inherited from RLState).
         trace_simulator: Reference to the trace simulator.
         video_player: Reference to the video player for chunk information.
         bit_rate: Current bitrate level.
@@ -41,7 +43,6 @@ class MPCState:
         rebuf_penalty: Penalty coefficient for rebuffering.
         smooth_penalty: Penalty coefficient for bitrate changes.
     """
-    state: np.ndarray
     trace_simulator: TraceSimulator
     video_player: VideoPlayer
     bit_rate: int
@@ -52,14 +53,14 @@ class MPCState:
     def copy(self) -> 'MPCState':
         """Create a copy of this MPCState.
 
-        Creates a deep copy of the state array while sharing references to
+        Creates a deep copy of the state_matrix array while sharing references to
         trace_simulator and video_player.
 
         Returns:
-            A new MPCState with copied state array.
+            A new MPCState with copied state_matrix array.
         """
         return MPCState(
-            state=self.state.copy(),
+            state_matrix=self.state_matrix.copy(),
             trace_simulator=self.trace_simulator,
             video_player=self.video_player,
             bit_rate=self.bit_rate,
@@ -137,10 +138,10 @@ class MPCABRStateObserver(RLABRStateObserver):
             initial_bit_rate: Initial bitrate level index.
 
         Returns:
-            Initial MPCState with zero state array.
+            Initial MPCState with zero state_matrix array.
         """
         state = MPCState(
-            state=super().build_and_set_initial_state(env, initial_bit_rate),
+            state_matrix=super().build_and_set_initial_state(env, initial_bit_rate).state_matrix,
             trace_simulator=env.simulator.trace_simulator.unwrapped,
             video_player=env.simulator.video_player,
             bit_rate=initial_bit_rate,
@@ -167,7 +168,7 @@ class MPCABRStateObserver(RLABRStateObserver):
             New MPCState with updated observation.
         """
         state = MPCState(
-            state=super().compute_and_update_state(env, bit_rate, result),
+            state_matrix=super().compute_and_update_state(env, bit_rate, result).state_matrix,
             trace_simulator=env.simulator.trace_simulator.unwrapped,
             video_player=env.simulator.video_player,
             bit_rate=bit_rate,

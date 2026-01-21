@@ -7,7 +7,7 @@ Reference:
 """
 
 from .agent import BBAAgent
-from .observer import BBAStateObserver
+from .observer import BBAStateObserver, BBAState
 from .env import create_bba_env
 from ..registry import register_agent, register_env
 
@@ -20,5 +20,6 @@ register_env("bba", create_bba_env)
 __all__ = [
     'BBAAgent',
     'BBAStateObserver',
+    'BBAState',
     'create_bba_env',
 ]

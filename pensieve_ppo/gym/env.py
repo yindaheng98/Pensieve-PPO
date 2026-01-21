@@ -8,6 +8,7 @@ Reference:
 """
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple, Union
 
 import gymnasium as gym
@@ -17,10 +18,18 @@ from gymnasium import spaces
 from ..core.simulator import Simulator, StepResult
 
 
-# Type alias for state representation.
-# Each observer implementation defines its own concrete state type
-# (e.g., np.ndarray for RL agents, custom dataclass for other agents).
-State = Any
+@dataclass
+class State:
+    """Base class for state representation.
+
+    This is the base dataclass for all state types used in ABR environments.
+    Concrete state classes (e.g., RLState, MPCState, BBAState) should inherit
+    from this class to ensure compatibility across different agent types.
+
+    This enables imitation learning where trajectories collected by one type
+    of agent (e.g., MPC, BBA) can be used to train another type (e.g., RL).
+    """
+    pass
 
 
 class AbstractABRStateObserver(ABC):

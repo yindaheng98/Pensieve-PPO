@@ -11,9 +11,8 @@ Reference:
 import logging
 from typing import List, Tuple
 
-import numpy as np
-
 from ..abc import AbstractAgent
+from .observer import BBAState
 
 
 # BBA Parameters
@@ -81,26 +80,22 @@ class BBAAgent(AbstractAgent):
             bit_rate = (self.action_dim - 1) * (buffer_size - self.reservoir) / float(self.cushion)
         return int(bit_rate)
 
-    def select_action(self, state: np.ndarray) -> Tuple[int, List[float]]:
+    def select_action(self, state: BBAState) -> Tuple[int, List[float]]:
         """Select an action for a given state.
 
         BBA uses the buffer size from the state to determine the action.
         The returned probability distribution is a one-hot encoding of
         the selected action.
 
-        The state format follows BBAStateObserver:
-        - state[0] = buffer_size in seconds (not normalized)
-
         Args:
-            state: Input state with shape (1,) from BBAStateObserver,
-                   containing buffer_size in seconds.
+            state: BBAState from BBAStateObserver, containing buffer_size in seconds.
 
         Returns:
-            Action probability distribution as a 1D list (one-hot for BBA).
+            Tuple of (selected_action_index, action_probability_distribution).
+            Action probability is one-hot for BBA (deterministic algorithm).
         """
-        # Extract buffer size from state (already in seconds, not normalized)
-        # State format: state[0] = buffer_size in seconds
-        buffer_size = state[0]
+        # Extract buffer size from BBAState (already in seconds, not normalized)
+        buffer_size = state.buffer_size
 
         # Get bitrate from buffer using BBA algorithm
         bit_rate = self.get_bitrate_from_buffer(buffer_size)
