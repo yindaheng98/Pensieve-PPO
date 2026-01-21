@@ -164,8 +164,8 @@ class AbstractRLAgent(AbstractTrainableAgent):
             v += batch.v_batch
 
         # Extract state_matrix arrays from RLState objects for stacking.
-        # All State subclasses (RLState, MPCState, BBAState) have state_matrix attribute,
-        # enabling imitation learning where trajectories from one agent type can train another.
+        # For imitation learning with ImitationObserver, the student_state (RLState)
+        # is used for training, which provides the state_matrix attribute.
         s_batch = np.stack([state.state_matrix for state in s], axis=0)
         a_batch = np.vstack(a)
         p_batch = np.vstack(p)
