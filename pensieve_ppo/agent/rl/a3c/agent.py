@@ -223,12 +223,12 @@ class A3CAgent(AbstractRLAgent):
             https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/rl_test.py#L126-L128
 
         Args:
-            state: Input state with shape (s_dim[0], s_dim[1]).
+            state: RLState containing state_matrix with shape (s_dim[0], s_dim[1]).
 
         Returns:
             Tuple of (selected_action_index, action_probabilities).
         """
-        action_prob = self.predict(state)
+        action_prob = self.predict(state.state_matrix)
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/rl_test.py#L127-L128
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/multi_agent.py#L288-L289
         # Note: we need to discretize the probability into 1/RAND_RANGE steps,
@@ -287,8 +287,8 @@ class A3CAgent(AbstractRLAgent):
         else:
             with torch.no_grad():
                 # Bootstrap from last state's value
-                # Extract state arrays from RLState objects
-                s_tensor = torch.from_numpy(np.array([np.asarray(state) for state in s_batch])).to(torch.float32).to(self.device)
+                # Extract state_matrix arrays from RLState objects
+                s_tensor = torch.from_numpy(np.array([state.state_matrix for state in s_batch])).to(torch.float32).to(self.device)
                 val = self.critic(s_tensor)
                 R_batch[-1, 0] = val[-1, 0].item()  # boot strap from last state
 

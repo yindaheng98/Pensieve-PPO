@@ -19,6 +19,7 @@ import ppo2 as src_ppo2
 # Import our implementation
 from pensieve_ppo.agent.rl.ppo import PPOAgent
 from pensieve_ppo.agent.rl.ppo.model import Actor, Critic
+from pensieve_ppo.agent.rl.observer import RLState
 
 # src directory path for pretrained model
 SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
@@ -294,7 +295,10 @@ class TestPPOAgentComputeV(unittest.TestCase):
         torch.manual_seed(RANDOM_SEED)
 
     def _generate_trajectory(self, length: int = 10):
-        """Generate a trajectory of states, actions, and rewards."""
+        """Generate a trajectory of states, actions, and rewards.
+
+        Returns states wrapped in RLState objects to match the new state type.
+        """
         np.random.seed(RANDOM_SEED)
 
         s_batch = []
@@ -302,12 +306,13 @@ class TestPPOAgentComputeV(unittest.TestCase):
         r_batch = []
 
         for _ in range(length):
-            state = np.random.randn(S_INFO, S_LEN).astype(np.float32) * 0.5
+            state_matrix = np.random.randn(S_INFO, S_LEN).astype(np.float32) * 0.5
             action = np.zeros(ACTION_DIM, dtype=np.float32)
             action[np.random.randint(ACTION_DIM)] = 1
             reward = np.random.randn() * 0.5
 
-            s_batch.append(state)
+            # Wrap numpy array in RLState for compatibility with updated compute_v
+            s_batch.append(RLState(state_matrix=state_matrix))
             a_batch.append(action)
             r_batch.append(reward)
 
@@ -318,8 +323,9 @@ class TestPPOAgentComputeV(unittest.TestCase):
         s_batch, a_batch, r_batch = self._generate_trajectory(length=10)
 
         our_result = self.our_agent.compute_v(s_batch, a_batch, r_batch, terminal=True)
+        # Extract state_matrix arrays from RLState objects for original network
         original_result = self.original_network.compute_v(
-            torch.from_numpy(np.array(s_batch)).to(torch.float32),
+            torch.from_numpy(np.array([s.state_matrix for s in s_batch])).to(torch.float32),
             a_batch, r_batch, terminal=True
         )
 
@@ -333,8 +339,9 @@ class TestPPOAgentComputeV(unittest.TestCase):
         s_batch, a_batch, r_batch = self._generate_trajectory(length=10)
 
         our_result = self.our_agent.compute_v(s_batch, a_batch, r_batch, terminal=False)
+        # Extract state_matrix arrays from RLState objects for original network
         original_result = self.original_network.compute_v(
-            torch.from_numpy(np.array(s_batch)).to(torch.float32),
+            torch.from_numpy(np.array([s.state_matrix for s in s_batch])).to(torch.float32),
             a_batch, r_batch, terminal=False
         )
 
@@ -348,8 +355,9 @@ class TestPPOAgentComputeV(unittest.TestCase):
         s_batch, a_batch, r_batch = self._generate_trajectory(length=3)
 
         our_result = self.our_agent.compute_v(s_batch, a_batch, r_batch, terminal=True)
+        # Extract state_matrix arrays from RLState objects for original network
         original_result = self.original_network.compute_v(
-            torch.from_numpy(np.array(s_batch)).to(torch.float32),
+            torch.from_numpy(np.array([s.state_matrix for s in s_batch])).to(torch.float32),
             a_batch, r_batch, terminal=True
         )
 
@@ -363,8 +371,9 @@ class TestPPOAgentComputeV(unittest.TestCase):
         s_batch, a_batch, r_batch = self._generate_trajectory(length=50)
 
         our_result = self.our_agent.compute_v(s_batch, a_batch, r_batch, terminal=True)
+        # Extract state_matrix arrays from RLState objects for original network
         original_result = self.original_network.compute_v(
-            torch.from_numpy(np.array(s_batch)).to(torch.float32),
+            torch.from_numpy(np.array([s.state_matrix for s in s_batch])).to(torch.float32),
             a_batch, r_batch, terminal=True
         )
 

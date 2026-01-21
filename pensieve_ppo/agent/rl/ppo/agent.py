@@ -201,12 +201,12 @@ class PPOAgent(AbstractRLAgent):
             https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L117-L122
 
         Args:
-            state: Input state with shape (s_dim[0], s_dim[1]).
+            state: RLState containing state_matrix with shape (s_dim[0], s_dim[1]).
 
         Returns:
             Tuple of (selected_action_index, action_probabilities).
         """
-        action_prob = self.predict(state)
+        action_prob = self.predict(state.state_matrix)
         # action = np.argmax(action_prob)  # test with gumbel noise has better performance. why?
         noise = np.random.gumbel(size=len(action_prob))
         action = np.argmax(np.log(action_prob) + noise)
@@ -223,12 +223,12 @@ class PPOAgent(AbstractRLAgent):
             https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
 
         Args:
-            state: Input state with shape (s_dim[0], s_dim[1]).
+            state: RLState containing state_matrix with shape (s_dim[0], s_dim[1]).
 
         Returns:
             Tuple of (selected_action_index, action_probabilities).
         """
-        action_prob = self.predict(state)
+        action_prob = self.predict(state.state_matrix)
         # gumbel noise for exploration
         noise = np.random.gumbel(size=len(action_prob))
         action = np.argmax(np.log(action_prob) + noise)
@@ -262,8 +262,8 @@ class PPOAgent(AbstractRLAgent):
             R_batch[-1] = r_batch[-1]  # terminal state
         else:
             with torch.no_grad():
-                # Extract state arrays from RLState objects
-                s_tensor = torch.from_numpy(np.array([np.asarray(state) for state in s_batch])).to(torch.float32).to(self.device)
+                # Extract state_matrix arrays from RLState objects
+                s_tensor = torch.from_numpy(np.array([state.state_matrix for state in s_batch])).to(torch.float32).to(self.device)
                 val = self.critic.forward(s_tensor)
                 R_batch[-1] = val[-1].item()  # bootstrap from last state
 

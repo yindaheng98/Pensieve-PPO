@@ -22,15 +22,14 @@ Note on API differences:
 - Tests account for this by calling step() with DEFAULT_QUALITY after gym reset()
 
 Note on constants:
-- Constants are imported from pensieve_ppo.agent.observer and pensieve_ppo.defaults
+- Constants are imported from pensieve_ppo.defaults and pensieve_ppo.agent.rl.observer
   to verify equivalence with the original src_env.
 - TestConstantsMatch class explicitly verifies these values match between
   our implementation and src_env to ensure consistency with the original
   Pensieve-PPO implementation.
 """
 
-from pensieve_ppo.agent.rl.observer import S_INFO, S_LEN
-from pensieve_ppo.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS, create_env_with_default
+from pensieve_ppo.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS, create_env_with_default, S_INFO, S_LEN
 import env as src_env
 import os
 import sys
@@ -124,8 +123,10 @@ class TestABREnvEquivalenceBase(unittest.TestCase):
         # Compare states
         self.assertEqual(len(src_states), len(gym_states), f"{msg_prefix}State count mismatch")
         for i, (src_s, gym_s) in enumerate(zip(src_states, gym_states)):
+            # gym_s is now an RLState object, extract state_matrix for comparison
+            gym_s_array = gym_s.state_matrix if hasattr(gym_s, 'state_matrix') else gym_s
             np.testing.assert_array_almost_equal(
-                src_s, gym_s, decimal=6,
+                src_s, gym_s_array, decimal=6,
                 err_msg=f"{msg_prefix}State {i} mismatch"
             )
 
@@ -179,15 +180,21 @@ class TestResetEquivalence(TestABREnvEquivalenceBase):
         gym_traj = self._run_gym_trajectory(RANDOM_SEED, [])
 
         self.assertEqual(src_traj[0][0].shape, (S_INFO, S_LEN))
-        self.assertEqual(gym_traj[0][0].shape, (S_INFO, S_LEN))
+        # gym state is now RLState object, extract state_matrix for shape check
+        gym_state = gym_traj[0][0]
+        gym_state_array = gym_state.state_matrix if hasattr(gym_state, 'state_matrix') else gym_state
+        self.assertEqual(gym_state_array.shape, (S_INFO, S_LEN))
 
     def test_reset_state_values(self):
         """Test reset returns identical state values."""
         src_traj = self._run_src_trajectory(RANDOM_SEED, [])
         gym_traj = self._run_gym_trajectory(RANDOM_SEED, [])
 
+        # gym state is now RLState object, extract state_matrix for comparison
+        gym_state = gym_traj[0][0]
+        gym_state_array = gym_state.state_matrix if hasattr(gym_state, 'state_matrix') else gym_state
         np.testing.assert_array_almost_equal(
-            src_traj[0][0], gym_traj[0][0], decimal=6,
+            src_traj[0][0], gym_state_array, decimal=6,
             err_msg="Reset state mismatch"
         )
 
@@ -351,6 +358,7 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
 
         Note: src reset() executes first chunk, gym reset() only initializes.
         """
+        from pensieve_ppo.agent.rl.observer import RLState
         np.random.seed(RANDOM_SEED)
         src_abr = src_env.ABREnv(random_seed=RANDOM_SEED)
         gym_abr = self._create_gym_env(RANDOM_SEED)
@@ -363,11 +371,13 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
         gym_result = gym_abr.reset()
         self.assertIsInstance(gym_result, tuple)
         self.assertEqual(len(gym_result), 2)
-        self.assertIsInstance(gym_result[0], np.ndarray)
+        # gym state is now RLState object
+        self.assertIsInstance(gym_result[0], RLState)
         self.assertIsInstance(gym_result[1], dict)
 
         # gym reset returns zero state (first chunk not yet executed)
-        np.testing.assert_array_equal(gym_result[0], np.zeros((S_INFO, S_LEN)))
+        gym_state_array = gym_result[0].state_matrix
+        np.testing.assert_array_equal(gym_state_array, np.zeros((S_INFO, S_LEN)))
 
     def test_step_return_format(self):
         """Test step return format differences."""
@@ -405,7 +415,7 @@ class TestDeterminism(TestABREnvEquivalenceBase):
         src_traj1 = self._run_src_trajectory(111, actions)
         src_traj2 = self._run_src_trajectory(222, actions)
 
-        # States should differ
+        # States should differ (src states are plain numpy arrays)
         self.assertFalse(np.allclose(src_traj1[0][-1], src_traj2[0][-1]),
                          "Different seeds should produce different states")
 

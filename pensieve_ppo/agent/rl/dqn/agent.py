@@ -294,12 +294,12 @@ class DQNAgent(AbstractRLAgent):
             https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/test_dqn.py#L125-L127
 
         Args:
-            state: Input state with shape (s_dim[0], s_dim[1]).
+            state: RLState containing state_matrix with shape (s_dim[0], s_dim[1]).
 
         Returns:
             Tuple of (selected_action_index, q_values_as_list).
         """
-        q_values = self.predict(state)
+        q_values = self.predict(state.state_matrix)
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/test_dqn.py#L127
         action = int(np.argmax(q_values))
         return action, q_values.tolist()
@@ -315,13 +315,13 @@ class DQNAgent(AbstractRLAgent):
             https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/train_dqn.py#L164-L173
 
         Args:
-            state: Input state with shape (s_dim[0], s_dim[1]).
+            state: RLState containing state_matrix with shape (s_dim[0], s_dim[1]).
             epsilon: Probability of selecting random action.
 
         Returns:
             Tuple of (selected_action_index, q_values_as_list).
         """
-        q_values = self.predict(state)
+        q_values = self.predict(state.state_matrix)
 
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/train_dqn.py#L170-L173
         if np.random.uniform() < epsilon:
