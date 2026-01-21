@@ -83,19 +83,20 @@ class PicklableEnvFactory:
 
 
 class PicklableAgentFactory:
-    """Callable factory for creating AbstractTrainableAgent instances (for training)."""
+    """Callable factory for creating AbstractAgent or AbstractTrainableAgent instances."""
 
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
 
-    def __call__(self) -> AbstractTrainableAgent:
-        return create_agent(*self.args, **self.kwargs)  # type: ignore[return-value]
+    def __call__(self) -> Union[AbstractAgent, AbstractTrainableAgent]:
+        return create_agent(*self.args, **self.kwargs)
 
 
 def create_env_agent_factory_with_default(
     trace_folder: Optional[str] = None,
     train: bool = True,
+    # Agent parameters
     model_path: Optional[str] = None,
     name: str = 'ppo',
     device: Optional[Union[torch.device, str]] = None,
@@ -105,7 +106,7 @@ def create_env_agent_factory_with_default(
     # Additional options
     env_options: dict = {},
     agent_options: dict = {},
-) -> Tuple[Callable[[int], ABREnv], Callable[[], AbstractTrainableAgent]]:
+) -> Tuple[PicklableEnvFactory, PicklableAgentFactory]:
     """Create env_factory and agent_factory with default parameters.
 
     Ensures env-agent compatibility by deriving shared parameters:
