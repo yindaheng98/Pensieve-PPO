@@ -3,6 +3,10 @@
 This module provides a state observer for MPC (Model Predictive Control) algorithm
 that includes future bandwidth information for decision making.
 
+For imitation learning (e.g., training RL from Oracle MPC demonstrations), use
+ImitationObserver from pensieve_ppo.gym.imitate to combine OracleMPCABRStateObserver
+with an RLABRStateObserver.
+
 Reference:
     https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py
     https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/fixed_env_future_bandwidth.py
@@ -24,8 +28,8 @@ class OracleMPCState(MPCState):
     using virtual pointers. The virtual pointers are copied from the Observer
     when the state is created, and only modified within this instance.
 
-    By inheriting from MPCState (which inherits from RLState), OracleMPCState
-    is compatible with RL training, enabling imitation learning.
+    For imitation learning, use ImitationObserver to combine this with an
+    RLState-producing observer.
 
     Attributes:
         virtual_mahimahi_ptr: Virtual pointer for future prediction (internal).
@@ -107,9 +111,16 @@ class OracleMPCABRStateObserver(MPCABRStateObserver):
     that include methods for computing future download times, enabling the
     MPC algorithm to plan ahead using actual future bandwidth information.
 
-    The observer maintains virtual mahimahi pointers that are synchronized with
-    the actual trace simulator pointers. These are copied to OracleState
-    instances when they are created.
+    Example for standalone Oracle MPC:
+        >>> observer = OracleMPCABRStateObserver(levels_quality=VIDEO_BIT_RATE)
+        >>> env = ABREnv(simulator=simulator, observer=observer)
+
+    Example for imitation learning:
+        >>> from pensieve_ppo.gym.imitate import ImitationObserver
+        >>> rl_observer = RLABRStateObserver(levels_quality=VIDEO_BIT_RATE)
+        >>> oracle_observer = OracleMPCABRStateObserver(levels_quality=VIDEO_BIT_RATE)
+        >>> imitation_observer = ImitationObserver(rl_observer, oracle_observer)
+        >>> env = ABREnv(simulator=simulator, observer=imitation_observer)
     """
 
     def build_and_set_initial_state(
@@ -117,14 +128,14 @@ class OracleMPCABRStateObserver(MPCABRStateObserver):
         env: ABREnv,
         initial_bit_rate: int,
     ) -> OracleMPCState:
-        """Build initial OracleState on reset.
+        """Build initial OracleMPCState on reset.
 
         Args:
             env: The ABREnv instance to observe.
             initial_bit_rate: Initial bitrate level index.
 
         Returns:
-            Initial OracleState with zero state array and synchronized virtual pointers.
+            Initial OracleMPCState with synchronized virtual pointers.
         """
         state = OracleMPCState(
             **asdict(super().build_and_set_initial_state(env, initial_bit_rate)),
@@ -138,7 +149,7 @@ class OracleMPCABRStateObserver(MPCABRStateObserver):
         bit_rate: int,
         result: StepResult,
     ) -> OracleMPCState:
-        """Compute new OracleState from simulator result.
+        """Compute new OracleMPCState from simulator result.
 
         Args:
             env: The ABREnv instance to observe.
@@ -146,7 +157,7 @@ class OracleMPCABRStateObserver(MPCABRStateObserver):
             result: Result from simulator.step().
 
         Returns:
-            New OracleState with updated observation and synchronized virtual pointers.
+            New OracleMPCState with synchronized virtual pointers.
         """
         state = OracleMPCState(
             **asdict(super().compute_and_update_state(env, bit_rate, result)),

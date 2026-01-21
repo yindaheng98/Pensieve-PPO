@@ -32,10 +32,6 @@ M_IN_K = 1000.0
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L153
 BANDWIDTH_HISTORY_LEN = 5
 
-# State index for throughput measurement (kilo byte / ms = MB/s)
-# In RLABRStateObserver, state[2, :] stores float(video_chunk_size) / float(delay) / M_IN_K
-STATE_THROUGHPUT_IDX = 2
-
 
 class MPCAgent(AbstractAgent):
     """MPC (Model Predictive Control) Agent using RobustMPC.
@@ -55,7 +51,7 @@ class MPCAgent(AbstractAgent):
 
     Note:
         rebuf_penalty and smooth_penalty are obtained from MPCState, which
-        inherits these values from RLABRStateObserver.
+        receives these values from MPCABRStateObserver.
 
     Attributes:
         action_dim: Number of available bitrate levels.
@@ -117,16 +113,16 @@ class MPCAgent(AbstractAgent):
             https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L151-L163
 
         Args:
-            state: MPCState containing bandwidth history.
+            state: MPCState containing bandwidth history in past_bandwidths.
 
         Returns:
             Harmonic mean bandwidth in MB/s.
         """
-        # Get past bandwidths from state_matrix (last N values based on bandwidth_history_len)
-        # state_matrix[2, :] contains throughput: float(video_chunk_size) / float(delay) / M_IN_K
+        # Get past bandwidths (last N values based on bandwidth_history_len)
+        # past_bandwidths contains bandwidth: float(video_chunk_size) / float(delay) / M_IN_K
         # which is in units of kilo bytes / ms = MB/s
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L153
-        past_bandwidths = state.state_matrix[STATE_THROUGHPUT_IDX, -self.bandwidth_history_len:]
+        past_bandwidths = list(state.past_bandwidths[-self.bandwidth_history_len:])
 
         # Remove leading zeros (from initial state)
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L154-L155
@@ -148,19 +144,19 @@ class MPCAgent(AbstractAgent):
             https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L145-L173
 
         Args:
-            state: MPCState containing bandwidth history.
+            state: MPCState containing bandwidth history in past_bandwidths.
 
         Returns:
             Predicted future bandwidth in MB/s with error correction.
         """
-        # Get current actual throughput from state_matrix
-        curr_throughput = state.state_matrix[STATE_THROUGHPUT_IDX, -1]
+        # Get current actual bandwidth from past_bandwidths
+        curr_bandwidth = state.past_bandwidths[-1]
 
         # Compute current prediction error
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L146-L149
         curr_error = 0.0
         if len(self.past_bandwidth_ests) > 0:
-            curr_error = abs(self.past_bandwidth_ests[-1] - curr_throughput) / float(curr_throughput)
+            curr_error = abs(self.past_bandwidth_ests[-1] - curr_bandwidth) / float(curr_bandwidth)
         self.past_errors.append(curr_error)
 
         # Compute harmonic mean of past bandwidths

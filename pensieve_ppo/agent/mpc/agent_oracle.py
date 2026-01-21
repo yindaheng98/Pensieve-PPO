@@ -46,7 +46,7 @@ class OracleMPCAgent(AbstractAgent):
 
     Note:
         rebuf_penalty and smooth_penalty are obtained from OracleMPCState, which
-        inherits these values from RLABRStateObserver via MPCState.
+        receives these values from OracleMPCABRStateObserver.
 
     Attributes:
         action_dim: Number of available bitrate levels.
