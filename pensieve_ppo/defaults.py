@@ -93,6 +93,44 @@ class PicklableAgentFactory:
         return create_agent(*self.args, **self.kwargs)
 
 
+def create_agent_factory_with_default(
+    model_path: Optional[str] = None,
+    name: str = 'ppo',
+    device: Optional[Union[torch.device, str]] = None,
+    # Compatibility parameters (shared between env and agent)
+    levels_quality: list = VIDEO_BIT_RATE,
+    state_history_len: int = S_LEN,
+    # Additional options
+    agent_options: dict = {},
+) -> Callable[[], Union[AbstractAgent, AbstractTrainableAgent]]:
+    """Create agent_factory with default parameters.
+
+    This function only creates an agent factory, without creating an environment factory.
+    Useful when you need to create an agent factory separately (e.g., for imitation learning).
+
+    Ensures compatibility by deriving shared parameters:
+    - state_dim = (S_INFO, state_history_len), action_dim = len(levels_quality)
+
+    Returns:
+        agent_factory() -> AbstractAgent | AbstractTrainableAgent
+    """
+    # Derive compatibility parameters
+    state_dim = (S_INFO, state_history_len)
+    action_dim = len(levels_quality)
+
+    # Create agent factory
+    agent_factory = PicklableAgentFactory(
+        name=name,
+        state_dim=state_dim,
+        action_dim=action_dim,
+        device=device,
+        model_path=model_path,
+        **agent_options,
+    )
+
+    return agent_factory
+
+
 def create_env_agent_factory_with_default(
     trace_folder: Optional[str] = None,
     train: bool = True,
@@ -117,10 +155,6 @@ def create_env_agent_factory_with_default(
         - env_factory(agent_id: int) -> ABREnv
         - agent_factory() -> AbstractTrainableAgent
     """
-    # Derive compatibility parameters
-    state_dim = (S_INFO, state_history_len)
-    action_dim = len(levels_quality)
-
     # Create environment factory
     env_factory = PicklableEnvFactory(
         name=name,
@@ -131,14 +165,14 @@ def create_env_agent_factory_with_default(
         **env_options,
     )
 
-    # Create agent factory
-    agent_factory = PicklableAgentFactory(
-        name=name,
-        state_dim=state_dim,
-        action_dim=action_dim,
-        device=device,
+    # Create agent factory using create_agent_factory_with_default
+    agent_factory = create_agent_factory_with_default(
         model_path=model_path,
-        **agent_options,
+        name=name,
+        device=device,
+        levels_quality=levels_quality,
+        state_history_len=state_history_len,
+        agent_options=agent_options,
     )
 
     return env_factory, agent_factory
