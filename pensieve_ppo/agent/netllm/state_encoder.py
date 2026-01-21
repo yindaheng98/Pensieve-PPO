@@ -6,7 +6,7 @@ for NetLLM-based ABR agents. The encoder processes the 6-dimensional state
 feature embeddings.
 
 Copy from:
-    https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/models/state_encoder.py
+    https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/models/state_encoder.py
 """
 
 import torch.nn as nn

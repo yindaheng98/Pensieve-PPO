@@ -9,8 +9,8 @@ reward calculation) and adds NetLLM-specific fields:
 - target_return: Return-to-go value (for conditional generation)
 
 Copy from:
-    https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/evaluate.py
-    https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/test.py
+    https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py
+    https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py
 """
 
 from dataclasses import dataclass
@@ -39,8 +39,8 @@ class NetLLMState:
         target_return: Current return-to-go value.
 
     Copy from:
-        https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/evaluate.py#L25-L29
-        https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/test.py#L28-L32
+        https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L25-L29
+        https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L28-L32
     """
     state: np.ndarray
     timestep: int
@@ -67,8 +67,8 @@ class NetLLMABRStateObserver(RLABRStateObserver):
     evaluate.py and test.py.
 
     Copy from:
-        https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/evaluate.py
-        https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/test.py
+        https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py
+        https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py
     """
 
     def __init__(
@@ -90,8 +90,8 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         self.max_return = max_return
 
         # NetLLM-specific tracking
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/evaluate.py#L26-L27
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/test.py#L29-L30
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L26-L27
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L29-L30
         self.timestep: int = 0
         self.target_return: float = max_return
 
@@ -114,8 +114,8 @@ class NetLLMABRStateObserver(RLABRStateObserver):
             Initial NetLLMState with zero state array.
         """
         # Reset NetLLM-specific state
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/evaluate.py#L26-L27
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/test.py#L29-L30
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L26-L27
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L29-L30
         self.timestep = 0
         self.target_return = self.max_return
 
@@ -161,30 +161,30 @@ class NetLLMABRStateObserver(RLABRStateObserver):
             Tuple of (NetLLMState_copy, reward, info_dict).
         """
         # Step 1: Compute reward
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/evaluate.py#L39-L41
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/test.py#L48-L50
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L39-L41
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L48-L50
         reward = self.compute_reward(env, bit_rate, result)
 
         # Step 2: Update state (dequeue history record)
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/evaluate.py#L46-L54
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/test.py#L60-L68
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L46-L54
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L60-L68
         numpy_state = self.compute_and_update_state(env, bit_rate, result)
 
         # Step 3: Update target_return (skip first timestep like Pensieve)
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/evaluate.py#L56-L58
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/test.py#L70-L72
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L56-L58
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L70-L72
         if self.timestep > 0:
             processed_reward = process_reward_fn(reward) if process_reward_fn else reward
             self.target_return -= processed_reward
 
         # Step 4: Update last_bit_rate for next step's reward calculation
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/evaluate.py#L43
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/test.py#L54
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L43
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L54
         self.last_bit_rate = bit_rate
 
         # Step 5: Increment timestep
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/evaluate.py#L63
-        # https://github.com/duowuyms/NetLLM/blob/main/adaptive_bitrate_streaming/plm_special/test.py#L77
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L63
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L77
         self.timestep += 1
 
         # Build state object
