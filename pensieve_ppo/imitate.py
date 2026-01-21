@@ -16,13 +16,21 @@ from typing import Callable, Optional, Union
 import torch
 
 from .agent import AbstractTrainableAgent, Trainer, get_available_agents
-from .defaults import create_agent_factory_with_default, create_env_agent_factory_with_default, S_INFO, S_LEN, VIDEO_BIT_RATE, TRAIN_TRACES, DEFAULT_QUALITY
+from .defaults import create_agent_factory_with_default, create_env_agent_factory_with_default, S_LEN, VIDEO_BIT_RATE, DEFAULT_QUALITY
 from .args import add_env_agent_arguments, parse_env_agent_args, parse_options
 from .test import add_testing_arguments
 from .train import TestingCallback, add_training_arguments, NUM_AGENTS, TRAIN_SEQ_LEN, TRAIN_EPOCH, MODEL_SAVE_INTERVAL, SUMMARY_DIR
 
 
 def prepare_imitation(
+    trace_folder: Optional[str] = None,
+    model_path: Optional[str] = None,
+    name: str = 'ppo',
+    device: Optional[Union[torch.device, str]] = None,
+    levels_quality: list = VIDEO_BIT_RATE,
+    state_history_len: int = S_LEN,
+    agent_options: dict = {},
+    # env_options: dict = {}, # Not needed for student agent in imitation learning
     output_dir: str = SUMMARY_DIR,
     parallel_workers: int = NUM_AGENTS,
     steps_per_epoch: int = TRAIN_SEQ_LEN,
@@ -30,22 +38,12 @@ def prepare_imitation(
     model_save_interval: int = MODEL_SAVE_INTERVAL,
     pretrained_model_path: str = None,
     on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = None,
-    # Student agent parameters
-    name: str = 'ppo',
-    model_path: Optional[str] = None,
-    device: Optional[Union[torch.device, str]] = None,
-    agent_options: dict = {},
     # Teacher agent parameters
-    teacher_name: str = 'bba',
     teacher_model_path: Optional[str] = None,
+    teacher_name: str = 'bba',
     teacher_device: Optional[Union[torch.device, str]] = None,
     teacher_agent_options: dict = {},
-    # Teacher environment parameters
-    teacher_trace_folder: Optional[str] = None,
     teacher_env_options: dict = {},
-    # Shared compatibility parameters (must be same for student and teacher)
-    levels_quality: list = VIDEO_BIT_RATE,
-    state_history_len: int = S_LEN,
 ) -> Trainer:
     """Prepare trainer for distributed imitation learning.
 
@@ -94,7 +92,7 @@ def prepare_imitation(
 
     # Create teacher env_factory and agent_factory
     teacher_env_factory, teacher_agent_factory = create_env_agent_factory_with_default(
-        trace_folder=teacher_trace_folder,
+        trace_folder=trace_folder,
         train=True,
         model_path=teacher_model_path,
         name=teacher_name,
@@ -137,8 +135,6 @@ def add_teacher_env_agent_arguments(parser: argparse.ArgumentParser, available_a
         parser: ArgumentParser (teacher subcommand) to add arguments to.
         available_agents: List of available agent names for validation.
     """
-    subparsers = parser.add_subparsers(dest='subcommand', help='Subcommands')
-    parser = subparsers.add_parser('teacher', help='Teacher agent and environment configuration')
     parser.add_argument('--agent-name', type=str, default='bba',
                         choices=available_agents, dest='teacher_agent_name',
                         help=f"Algorithm to use for teacher agent (default: 'bba')")
@@ -183,19 +179,30 @@ if __name__ == '__main__':
     add_env_agent_arguments(parser, available_agents=get_available_agents())
     add_testing_arguments(parser)
     add_training_arguments(parser)
-    add_teacher_env_agent_arguments(parser, available_agents=get_available_agents())
+    subparsers = parser.add_subparsers(dest='subcommand', help='Subcommands')
+    teacherparser = subparsers.add_parser('teacher', help='Teacher agent and environment configuration')
+    add_teacher_env_agent_arguments(teacherparser, available_agents=get_available_agents())
 
     args = parser.parse_args()
+    teacherargs = teacherparser.parse_args()
 
     # Post-process arguments (parse options, set seed)
     parse_env_agent_args(args)
-    parse_env_agent_teacher_args(args)
+    parse_env_agent_teacher_args(teacherargs)
 
     # Create on_save_model callback (reuse from train.py)
     on_save_model = TestingCallback(args=args, output_dir=args.output_dir)
 
     # Prepare trainer for imitation learning
     trainer = prepare_imitation(
+        trace_folder=args.train_trace_folder,
+        model_path=None,
+        name=args.agent_name,
+        device=args.device,
+        levels_quality=args.levels_quality,
+        state_history_len=args.state_history_len,
+        agent_options=args.agent_options,
+        # env_options=args.env_options, # Not needed for student agent
         output_dir=args.output_dir,
         parallel_workers=args.parallel_workers,
         steps_per_epoch=args.steps_per_epoch,
@@ -203,27 +210,17 @@ if __name__ == '__main__':
         model_save_interval=args.model_save_interval,
         pretrained_model_path=args.pretrained_model_path,
         on_save_model=on_save_model,
-        # Student agent parameters
-        name=args.agent_name,
-        model_path=None,  # Student agent starts from scratch
-        device=args.device,
-        agent_options=args.agent_options,
         # Teacher agent parameters
-        teacher_name=args.teacher_agent_name,
-        teacher_model_path=args.teacher_model_path,
-        teacher_device=args.teacher_device,
-        teacher_agent_options=args.teacher_agent_options,
-        # Teacher environment parameters
-        teacher_trace_folder=args.teacher_trace_folder,
-        teacher_env_options=args.teacher_env_options,
-        # Shared compatibility parameters
-        levels_quality=args.levels_quality,
-        state_history_len=args.state_history_len,
+        teacher_model_path=teacherargs.teacher_model_path,
+        teacher_name=teacherargs.teacher_agent_name,
+        teacher_device=teacherargs.teacher_device,
+        teacher_agent_options=teacherargs.teacher_agent_options,
+        teacher_env_options=teacherargs.teacher_env_options,
     )
 
     # Start imitation learning
     print(f"Starting imitation learning with {args.parallel_workers} parallel workers...")
     print(f"Student agent: {args.agent_name}")
-    print(f"Teacher agent: {args.teacher_agent_name}")
+    print(f"Teacher agent: {teacherargs.teacher_agent_name}")
     print(f"Output directory: {args.output_dir}")
     trainer.train()
