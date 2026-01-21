@@ -9,7 +9,7 @@ The key compatibility parameters between env and agent are:
 - action_dim: Must equal len(levels_quality), which determines env.bitrate_levels
 """
 
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple, Union
 
 import torch
 
@@ -47,8 +47,12 @@ def create_env_with_default(
 ) -> ABREnv:
     """Create an ABREnv with default Pensieve parameters.
 
-    Wraps `create_env` with default values matching the original Pensieve implementation.
-    If trace_folder is None, auto-selects TRAIN_TRACES or TEST_TRACES based on train flag.
+    Wraps `create_env` with default values matching the original
+    Pensieve implementation. If trace_folder is None, auto-selects TRAIN_TRACES
+    or TEST_TRACES based on train flag.
+
+    Returns:
+        Configured ABREnv instance.
     """
     if trace_folder is None:
         trace_folder = TRAIN_TRACES if train else TEST_TRACES
@@ -94,7 +98,7 @@ def create_env_agent_factory_with_default(
     train: bool = True,
     model_path: Optional[str] = None,
     name: str = 'ppo',
-    device: Optional[torch.device] = None,
+    device: Optional[Union[torch.device, str]] = None,
     # Compatibility parameters (shared between env and agent)
     levels_quality: list = VIDEO_BIT_RATE,
     state_history_len: int = S_LEN,

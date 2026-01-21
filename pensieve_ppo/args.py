@@ -1,30 +1,33 @@
 """Argument parsing utilities for Pensieve PPO."""
 
 import argparse
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import numpy as np
 
-from .defaults import VIDEO_BIT_RATE, TEST_TRACES, DEFAULT_QUALITY
-from .agent.rl.observer import S_INFO, S_LEN
+from .defaults import VIDEO_BIT_RATE, TEST_TRACES, DEFAULT_QUALITY, S_INFO, S_LEN
 
 # Default random seed
 RANDOM_SEED = 42
 
 
-def add_env_agent_arguments(parser: argparse.ArgumentParser, available_agents=list[str]) -> None:
+def add_env_agent_arguments(parser: argparse.ArgumentParser, available_agents: List[str]) -> None:
     """Add arguments for environment and agent configuration.
 
     These arguments correspond to the parameters of create_env_agent_with_default and
     create_env_agent_factory_with_default in pensieve_ppo/defaults.py. See those functions
     for parameter descriptions.
+
+    Args:
+        parser: ArgumentParser to add arguments to.
+        available_agents: List of available agent names for validation.
     """
     parser.add_argument('--test-trace-folder', type=str, default=TEST_TRACES,
                         help=f"Folder containing network bandwidth trace files for testing "
                              f"(default: '{TEST_TRACES}')")
     parser.add_argument('--agent-name', type=str, default=available_agents[0],
                         choices=available_agents,
-                        help=f"RL algorithm to use (default: '{available_agents[0]}')")
+                        help=f"Algorithm to use (default: '{available_agents[0]}')")
     parser.add_argument('--model-path', type=str, default=None,
                         help="Path to load pre-trained model weights (default: None)")
     parser.add_argument('--device', type=str, default=None,
