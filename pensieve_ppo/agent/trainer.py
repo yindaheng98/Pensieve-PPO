@@ -80,7 +80,7 @@ class Trainer:
         self.on_epoch_end = on_epoch_end
         self.on_save_model = on_save_model
 
-    def _central_agent(
+    def central_agent(
         self,
         net_params_queues: List[mp.Queue],
         exp_queues: List[mp.Queue],
@@ -135,7 +135,7 @@ class Trainer:
                 # Callback for model saving (e.g., testing and logging)
                 self.on_save_model(epoch, model_path, actor)
 
-    def _agent_worker(
+    def agent_worker(
         self,
         agent_id: int,
         net_params_queue: mp.Queue,
@@ -205,13 +205,13 @@ class Trainer:
 
         # create a coordinator and multiple agent processes
         # (note: threading is not desirable due to python GIL)
-        coordinator = mp.Process(target=self._central_agent,
+        coordinator = mp.Process(target=self.central_agent,
                                  args=(net_params_queues, exp_queues))
         coordinator.start()
 
         agents = []
         for i in range(self.num_agents):
-            agents.append(mp.Process(target=self._agent_worker,
+            agents.append(mp.Process(target=self.agent_worker,
                                      args=(i,
                                            net_params_queues[i],
                                            exp_queues[i])))
