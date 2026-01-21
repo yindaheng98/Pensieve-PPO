@@ -34,28 +34,6 @@ class OracleMPCState(MPCState):
     virtual_mahimahi_ptr: int = None
     virtual_last_mahimahi_time: float = None
 
-    def copy(self) -> 'OracleMPCState':
-        """Create a copy of this OracleState.
-
-        Creates a deep copy of the state_matrix array while sharing references to
-        trace_simulator and video_player. Virtual pointers are copied so each
-        instance maintains its own prediction state.
-
-        Returns:
-            A new OracleState with copied state_matrix array and virtual pointers.
-        """
-        return OracleMPCState(
-            state_matrix=self.state_matrix.copy(),
-            trace_simulator=self.trace_simulator,
-            video_player=self.video_player,
-            bit_rate=self.bit_rate,
-            levels_quality=self.levels_quality,
-            rebuf_penalty=self.rebuf_penalty,
-            smooth_penalty=self.smooth_penalty,
-            virtual_mahimahi_ptr=self.virtual_mahimahi_ptr,
-            virtual_last_mahimahi_time=self.virtual_last_mahimahi_time,
-        )
-
     def reset_download_time(self) -> None:
         """Reset virtual pointers to current actual pointers for future prediction.
 

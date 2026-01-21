@@ -37,17 +37,6 @@ class BBAState(RLState):
     """
     buffer_size: float
 
-    def copy(self) -> 'BBAState':
-        """Create a copy of this BBAState.
-
-        Returns:
-            A new BBAState with copied state_matrix array.
-        """
-        return BBAState(
-            state_matrix=self.state_matrix.copy(),
-            buffer_size=self.buffer_size,
-        )
-
 
 class BBAStateObserver(RLABRStateObserver):
     """State observer for BBA algorithm.
@@ -75,12 +64,12 @@ class BBAStateObserver(RLABRStateObserver):
             Initial BBAState with zero state_matrix and buffer_size=0.
         """
         # Get the RLState from parent, extract state_matrix for BBAState
+        # Note: state_matrix is already copied in parent's build_and_set_initial_state
         rl_state = super().build_and_set_initial_state(env, initial_bit_rate)
-        state = BBAState(
+        return BBAState(
             state_matrix=rl_state.state_matrix,
             buffer_size=0.0,  # Initial buffer is empty
         )
-        return state
 
     def compute_and_update_state(
         self,
@@ -99,9 +88,9 @@ class BBAStateObserver(RLABRStateObserver):
             New BBAState with updated state_matrix and buffer_size.
         """
         # Get the RLState from parent, extract state_matrix for BBAState
+        # Note: state_matrix is already copied in parent's compute_and_update_state
         rl_state = super().compute_and_update_state(env, bit_rate, result)
-        state = BBAState(
+        return BBAState(
             state_matrix=rl_state.state_matrix,
             buffer_size=result.buffer_size,  # BBA uses buffer_size directly (in seconds)
         )
-        return state

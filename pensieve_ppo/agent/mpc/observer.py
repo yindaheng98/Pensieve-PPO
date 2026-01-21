@@ -50,25 +50,6 @@ class MPCState(RLState):
     rebuf_penalty: float
     smooth_penalty: float
 
-    def copy(self) -> 'MPCState':
-        """Create a copy of this MPCState.
-
-        Creates a deep copy of the state_matrix array while sharing references to
-        trace_simulator and video_player.
-
-        Returns:
-            A new MPCState with copied state_matrix array.
-        """
-        return MPCState(
-            state_matrix=self.state_matrix.copy(),
-            trace_simulator=self.trace_simulator,
-            video_player=self.video_player,
-            bit_rate=self.bit_rate,
-            levels_quality=self.levels_quality,
-            rebuf_penalty=self.rebuf_penalty,
-            smooth_penalty=self.smooth_penalty,
-        )
-
     def get_chunk_size(self, quality: int, chunk_idx: int) -> int:
         """Get the size of a video chunk at given quality and index.
 
@@ -140,7 +121,8 @@ class MPCABRStateObserver(RLABRStateObserver):
         Returns:
             Initial MPCState with zero state_matrix array.
         """
-        state = MPCState(
+        # Note: state_matrix is already copied in parent's build_and_set_initial_state
+        return MPCState(
             state_matrix=super().build_and_set_initial_state(env, initial_bit_rate).state_matrix,
             trace_simulator=env.simulator.trace_simulator.unwrapped,
             video_player=env.simulator.video_player,
@@ -149,7 +131,6 @@ class MPCABRStateObserver(RLABRStateObserver):
             rebuf_penalty=self.rebuf_penalty,
             smooth_penalty=self.smooth_penalty,
         )
-        return state
 
     def compute_and_update_state(
         self,
@@ -167,7 +148,8 @@ class MPCABRStateObserver(RLABRStateObserver):
         Returns:
             New MPCState with updated observation.
         """
-        state = MPCState(
+        # Note: state_matrix is already copied in parent's compute_and_update_state
+        return MPCState(
             state_matrix=super().compute_and_update_state(env, bit_rate, result).state_matrix,
             trace_simulator=env.simulator.trace_simulator.unwrapped,
             video_player=env.simulator.video_player,
@@ -176,4 +158,3 @@ class MPCABRStateObserver(RLABRStateObserver):
             rebuf_penalty=self.rebuf_penalty,
             smooth_penalty=self.smooth_penalty,
         )
-        return state

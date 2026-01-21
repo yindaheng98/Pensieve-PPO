@@ -46,14 +46,6 @@ class NetLLMState:
     timestep: int
     target_return: float
 
-    def copy(self) -> 'NetLLMState':
-        """Create a copy of this NetLLMState."""
-        return NetLLMState(
-            state=self.state.copy(),
-            timestep=self.timestep,
-            target_return=self.target_return,
-        )
-
 
 class NetLLMABRStateObserver(RLABRStateObserver):
     """State observer for NetLLM-based ABR agents.
@@ -119,12 +111,12 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         self.timestep = 0
         self.target_return = self.max_return
 
-        # Get initial state from parent (numpy array)
-        # Parent sets self.state and returns it
-        numpy_state = super().build_and_set_initial_state(env, initial_bit_rate)
+        # Get initial state from parent
+        # Note: state_matrix is already copied in parent's build_and_set_initial_state
+        rl_state = super().build_and_set_initial_state(env, initial_bit_rate)
 
         return NetLLMState(
-            state=numpy_state,
+            state=rl_state.state_matrix,
             timestep=self.timestep,
             target_return=self.target_return,
         )
@@ -166,9 +158,10 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         reward = self.compute_reward(env, bit_rate, result)
 
         # Step 2: Update state (dequeue history record)
+        # Note: state_matrix is already copied in parent's compute_and_update_state
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L46-L54
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L60-L68
-        numpy_state = self.compute_and_update_state(env, bit_rate, result)
+        rl_state = self.compute_and_update_state(env, bit_rate, result)
 
         # Step 3: Update target_return (skip first timestep like Pensieve)
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L56-L58
@@ -189,7 +182,7 @@ class NetLLMABRStateObserver(RLABRStateObserver):
 
         # Build state object
         state = NetLLMState(
-            state=numpy_state,
+            state=rl_state.state_matrix,
             timestep=self.timestep,
             target_return=self.target_return,
         )
@@ -197,4 +190,4 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         # Build info dict
         info = self.build_info_dict(env, bit_rate, result)
 
-        return state.copy(), reward, info
+        return state, reward, info

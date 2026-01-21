@@ -31,14 +31,6 @@ class RLState(State):
     """
     state_matrix: np.ndarray
 
-    def copy(self) -> 'RLState':
-        """Create a copy of this RLState.
-
-        Returns:
-            A new RLState with copied state_matrix array.
-        """
-        return RLState(state_matrix=self.state_matrix.copy())
-
 
 # State dimensions
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L8
@@ -146,7 +138,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         state_matrix = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
         # Set internal state matrix
         self.state_matrix = state_matrix
-        return RLState(state_matrix=state_matrix)
+        return RLState(state_matrix=state_matrix.copy())
 
     def build_initial_info_dict(
         self,
@@ -189,7 +181,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         self.last_bit_rate = initial_bit_rate
         state = self.build_and_set_initial_state(env, initial_bit_rate)
         info = self.build_initial_info_dict(env, initial_bit_rate)
-        return state.copy(), info
+        return state, info
 
     def compute_reward(
         self,
@@ -272,7 +264,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         # Update internal state matrix
         self.state_matrix = state
 
-        return RLState(state_matrix=state)
+        return RLState(state_matrix=state.copy())
 
     def build_info_dict(
         self,
@@ -333,4 +325,4 @@ class RLABRStateObserver(AbstractABRStateObserver):
         # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
         info = self.build_info_dict(env, bit_rate, result)
 
-        return state.copy(), reward, info
+        return state, reward, info

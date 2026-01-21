@@ -204,8 +204,10 @@ class OracleMPCAgent(AbstractAgent):
 
             # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py#L190-L231
             # Compute reward for this combination
+            # Note: No need to copy state since compute_combo_reward calls
+            # reset_download_time() which resets virtual pointers
             reward = self.compute_combo_reward(
-                state=state.copy(),
+                state=state,
                 combo=combo,
                 last_index=last_index,
                 start_buffer=start_buffer,
