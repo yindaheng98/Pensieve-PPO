@@ -39,6 +39,18 @@ class Trainer:
     - A central coordinator that aggregates experiences and updates the model
     - Multiple parallel agents that collect experiences
 
+    Training Modes:
+        1. Standard RL (sync_params=True, same agent for central and workers):
+           Workers and central agent use the same model. Parameters are synchronized
+           from central to workers each epoch. This is standard distributed PPO training.
+
+        2. Imitation Learning / Behavioral Cloning (sync_params=False, different agents):
+           Workers use a different agent (e.g., LLM-based agent) to collect trajectories,
+           while the central agent (neural network) learns to imitate those decisions.
+           This is essentially supervised learning where the neural network learns to
+           mimic the "teacher" agent's behavior. No parameter sync occurs because the
+           worker agents don't share the same model architecture.
+
     Reference:
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py
     """
@@ -55,7 +67,7 @@ class Trainer:
         pretrained_model_path: Optional[str] = None,
         on_epoch_end: Callable[[int, AbstractTrainableAgent, Dict], None] = EpochEndCallback(),
         on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = SaveModelCallback(),
-        # additional parameter to allow different agent implementations for workers
+        # Additional parameters for imitation learning: allow workers to use a different "teacher" agent
         agent_factory_for_worker: Optional[Callable[[], Union[AbstractAgent, AbstractTrainableAgent]]] = None,
         sync_params: bool = True,
     ):
@@ -74,10 +86,14 @@ class Trainer:
             on_save_model: Callback invoked when model is saved.
             agent_factory_for_worker: Factory function () -> AbstractAgent | AbstractTrainableAgent
                 for worker agents. If None, uses agent_factory. This allows workers to use a
-                different (possibly lighter) agent implementation than the central agent.
+                different agent implementation than the central agent, enabling imitation learning
+                where workers use a "teacher" agent (e.g., LLM) and central agent learns to mimic it.
             sync_params: Whether to synchronize network parameters from central agent to workers.
-                If True, workers must use AbstractTrainableAgent (requires set_params).
-                If False, workers can use any AbstractAgent and params sync is skipped.
+                If True (standard RL): workers must use AbstractTrainableAgent (requires set_params),
+                    and parameters are synchronized each epoch for distributed PPO training.
+                If False (imitation learning): workers can use any AbstractAgent (e.g., LLM-based),
+                    no param sync occurs, and central agent learns from worker-collected trajectories
+                    in a supervised/behavioral cloning manner.
         """
         self.env_factory = env_factory
         self.agent_factory = agent_factory
@@ -90,8 +106,8 @@ class Trainer:
         self.on_epoch_end = on_epoch_end
         self.on_save_model = on_save_model
 
-        # additional parameter to allow different agent implementations for workers
-        # If agent_factory_for_worker is not provided, default to agent_factory
+        # If agent_factory_for_worker is not provided, default to agent_factory (standard RL mode).
+        # If provided with a different agent (e.g., LLM), enables imitation learning / behavioral cloning.
         self.agent_factory_for_worker = agent_factory_for_worker if agent_factory_for_worker is not None else agent_factory
         self.sync_params = sync_params
 
@@ -136,7 +152,9 @@ class Trainer:
             training_batches: List[TrainingBatch] = []
             for i in range(self.num_agents):
                 trajectory, done = exp_queues[i].get()
-                # as the actor in central agent and worker agent may be different, we should produce the training batch here
+                # As the actor in central agent and worker agent may be different, we produce the training batch here.
+                # In imitation learning mode (sync_params=False), the trajectory contains actions from the "teacher"
+                # agent (e.g., LLM), and the central agent learns to imitate these actions (behavioral cloning).
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L161-L165
                 training_batch = actor.produce_training_batch(trajectory, done)
                 training_batches.append(training_batch)
