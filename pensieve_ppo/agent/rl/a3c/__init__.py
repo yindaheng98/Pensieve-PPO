@@ -10,14 +10,11 @@ Reference:
 
 from .agent import A3CAgent, compute_entropy, discount
 from .model import Actor, Critic
-from ...registry import register_agent, register_env
-from ..env import create_rl_env
+from ...registry import register
+from ..observer import RLABRStateObserver
 
 # Register A3C agent
-register_agent("a3c", A3CAgent)
-
-# Register A3C environment (same as PPO, uses RLABRStateObserver)
-register_env("a3c", create_rl_env)
+register("a3c", A3CAgent, RLABRStateObserver)
 
 __all__ = [
     'A3CAgent',

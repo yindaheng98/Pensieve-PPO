@@ -7,7 +7,7 @@ from .abc import AbstractAgent
 from .trainable import AbstractTrainableAgent, Step, TrainingBatch
 from .trainer import Trainer, EpochEndCallback, SaveModelCallback
 from .imitate import ImitationTrainer
-from .registry import create_agent, register_agent, get_available_agents, get_available_trainable_agents, create_env, register_env, get_available_envs
+from .registry import create_agent, register, get_available_agents, get_available_trainable_agents, create_env, get_available_envs
 
 # Import agent implementations to trigger registration
 from . import rl  # noqa: F401
@@ -24,11 +24,10 @@ __all__ = [
     'EpochEndCallback',
     'SaveModelCallback',
     'create_agent',
-    'register_agent',
+    'register',
     'get_available_agents',
     'get_available_trainable_agents',
     'create_env',
-    'register_env',
     'get_available_envs',
     'rl',
     'bba',

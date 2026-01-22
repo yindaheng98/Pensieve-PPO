@@ -14,15 +14,11 @@ from .agent_oracle import OracleMPCAgent
 from .observer import MPCABRStateObserver, MPCState
 from .observer_oracle import OracleMPCABRStateObserver, OracleMPCState
 from .env import create_mpc_env, create_oracle_mpc_env
-from ..registry import register_agent, register_env
+from ..registry import register
 
 # Register MPC agents
-register_agent("mpc", MPCAgent)
-register_agent("mpc-oracle", OracleMPCAgent)
-
-# Register MPC environments
-register_env("mpc", create_mpc_env)
-register_env("mpc-oracle", create_oracle_mpc_env)
+register("mpc", MPCAgent, MPCABRStateObserver)
+register("mpc-oracle", OracleMPCAgent, OracleMPCABRStateObserver)
 
 __all__ = [
     'MPCAgent',

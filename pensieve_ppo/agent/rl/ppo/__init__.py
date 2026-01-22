@@ -8,14 +8,11 @@ Reference:
 
 from .agent import PPOAgent
 from .model import Actor, Critic
-from ...registry import register_agent, register_env
-from ..env import create_rl_env
+from ...registry import register
+from ..observer import RLABRStateObserver
 
 # Register PPO agent
-register_agent("ppo", PPOAgent)
-
-# Register PPO environment
-register_env("ppo", create_rl_env)
+register("ppo", PPOAgent, RLABRStateObserver)
 
 __all__ = [
     'PPOAgent',

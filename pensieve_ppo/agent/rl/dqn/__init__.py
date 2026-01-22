@@ -16,14 +16,11 @@ Reference:
 
 from .agent import DQNAgent
 from .model import QNetwork
-from ...registry import register_agent, register_env
-from ..env import create_rl_env
+from ...registry import register
+from ..observer import RLABRStateObserver
 
 # Register DQN agent
-register_agent("dqn", DQNAgent)
-
-# Register DQN environment (same as PPO/A3C, uses RLABRStateObserver)
-register_env("dqn", create_rl_env)
+register("dqn", DQNAgent, RLABRStateObserver)
 
 __all__ = [
     'DQNAgent',

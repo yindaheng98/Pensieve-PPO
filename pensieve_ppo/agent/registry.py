@@ -35,8 +35,7 @@ def register(
 ) -> None:
     """Register an agent with its associated trainable agent and observer classes.
 
-    This is the unified registration function that populates both the new REGISTRY
-    and the legacy AGENT_REGISTRY/TRAINABLEAGENT_REGISTRY for backward compatibility.
+    This is the unified registration function that populates the REGISTRY.
 
     Args:
         name: Name to register the agent under (case-sensitive).
@@ -89,23 +88,6 @@ TRAINABLEAGENT_REGISTRY: Dict[str, Type[AbstractTrainableAgent]] = {}
 ENV_REGISTRY: Dict[str, Type[ABREnv]] = {}
 
 
-def register_agent(name: str, agent_class: Type[AbstractAgent]) -> None:
-    """Register a new agent type.
-
-    Args:
-        name: Name to register the agent under (case-sensitive).
-        agent_class: The agent class to register.
-
-    Raises:
-        ValueError: If the agent class is not a subclass of AbstractAgent.
-    """
-    if not issubclass(agent_class, AbstractAgent):
-        raise ValueError(f"Agent class must be a subclass of AbstractAgent, got {agent_class}")
-    AGENT_REGISTRY[name] = agent_class
-
-    # Also register in TRAINABLEAGENT_REGISTRY if it's a trainable agent
-    if issubclass(agent_class, AbstractTrainableAgent):
-        TRAINABLEAGENT_REGISTRY[name] = agent_class
 
 
 def get_available_agents() -> list[str]:
@@ -167,20 +149,21 @@ def create_agent(
         ...     gamma=0.99,
         ... )
     """
-    if name not in AGENT_REGISTRY:
+    if name not in REGISTRY:
         available = ", ".join(get_available_agents())
         raise ValueError(
             f"Unknown agent: '{name}'. Available agents: {available}"
         )
 
+    entry = REGISTRY[name]
+    agent_class = entry.agent_cls
+
     # Check if model_path is provided but agent is not trainable
-    if model_path is not None and name not in TRAINABLEAGENT_REGISTRY:
+    if model_path is not None and entry.trainable_agent_cls is None:
         raise ValueError(
             f"Agent '{name}' is not a trainable agent and does not support loading models. "
             f"Available trainable agents: {', '.join(get_available_trainable_agents())}"
         )
-
-    agent_class = AGENT_REGISTRY[name]
     agent = agent_class(*args, **kwargs)
 
     if model_path is not None:
@@ -189,17 +172,6 @@ def create_agent(
     return agent
 
 
-def register_env(name: str, env_class: Type[ABREnv]) -> None:
-    """Register a new environment type.
-
-    Args:
-        name: Name to register the environment under (case-sensitive).
-        env_class: The environment class to register.
-
-    Raises:
-        ValueError: If the env class is not a subclass of ABREnv.
-    """
-    ENV_REGISTRY[name] = env_class
 
 
 def get_available_envs() -> list[str]:

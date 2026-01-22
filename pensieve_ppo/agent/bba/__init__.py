@@ -9,13 +9,10 @@ Reference:
 from .agent import BBAAgent
 from .observer import BBAStateObserver, BBAState
 from .env import create_bba_env
-from ..registry import register_agent, register_env
+from ..registry import register
 
 # Register BBA agent
-register_agent("bba", BBAAgent)
-
-# Register BBA environment
-register_env("bba", create_bba_env)
+register("bba", BBAAgent, BBAStateObserver)
 
 __all__ = [
     'BBAAgent',
