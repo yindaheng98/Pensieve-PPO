@@ -15,12 +15,12 @@ Reference:
 """
 
 import multiprocessing as mp
-from typing import Callable, Dict, List, Optional
+from typing import Callable, List
 
-from ..gym import ABREnv, ImitationState
+from ..gym import ImitationState
 from .abc import AbstractAgent
-from .trainable import AbstractTrainableAgent, Step, TrainingBatch
-from .trainer import EpochEndCallback, SaveModelCallback, Trainer
+from .trainable import Step, TrainingBatch
+from .trainer import Trainer
 
 
 class ImitationTrainer(Trainer):
