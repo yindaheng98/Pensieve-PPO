@@ -147,6 +147,8 @@ def create_env_agent_factory_with_default(
     # Compatibility parameters (shared between env and agent)
     levels_quality: list = VIDEO_BIT_RATE,
     state_history_len: int = S_LEN,
+    # Env parameters
+    initial_level: int = DEFAULT_QUALITY,
     # Additional options
     env_options: dict = {},
     agent_options: dict = {},
@@ -168,6 +170,7 @@ def create_env_agent_factory_with_default(
         trace_folder=trace_folder,
         train=train,
         state_history_len=state_history_len,
+        initial_level=initial_level,
         **env_options,
     )
 
@@ -201,6 +204,43 @@ def create_env_agent_with_default(
     return env_factory(pid=0), agent_factory()
 
 
+def create_imitation_env_with_default(
+    student_name: str = 'ppo',
+    teacher_name: str = 'bba',
+    levels_quality: list = VIDEO_BIT_RATE,
+    trace_folder: Optional[str] = None,
+    video_size_file_prefix: str = VIDEO_SIZE_FILE_PREFIX,
+    max_chunks: int = TOTAL_VIDEO_CHUNKS,
+    train: bool = True,
+    # Env parameters
+    initial_level: int = DEFAULT_QUALITY,
+    **kwargs,
+) -> ABREnv:
+    """Create an imitation ABREnv with default Pensieve parameters.
+
+    Wraps `create_imitation_env` with default values matching the original
+    Pensieve implementation. If trace_folder is None, auto-selects TRAIN_TRACES
+    or TEST_TRACES based on train flag.
+
+    Returns:
+        Configured ABREnv instance with ImitationObserver.
+    """
+    if trace_folder is None:
+        trace_folder = TRAIN_TRACES if train else TEST_TRACES
+
+    return create_imitation_env(
+        student_name=student_name,
+        teacher_name=teacher_name,
+        levels_quality=levels_quality,
+        trace_folder=trace_folder,
+        video_size_file_prefix=video_size_file_prefix,
+        max_chunks=max_chunks,
+        train=train,
+        initial_level=initial_level,
+        **kwargs,
+    )
+
+
 class PicklableImitationEnvFactory:
     """Callable factory for creating ABREnv instances with ImitationObserver.
 
@@ -208,43 +248,14 @@ class PicklableImitationEnvFactory:
     both student_state and teacher_state for imitation learning.
     """
 
-    def __init__(
-        self,
-        student_name: str = 'ppo',
-        teacher_name: str = 'bba',
-        random_seed: Optional[int] = None,
-        **kwargs,
-    ):
-        """Initialize the imitation environment factory.
-
-        Args:
-            student_name: Agent name for student observer (e.g., 'ppo').
-            teacher_name: Agent name for teacher observer (e.g., 'bba', 'mpc').
-            random_seed: Base random seed (will be offset by pid).
-            **kwargs: Additional kwargs passed to create_imitation_env.
-        """
-        self.student_name = student_name
-        self.teacher_name = teacher_name
-        self.random_seed = random_seed
+    def __init__(self, *args, random_seed=None, **kwargs):
+        self.args = args
         self.kwargs = kwargs
+        self.random_seed = random_seed
 
     def __call__(self, pid: int) -> ABREnv:
-        """Create an ABREnv with ImitationObserver.
-
-        Args:
-            pid: Process ID for random seed offset.
-
-        Returns:
-            Configured ABREnv instance with ImitationObserver.
-        """
         random_seed = (self.random_seed + pid) if self.random_seed is not None else None
-
-        return create_imitation_env(
-            student_name=self.student_name,
-            teacher_name=self.teacher_name,
-            random_seed=random_seed,
-            **self.kwargs,
-        )
+        return create_imitation_env_with_default(*self.args, random_seed=random_seed, **self.kwargs)
 
 
 def create_imitation_env_agent_factory_with_default(
@@ -263,9 +274,12 @@ def create_imitation_env_agent_factory_with_default(
     # Compatibility parameters (shared between student and teacher)
     levels_quality: list = VIDEO_BIT_RATE,
     state_history_len: int = S_LEN,
+    # Env parameters
+    video_size_file_prefix: str = VIDEO_SIZE_FILE_PREFIX,
+    max_chunks: int = TOTAL_VIDEO_CHUNKS,
+    initial_level: int = DEFAULT_QUALITY,
     # Additional options
     random_seed: Optional[int] = None,
-    initial_level: int = DEFAULT_QUALITY,
     env_options: dict = {},
 ) -> Tuple[PicklableImitationEnvFactory, PicklableAgentFactory, PicklableAgentFactory]:
     """Create env_factory, student_agent_factory, and teacher_agent_factory for imitation learning.
@@ -291,8 +305,10 @@ def create_imitation_env_agent_factory_with_default(
         teacher_agent_options: Additional kwargs for teacher agent.
         levels_quality: Quality metric list for each bitrate level.
         state_history_len: Number of past observations in state.
-        random_seed: Base random seed (will be offset by pid for env).
+        video_size_file_prefix: Prefix path for video size files.
+        max_chunks: Maximum number of video chunks.
         initial_level: Initial quality level index on reset.
+        random_seed: Base random seed (will be offset by pid for env).
         env_options: Additional kwargs for environment/simulator.
 
     Returns:
@@ -301,22 +317,18 @@ def create_imitation_env_agent_factory_with_default(
         - student_agent_factory() -> AbstractTrainableAgent (student)
         - teacher_agent_factory() -> AbstractAgent (teacher)
     """
-    # Auto-select trace folder based on train flag
-    if trace_folder is None:
-        trace_folder = TRAIN_TRACES if train else TEST_TRACES
-
     # Create imitation environment factory
     env_factory = PicklableImitationEnvFactory(
         student_name=student_name,
         teacher_name=teacher_name,
-        random_seed=random_seed,
-        # Observer args (shared)
         levels_quality=levels_quality,
-        state_history_len=state_history_len,
-        # Simulator args
         trace_folder=trace_folder,
+        video_size_file_prefix=video_size_file_prefix,
+        max_chunks=max_chunks,
         train=train,
         initial_level=initial_level,
+        random_seed=random_seed,
+        state_history_len=state_history_len,
         **env_options,
     )
 
