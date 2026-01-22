@@ -148,6 +148,10 @@ AbstractAgent
   - `compute_v()`: Value target computation (returns/advantages)
 - Concrete implementations: `PPOAgent`, `A3CAgent`, `DQNAgent`, etc.
 
+> **Note on RL Agent Implementations**: The agents in `pensieve_ppo/agent/rl/` (PPO, A3C, DQN) are **reinforcement learning algorithms**, not imitation learning algorithms. While the framework technically allows running them with `pensieve_ppo.imitate`, this is not recommended as these algorithms are designed to learn from rewards through environment interaction, not from teacher demonstrations.
+>
+> **Note on A3C Implementation**: The `A3CAgent` implementation is based on the A3C (Asynchronous Advantage Actor-Critic) algorithm, but the actual `Trainer` performs **synchronous updates** rather than asynchronous updates. This means all workers synchronize before each parameter update, which differs from the original A3C paper's asynchronous design.
+
 ### Agent, Observer, and Trainer Relationships
 
 **AbstractABRStateObserver** (`pensieve_ppo.gym.env.AbstractABRStateObserver`):
@@ -312,6 +316,8 @@ python -m pensieve_ppo.imitate \
     --parallel-workers 16 \
     --train-epochs 500000
 ```
+
+> **Warning**: The RL agents (`ppo`, `a3c`, `dqn` in `pensieve_ppo/agent/rl/`) are **reinforcement learning algorithms** designed to learn from reward signals, not from teacher demonstrations. Although the framework allows running them with `pensieve_ppo.imitate`, this is **not recommended** for production use. For proper imitation learning, consider using agents specifically designed for behavioral cloning or other imitation learning methods (e.g., `netllm`).
 
 ## API Reference
 
