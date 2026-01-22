@@ -2,7 +2,12 @@
 
 from .env import ABREnv, AbstractABRStateObserver, State
 from .imitate import ImitationObserver, ImitationState
-from .combinations import create_env, create_env_with_observer_class, create_imitation_env
+from .combinations import (
+    create_env,
+    create_env_with_observer_class,
+    create_imitation_env,
+    create_imitation_env_with_observer_class,
+)
 
 __all__ = [
     'ABREnv',
@@ -13,4 +18,5 @@ __all__ = [
     'create_env',
     'create_env_with_observer_class',
     'create_imitation_env',
+    'create_imitation_env_with_observer_class',
 ]

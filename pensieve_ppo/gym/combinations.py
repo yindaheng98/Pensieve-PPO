@@ -84,6 +84,7 @@ def create_imitation_env(
     student_observer: AbstractABRStateObserver,
     teacher_observer: AbstractABRStateObserver,
     *args,
+    initial_level: int = 0,
     **kwargs,
 ) -> ABREnv:
     """Create an ABREnv for imitation learning with student and teacher observers.
@@ -111,6 +112,7 @@ def create_imitation_env(
         teacher_observer: Observer for the teacher agent. Used to generate
                          states for teacher's decision making.
         *args: Positional arguments passed to create_simulator.
+        initial_level: Initial quality level index on reset (default: 0).
         **kwargs: Keyword arguments passed to create_simulator.
 
     Returns:
@@ -124,5 +126,70 @@ def create_imitation_env(
     return create_env(
         imitation_observer,
         *args,
+        initial_level=initial_level,
+        **kwargs,
+    )
+
+
+def create_imitation_env_with_observer_class(
+    student_observer_class: Type[AbstractABRStateObserver],
+    teacher_observer_class: Type[AbstractABRStateObserver],
+    *args,
+    initial_level: int = 0,
+    **kwargs,
+) -> ABREnv:
+    """Create an ABREnv for imitation learning by auto-constructing observers from kwargs.
+
+    This function automatically extracts required constructor arguments for both
+    observer classes from kwargs, creates both observers, and creates an ABREnv
+    with an ImitationObserver. Shared arguments are passed to both observers.
+
+    Args:
+        student_observer_class: The student observer class to instantiate.
+        teacher_observer_class: The teacher observer class to instantiate.
+        *args: Positional arguments passed to create_simulator.
+        initial_level: Initial quality level index on reset (default: 0).
+        **kwargs: Keyword arguments. Arguments matching either observer's
+                 required args will be extracted for observer construction
+                 (shared args go to both), and the rest will be passed to
+                 create_simulator.
+
+    Returns:
+        Configured ABREnv instance with ImitationObserver.
+
+    Example:
+        >>> from pensieve_ppo.agent.rl import RLABRStateObserver
+        >>> from pensieve_ppo.agent.bba import BBAStateObserver
+        >>> env = create_imitation_env_with_observer_class(
+        ...     RLABRStateObserver,
+        ...     BBAStateObserver,
+        ...     trace_folder=trace_folder,
+        ...     video_size_file_prefix=video_size_file_prefix,
+        ...     levels_quality=[300, 750, 1200, 1850, 2850, 4300],
+        ... )
+    """
+    # Get required args for both observers
+    student_required = set(student_observer_class.get_required_args())
+    teacher_required = set(teacher_observer_class.get_required_args())
+    all_required = student_required | teacher_required
+
+    # Extract observer args from kwargs (shared args go to both)
+    student_kwargs = {arg: kwargs[arg] for arg in student_required if arg in kwargs}
+    teacher_kwargs = {arg: kwargs[arg] for arg in teacher_required if arg in kwargs}
+
+    # Remove all observer args from kwargs
+    for arg in all_required:
+        kwargs.pop(arg, None)
+
+    # Create observers
+    student_observer = student_observer_class(**student_kwargs)
+    teacher_observer = teacher_observer_class(**teacher_kwargs)
+
+    # Create and return the environment
+    return create_imitation_env(
+        student_observer,
+        teacher_observer,
+        *args,
+        initial_level=initial_level,
         **kwargs,
     )
