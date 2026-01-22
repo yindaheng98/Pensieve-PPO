@@ -199,13 +199,17 @@ if __name__ == '__main__':
     # Prepare trainer
     trainer = prepare_training(
         trace_folder=args.train_trace_folder,
-        model_path=None,
+        # Agent parameters
         name=args.agent_name,
+        model_path=args.model_path,
         device=args.device,
+        agent_options=args.agent_options,
+        # Shared parameters
         levels_quality=args.levels_quality,
         state_history_len=args.state_history_len,
-        agent_options=args.agent_options,
+        initial_level=args.initial_level,
         env_options=args.env_options,
+        # Training parameters
         output_dir=args.output_dir,
         parallel_workers=args.parallel_workers,
         steps_per_epoch=args.steps_per_epoch,
