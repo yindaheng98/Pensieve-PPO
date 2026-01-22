@@ -22,6 +22,7 @@
             "module": "pensieve_ppo.train",
             "args": [
                 "--agent-name=a3c",
+                // "--agent-name=ppo",
             ],
             "cwd": "${workspaceFolder}",
         },
@@ -30,7 +31,11 @@
             "type": "debugpy",
             "request": "launch",
             "module": "pensieve_ppo.imitate",
-            "args": [],
+            "args": [
+                "--agent-name=a3c",
+                // "--agent-name=ppo",
+                "--teacher-agent-name=bba",
+            ],
             "cwd": "${workspaceFolder}",
         },
         {
@@ -39,13 +44,12 @@
             "request": "launch",
             "module": "pensieve_ppo.test",
             "args": [
-                // "--agent-name=ppo",
-                // "--model-path=src/pretrain/nn_model_ep_155400.pth",
+                "--agent-name=ppo",
+                "--model-path=src/pretrain/nn_model_ep_155400.pth",
                 // "--agent-name=bba",
                 // "--agent-name=mpc-oracle",
                 // "--agent-name=mpc",
                 // "-ofuture_chunk_count=3",
-                "--agent-name=dqn",
             ],
             "cwd": "${workspaceFolder}",
         },
