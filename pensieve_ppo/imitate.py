@@ -17,17 +17,11 @@ Reference:
 
 import argparse
 import os
-from typing import Callable, Optional, Union
+from typing import Callable
 
-import torch
 
 from .agent import AbstractTrainableAgent, ImitationTrainer, get_available_agents
-from .defaults import (
-    create_imitation_env_agent_factory_with_default,
-    VIDEO_BIT_RATE,
-    DEFAULT_QUALITY,
-)
-from .agent.rl.observer import S_LEN
+from .defaults import create_imitation_env_agent_factory_with_default
 from .args import add_env_agent_arguments, parse_env_agent_args, parse_options
 from .test import add_testing_arguments
 from .train import TestingCallback, add_training_arguments, NUM_AGENTS, TRAIN_SEQ_LEN, TRAIN_EPOCH, MODEL_SAVE_INTERVAL, SUMMARY_DIR
