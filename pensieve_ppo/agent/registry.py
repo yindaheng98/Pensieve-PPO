@@ -162,8 +162,9 @@ def create_agent(
 
 def create_env(
     name: str,
-    env_options: Dict[str, Any] = {},
     observer_options: Dict[str, Any] = {},
+    *args,
+    **kwargs,
 ) -> ABREnv:
     """Create an environment by name.
 
@@ -174,11 +175,11 @@ def create_env(
     Args:
         name: Name of the agent/environment to create (case-sensitive).
             Must be registered in REGISTRY.
-        env_options: Dictionary of keyword arguments passed to create_gym_env
-            (e.g., initial_level, trace_folder, video_size_file_prefix).
-            Defaults to empty dict.
         observer_options: Dictionary of keyword arguments passed to observer constructor
             (e.g., levels_quality, rebuf_penalty). Defaults to empty dict.
+        *args: Positional arguments passed to create_gym_env (which forwards to create_simulator).
+        **kwargs: Keyword arguments passed to create_gym_env
+            (e.g., initial_level, trace_folder, video_size_file_prefix).
 
     Returns:
         An instance of the requested environment (ABREnv).
@@ -189,15 +190,13 @@ def create_env(
     Example:
         >>> env = create_env(
         ...     name="ppo",
-        ...     env_options={
-        ...         "initial_level": 0,
-        ...         "trace_folder": trace_folder,
-        ...         "video_size_file_prefix": video_size_file_prefix,
-        ...     },
         ...     observer_options={
         ...         "levels_quality": VIDEO_BIT_RATE,
         ...         "rebuf_penalty": 4.3,
         ...     },
+        ...     initial_level=0,
+        ...     trace_folder=trace_folder,
+        ...     video_size_file_prefix=video_size_file_prefix,
         ... )
     """
     if name not in REGISTRY:
@@ -215,7 +214,8 @@ def create_env(
     # Create environment using gym combinations.create_env
     env = create_gym_env(
         observer=observer,
-        **env_options,
+        *args,
+        **kwargs,
     )
 
     return env
