@@ -41,13 +41,15 @@ TEST_TRACES = './src/test/'  # https://github.com/godka/Pensieve-PPO/blob/a1b257
 
 
 def create_env_with_default(
-    name: str = 'ppo',
-    levels_quality: list = VIDEO_BIT_RATE,
     trace_folder: Optional[str] = None,
+    train: bool = True,
+    # Observer name parameter
+    name: str = 'ppo',
+    # Compatibility parameters (shared between env and agent)
+    levels_quality: list = VIDEO_BIT_RATE,
+    # Env/Simulator parameters
     video_size_file_prefix: str = VIDEO_SIZE_FILE_PREFIX,
     max_chunks: int = TOTAL_VIDEO_CHUNKS,
-    train: bool = True,
-    # Env parameters
     initial_level: int = DEFAULT_QUALITY,
     **kwargs,
 ) -> ABREnv:
@@ -56,6 +58,15 @@ def create_env_with_default(
     Wraps `create_env` with default values matching the original
     Pensieve implementation. If trace_folder is None, auto-selects TRAIN_TRACES
     or TEST_TRACES based on train flag.
+
+    Args:
+        trace_folder: Folder containing network bandwidth trace files.
+        train: Whether in training mode (affects trace iteration).
+        name: Observer name (e.g., 'ppo', 'mpc').
+        levels_quality: Quality metric list for each bitrate level.
+        video_size_file_prefix: Prefix path for video size files.
+        max_chunks: Maximum number of video chunks.
+        initial_level: Initial quality level index on reset.
 
     Returns:
         Configured ABREnv instance.
@@ -205,14 +216,16 @@ def create_env_agent_with_default(
 
 
 def create_imitation_env_with_default(
+    trace_folder: Optional[str] = None,
+    train: bool = True,
+    # Observer name parameters
     student_name: str = 'ppo',
     teacher_name: str = 'bba',
+    # Compatibility parameters (shared between env and agent)
     levels_quality: list = VIDEO_BIT_RATE,
-    trace_folder: Optional[str] = None,
+    # Env/Simulator parameters
     video_size_file_prefix: str = VIDEO_SIZE_FILE_PREFIX,
     max_chunks: int = TOTAL_VIDEO_CHUNKS,
-    train: bool = True,
-    # Env parameters
     initial_level: int = DEFAULT_QUALITY,
     **kwargs,
 ) -> ABREnv:
@@ -221,6 +234,16 @@ def create_imitation_env_with_default(
     Wraps `create_imitation_env` with default values matching the original
     Pensieve implementation. If trace_folder is None, auto-selects TRAIN_TRACES
     or TEST_TRACES based on train flag.
+
+    Args:
+        trace_folder: Folder containing network bandwidth trace files.
+        train: Whether in training mode (affects trace iteration).
+        student_name: Observer name for student (e.g., 'ppo').
+        teacher_name: Observer name for teacher (e.g., 'bba', 'mpc').
+        levels_quality: Quality metric list for each bitrate level.
+        video_size_file_prefix: Prefix path for video size files.
+        max_chunks: Maximum number of video chunks.
+        initial_level: Initial quality level index on reset.
 
     Returns:
         Configured ABREnv instance with ImitationObserver.
