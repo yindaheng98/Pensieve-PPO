@@ -7,6 +7,32 @@ from .env import ABREnv, AbstractABRStateObserver
 from .imitate import ImitationObserver
 
 
+def create_env(
+    observer: AbstractABRStateObserver,
+    *args,
+    initial_level: int = 0,
+    **kwargs,
+) -> ABREnv:
+    """Create an ABREnv with a configured Simulator.
+
+    Args:
+        observer: ABRStateObserver instance for state observation and reward.
+        *args: Positional arguments passed to create_simulator.
+        initial_level: Initial quality level index on reset (default: 0).
+        **kwargs: Keyword arguments passed to create_simulator.
+
+    Returns:
+        Configured ABREnv instance.
+    """
+    simulator = create_simulator(*args, **kwargs)
+
+    return ABREnv(
+        simulator=simulator,
+        observer=observer,
+        initial_level=initial_level,
+    )
+
+
 def create_env_with_observer_class(
     observer_class: Type[AbstractABRStateObserver],
     *args,
@@ -51,32 +77,6 @@ def create_env_with_observer_class(
 
     # Create and return the environment
     return create_env(observer, *args, initial_level=initial_level, **kwargs)
-
-
-def create_env(
-    observer: AbstractABRStateObserver,
-    *args,
-    initial_level: int = 0,
-    **kwargs,
-) -> ABREnv:
-    """Create an ABREnv with a configured Simulator.
-
-    Args:
-        observer: ABRStateObserver instance for state observation and reward.
-        *args: Positional arguments passed to create_simulator.
-        initial_level: Initial quality level index on reset (default: 0).
-        **kwargs: Keyword arguments passed to create_simulator.
-
-    Returns:
-        Configured ABREnv instance.
-    """
-    simulator = create_simulator(*args, **kwargs)
-
-    return ABREnv(
-        simulator=simulator,
-        observer=observer,
-        initial_level=initial_level,
-    )
 
 
 def create_imitation_env(
