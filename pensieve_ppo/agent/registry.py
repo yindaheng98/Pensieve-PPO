@@ -4,13 +4,79 @@ This module provides factory functions to create agents and environments by name
 allowing for easy switching between different implementations.
 """
 
+from dataclasses import dataclass
 from typing import Optional, Type, Dict
 
 import gymnasium as gym
 
-from ..gym import ABREnv
+from ..gym import ABREnv, AbstractABRStateObserver
 from .abc import AbstractAgent
 from .trainable import AbstractTrainableAgent
+
+
+@dataclass
+class RegistryEntry:
+    """Registry entry containing agent, trainable agent, and observer classes."""
+
+    agent_cls: Type[AbstractAgent]
+    trainable_agent_cls: Optional[Type[AbstractTrainableAgent]]
+    observer_cls: Type[AbstractABRStateObserver]
+
+
+# Unified registry of agents with their associated classes
+REGISTRY: Dict[str, RegistryEntry] = {}
+
+
+def register(
+    name: str,
+    agent_cls: Type[AbstractAgent],
+    observer_cls: Type[AbstractABRStateObserver],
+    trainable_agent_cls: Optional[Type[AbstractTrainableAgent]] = None,
+) -> None:
+    """Register an agent with its associated trainable agent and observer classes.
+
+    This is the unified registration function that populates both the new REGISTRY
+    and the legacy AGENT_REGISTRY/TRAINABLEAGENT_REGISTRY for backward compatibility.
+
+    Args:
+        name: Name to register the agent under (case-sensitive).
+        agent_cls: The agent class to register.
+        observer_cls: The observer class associated with this agent.
+        trainable_agent_cls: Optional trainable agent class. If not provided,
+            will be set to agent_cls if it's a subclass of AbstractTrainableAgent.
+
+    Raises:
+        ValueError: If the agent class is not a subclass of AbstractAgent,
+            or if the observer class is not a subclass of AbstractABRStateObserver.
+    """
+    if not issubclass(agent_cls, AbstractAgent):
+        raise ValueError(
+            f"Agent class must be a subclass of AbstractAgent, got {agent_cls}"
+        )
+    if not issubclass(observer_cls, AbstractABRStateObserver):
+        raise ValueError(
+            f"Observer class must be a subclass of AbstractABRStateObserver, got {observer_cls}"
+        )
+
+    # Auto-detect trainable agent if not provided
+    if trainable_agent_cls is None and issubclass(agent_cls, AbstractTrainableAgent):
+        trainable_agent_cls = agent_cls
+
+    # Validate trainable agent class if provided
+    if trainable_agent_cls is not None:
+        if not issubclass(trainable_agent_cls, AbstractTrainableAgent):
+            raise ValueError(
+                f"Trainable agent class must be a subclass of AbstractTrainableAgent, "
+                f"got {trainable_agent_cls}"
+            )
+
+    # Register in unified REGISTRY
+    entry = RegistryEntry(
+        agent_cls=agent_cls,
+        trainable_agent_cls=trainable_agent_cls,
+        observer_cls=observer_cls,
+    )
+    REGISTRY[name] = entry
 
 
 # Registry of available agents
@@ -48,7 +114,7 @@ def get_available_agents() -> list[str]:
     Returns:
         List of registered agent names.
     """
-    return list(AGENT_REGISTRY.keys())
+    return list(REGISTRY.keys())
 
 
 def get_available_trainable_agents() -> list[str]:
@@ -57,7 +123,10 @@ def get_available_trainable_agents() -> list[str]:
     Returns:
         List of registered trainable agent names.
     """
-    return list(TRAINABLEAGENT_REGISTRY.keys())
+    return [
+        name for name, entry in REGISTRY.items()
+        if entry.trainable_agent_cls is not None
+    ]
 
 
 def create_agent(
