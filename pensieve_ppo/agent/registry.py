@@ -7,7 +7,6 @@ allowing for easy switching between different implementations.
 from dataclasses import dataclass
 from typing import Any, Optional, Type, Dict
 
-import gymnasium as gym
 
 from ..gym import ABREnv, AbstractABRStateObserver
 from ..gym.combinations import create_env as create_gym_env
