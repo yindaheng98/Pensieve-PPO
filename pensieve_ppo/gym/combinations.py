@@ -20,13 +20,12 @@ def create_env_with_observer_class(
     then creates the ABREnv with the remaining kwargs passed to create_simulator.
 
     Args:
-        observer_class: The observer class to instantiate. Must define
-                       REQUIRED_ARGS class variable listing required constructor
-                       argument names.
+        observer_class: The observer class to instantiate. Must implement
+                       get_constructor_args() returning all constructor argument names.
         *args: Positional arguments passed to create_simulator.
         initial_level: Initial quality level index on reset (default: 0).
         **kwargs: Keyword arguments. Arguments matching the observer's
-                 REQUIRED_ARGS will be extracted for observer construction,
+                 init args will be extracted for observer construction,
                  and the rest will be passed to create_simulator.
 
     Returns:
@@ -41,11 +40,11 @@ def create_env_with_observer_class(
         ...     levels_quality=[300, 750, 1200, 1850, 2850, 4300],
         ... )
     """
-    # Get required args for the observer
-    required_args = observer_class.get_required_args()
+    # Get constructor args for the observer
+    constructor_args = observer_class.get_constructor_args()
 
     # Extract observer args from kwargs
-    observer_kwargs = {arg: kwargs.pop(arg) for arg in required_args if arg in kwargs}
+    observer_kwargs = {arg: kwargs.pop(arg) for arg in constructor_args if arg in kwargs}
 
     # Create the observer
     observer = observer_class(**observer_kwargs)
@@ -150,7 +149,7 @@ def create_imitation_env_with_observer_class(
         *args: Positional arguments passed to create_simulator.
         initial_level: Initial quality level index on reset (default: 0).
         **kwargs: Keyword arguments. Arguments matching either observer's
-                 required args will be extracted for observer construction
+                 constructor args will be extracted for observer construction
                  (shared args go to both), and the rest will be passed to
                  create_simulator.
 
@@ -168,17 +167,17 @@ def create_imitation_env_with_observer_class(
         ...     levels_quality=[300, 750, 1200, 1850, 2850, 4300],
         ... )
     """
-    # Get required args for both observers
-    student_required = set(student_observer_class.get_required_args())
-    teacher_required = set(teacher_observer_class.get_required_args())
-    all_required = student_required | teacher_required
+    # Get constructor args for both observers
+    student_args = set(student_observer_class.get_constructor_args())
+    teacher_args = set(teacher_observer_class.get_constructor_args())
+    all_observer_args = student_args | teacher_args
 
     # Extract observer args from kwargs (shared args go to both)
-    student_kwargs = {arg: kwargs[arg] for arg in student_required if arg in kwargs}
-    teacher_kwargs = {arg: kwargs[arg] for arg in teacher_required if arg in kwargs}
+    student_kwargs = {arg: kwargs[arg] for arg in student_args if arg in kwargs}
+    teacher_kwargs = {arg: kwargs[arg] for arg in teacher_args if arg in kwargs}
 
     # Remove all observer args from kwargs
-    for arg in all_required:
+    for arg in all_observer_args:
         kwargs.pop(arg, None)
 
     # Create observers

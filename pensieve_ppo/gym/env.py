@@ -39,18 +39,18 @@ class AbstractABRStateObserver(ABC):
     state observers. Subclasses must implement state observation and
     reward calculation logic.
 
-    Subclasses must also implement the `get_required_args` class method,
-    which returns the constructor argument names required by the observer.
+    Subclasses must also implement the `get_constructor_args` class method,
+    which returns all constructor argument names accepted by the observer.
     This enables automatic observer construction from keyword arguments.
     """
 
     @classmethod
     @abstractmethod
-    def get_required_args(cls) -> List[str]:
-        """Get the list of required constructor argument names.
+    def get_constructor_args(cls) -> List[str]:
+        """Get the list of all constructor argument names.
 
         Returns:
-            List of argument names required to construct this observer.
+            List of all argument names accepted by __init__ (excluding self).
         """
         pass
 

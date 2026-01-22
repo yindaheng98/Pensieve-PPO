@@ -70,6 +70,11 @@ class RLABRStateObserver(AbstractABRStateObserver):
         last_bit_rate: Last selected bitrate level.
     """
 
+    @classmethod
+    def get_constructor_args(cls) -> List[str]:
+        """Get the list of all constructor argument names."""
+        return ["levels_quality", "rebuf_penalty", "smooth_penalty", "state_history_len", "buffer_norm_factor"]
+
     def __init__(
         self,
         levels_quality: List[float],
