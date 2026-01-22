@@ -8,6 +8,7 @@ from typing import Optional, Type, Dict
 
 import gymnasium as gym
 
+from ..gym import ABREnv
 from .abc import AbstractAgent
 from .trainable import AbstractTrainableAgent
 
@@ -19,7 +20,7 @@ AGENT_REGISTRY: Dict[str, Type[AbstractAgent]] = {}
 TRAINABLEAGENT_REGISTRY: Dict[str, Type[AbstractTrainableAgent]] = {}
 
 # Registry of available environments
-ENV_REGISTRY: Dict[str, Type[gym.Env]] = {}
+ENV_REGISTRY: Dict[str, Type[ABREnv]] = {}
 
 
 def register_agent(name: str, agent_class: Type[AbstractAgent]) -> None:
@@ -119,7 +120,7 @@ def create_agent(
     return agent
 
 
-def register_env(name: str, env_class: Type[gym.Env]) -> None:
+def register_env(name: str, env_class: Type[ABREnv]) -> None:
     """Register a new environment type.
 
     Args:
@@ -127,7 +128,7 @@ def register_env(name: str, env_class: Type[gym.Env]) -> None:
         env_class: The environment class to register.
 
     Raises:
-        ValueError: If the env class is not a subclass of gym.Env.
+        ValueError: If the env class is not a subclass of ABREnv.
     """
     ENV_REGISTRY[name] = env_class
 
@@ -179,6 +180,6 @@ def create_env(
 
     env_class = ENV_REGISTRY[name]
     env = env_class(*args, **kwargs)
-    if not isinstance(env, gym.Env):
-        raise ValueError(f"Environment class must be a subclass of gym.Env, got {env.__class__}")
+    if not isinstance(env, ABREnv):
+        raise ValueError(f"Environment class must be a subclass of ABREnv, got {env.__class__}")
     return env
