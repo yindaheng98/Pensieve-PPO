@@ -247,6 +247,72 @@ Environment Step
   → Model update
 ```
 
+### Imitation Learning
+
+**ImitationObserver** (`pensieve_ppo.gym.imitate.ImitationObserver`):
+- Combines two observers (student and teacher) in the same environment
+- Both observers observe the same environment state and teacher's actions
+- Returns `ImitationState` containing:
+  - `student_state`: State for training the student agent (neural network)
+  - `teacher_state`: State for teacher agent's decision-making
+
+**How It Works**:
+1. **Two Observers in Same Environment**: The `ImitationObserver` wraps both a `student_observer` and a `teacher_observer`, both observing the same `ABREnv` instance
+2. **Teacher Makes Decisions**: The teacher agent uses `teacher_state` to select actions
+3. **Teacher Actions Are Executed**: The teacher's selected actions are executed in the environment
+4. **Student Learns from Teacher**: The student agent receives `student_state` and learns to imitate the teacher's decisions through behavioral cloning
+
+**ImitationState** (`pensieve_ppo.gym.imitate.ImitationState`):
+- Dataclass containing both `student_state` and `teacher_state`
+- Both states are generated from the same environment step and teacher action
+- `student_state` is used for training (e.g., RL policy updates)
+- `teacher_state` is used by the teacher agent for action selection
+
+**ImitationTrainer** (`pensieve_ppo.agent.imitate.ImitationTrainer`):
+- Extends `Trainer` for distributed imitation learning
+- Architecture:
+  - **Central Agent (Student)**: Neural network that learns to imitate teacher decisions
+  - **Worker Agents (Teacher)**: Expert agents (e.g., BBA, MPC, LLM-based) that generate trajectories
+- Workflow:
+  - Workers use teacher agent with `teacher_state` to select actions
+  - Teacher actions are executed in the environment
+  - Both observers update their states from the same environment result
+  - Student receives `student_state` and teacher's action for training
+  - No parameter synchronization between student and teacher (different agent types)
+
+**Example Usage**:
+```python
+from pensieve_ppo.gym.imitate import ImitationObserver
+from pensieve_ppo.agent.rl.observer import RLABRStateObserver
+from pensieve_ppo.agent.bba.observer import BBAStateObserver
+
+# Create observers
+student_observer = RLABRStateObserver(levels_quality=VIDEO_BIT_RATE)
+teacher_observer = BBAStateObserver(levels_quality=VIDEO_BIT_RATE)
+
+# Combine for imitation learning
+imitation_observer = ImitationObserver(
+    student_observer=student_observer,
+    teacher_observer=teacher_observer,
+)
+
+# Use in environment
+env = ABREnv(simulator=simulator, observer=imitation_observer)
+state, info = env.reset()
+# state.student_state: RLState for training RL agent
+# state.teacher_state: BBAState for BBA agent's decision
+```
+
+**Training with Imitation Learning**:
+```bash
+# Train student agent (PPO) to imitate teacher agent (BBA)
+python -m pensieve_ppo.imitate \
+    --agent-name ppo \
+    --teacher-agent-name bba \
+    --parallel-workers 16 \
+    --train-epochs 500000
+```
+
 ## API Reference
 
 ### Creating Environment and Agent
@@ -301,6 +367,94 @@ action, action_prob = agent.select_action(state)
 # Train on batch
 metrics = agent.train(s_batch, a_batch, p_batch, v_batch, epoch)
 ```
+
+### Registering Custom Agents
+
+The `register` function allows you to register custom agent implementations with the Pensieve-PPO framework. Once registered, your custom agent can be used with all factory functions (`create_agent`, `create_env`, etc.) and command-line tools.
+
+**Function Signature**:
+```python
+from pensieve_ppo.agent import register
+from pensieve_ppo.agent.abc import AbstractAgent
+from pensieve_ppo.gym.env import AbstractABRStateObserver
+
+register(
+    name: str,
+    agent_cls: Type[AbstractAgent],
+    observer_cls: Type[AbstractABRStateObserver],
+    trainable_agent_cls: Optional[Type[AbstractTrainableAgent]] = None,
+) -> None
+```
+
+**Parameters**:
+- `name`: Name to register the agent under (case-sensitive). This name will be used in `create_agent()`, `create_env()`, and command-line arguments.
+- `agent_cls`: The agent class to register. Must be a subclass of `AbstractAgent`.
+- `observer_cls`: The observer class associated with this agent. Must be a subclass of `AbstractABRStateObserver`. The observer handles state observation and reward calculation for the agent.
+- `trainable_agent_cls`: Optional trainable agent class. If not provided, will be automatically set to `agent_cls` if it's a subclass of `AbstractTrainableAgent`.
+
+**Example: Registering a Custom Agent**:
+```python
+from pensieve_ppo.agent import register
+from pensieve_ppo.agent.abc import AbstractAgent
+from pensieve_ppo.gym.env import AbstractABRStateObserver
+
+# Define your custom agent
+class MyCustomAgent(AbstractAgent):
+    def select_action(self, state):
+        # Your implementation
+        pass
+
+# Define your custom observer
+class MyCustomObserver(AbstractABRStateObserver):
+    def reset(self, env, initial_bit_rate):
+        # Your implementation
+        pass
+    
+    def observe(self, env, bit_rate, result):
+        # Your implementation
+        pass
+
+# Register the agent
+register("my-custom-agent", MyCustomAgent, MyCustomObserver)
+
+# Now you can use it with factory functions
+from pensieve_ppo.agent import create_agent, create_env
+
+agent = create_agent(name="my-custom-agent", ...)
+env = create_env(name="my-custom-agent", ...)
+```
+
+**Example: Registering a Trainable Agent**:
+```python
+from pensieve_ppo.agent import register
+from pensieve_ppo.agent.trainable import AbstractTrainableAgent
+
+class MyTrainableAgent(AbstractTrainableAgent):
+    # Implement all required methods
+    pass
+
+# Register with trainable agent class
+register("my-trainable", MyTrainableAgent, MyCustomObserver)
+
+# Can be used for training
+from pensieve_ppo.defaults import create_env_agent_with_default
+env, agent = create_env_agent_with_default(agent_name="my-trainable")
+```
+
+**Checking Available Agents**:
+```python
+from pensieve_ppo.agent import get_available_agents, get_available_trainable_agents
+
+# Get all registered agents
+all_agents = get_available_agents()
+print(all_agents)  # ['ppo', 'bba', 'mpc', 'dqn', 'a3c', ...]
+
+# Get only trainable agents
+trainable_agents = get_available_trainable_agents()
+print(trainable_agents)  # ['ppo', 'dqn', 'a3c', ...]
+```
+
+**Note**: Agent registration typically happens in the agent module's `__init__.py` file. When you import the module, the registration is automatically executed. For example, importing `pensieve_ppo.agent.rl` automatically registers all RL agents (ppo, dqn, a3c).
 
 ### Environment Details
 
