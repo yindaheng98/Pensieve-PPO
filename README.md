@@ -152,6 +152,24 @@ AbstractAgent
 >
 > **Note on A3C Implementation**: The `A3CAgent` implementation is based on the A3C (Asynchronous Advantage Actor-Critic) algorithm, but the actual `Trainer` performs **synchronous updates** rather than asynchronous updates. This means all workers synchronize before each parameter update, which differs from the original A3C paper's asynchronous design.
 
+### Agent Statefulness
+
+**Design Principle**: Logically, an Agent should be **stateless**. All historical information needed by the Agent should be collected by the Observer and passed through the State object. However, in some special cases, an Agent may need to maintain its own "internal state".
+
+**Stateless Agents**: The agents in `pensieve_ppo/agent/rl/` (PPO, A3C, DQN), `pensieve_ppo/agent/mpc/`, and `pensieve_ppo/agent/bba/` are all **stateless** - they do not maintain any "internal state" between `select_action` calls. Each action is computed purely from the current input state.
+
+**"Stateful" Agents**: In certain cases, agents need to maintain "internal state". For example, in **NetLLM** (`pensieve_ppo/agent/netllm/`), the large language model needs to cache embeddings of historical states to avoid redundant computation. Since the embedding model is a trainable part of the policy, it cannot be moved into the Observer. In such cases, the Agent must maintain its own "internal state" (again, not the actual environment state), i.e., some special internal data structures that accelerate computation.
+
+> **Reference**: The NetLLM implementation follows the architecture from [NetLLM's OfflineRLPolicy](https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/models/rl_policy.py), which uses deques (`states_dq`, `returns_dq`, `actions_dq`) to cache embeddings for autoregressive inference.
+
+**Technical Details**: The "internal state" management in NetLLM is essentially maintaining an **embedding cache** rather than managing the actual environment state; it just reuses a "state-style" management approach to maintain internal acceleration data structures. Theoretically, this should support out-of-order `select_action` calls by querying pre-computed embeddings based on the input state. However, since the current codebase does not have out-of-order `select_action` calls, the implementation assumes sequential calls only.
+
+**Tradeoffs** of using "state management" to handle embedding caches:
+- **Pros**: Eliminates embedding cache lookup steps; allows precise control of cache size since we know exactly which embeddings are needed; better performance optimization.
+- **Cons**: If the same state appears at distant timesteps, the embedding must be recomputed rather than retrieved from cache.
+
+**Reset Method**: The `AbstractAgent.reset()` method should be called at the beginning of each episode to clear any "internal state" (e.g., embedding caches). For stateless agents, this is a no-op. For "stateful" agents like NetLLM, this clears the embedding caches via `clear_dq()`.
+
 ### Agent, Observer, and Trainer Relationships
 
 **AbstractABRStateObserver** (`pensieve_ppo.gym.env.AbstractABRStateObserver`):

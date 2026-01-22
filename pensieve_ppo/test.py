@@ -82,6 +82,7 @@ def testing(
 
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L53
     env.reset(options={'initial_level': initial_level})
+    agent.reset()  # Reset agent's "internal state" (e.g., embedding caches) for new episode
 
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L55-L66
     # last_bit_rate = initial_level # no where to use last_bit_rate
@@ -156,6 +157,7 @@ def testing(
 
             # Reset for next trace - only initializes state
             env.reset(options={'reset_time_stamp': False, 'initial_level': initial_level})
+            agent.reset()  # Reset agent's "internal state" (e.g., embedding caches) for new trace
 
             # Open new log file
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L149-L150

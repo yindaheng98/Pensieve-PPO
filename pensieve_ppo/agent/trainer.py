@@ -172,6 +172,7 @@ class Trainer:
 
         for epoch in range(self.train_epochs):
             obs, _ = env.reset()
+            actor.reset()  # Reset agent's "internal state" (e.g., embedding caches) for new episode
             trajectory: List[Step] = []
             for step in range(self.train_seq_len):
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
