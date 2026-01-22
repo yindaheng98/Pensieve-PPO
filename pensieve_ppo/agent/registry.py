@@ -5,11 +5,14 @@ allowing for easy switching between different implementations.
 """
 
 from dataclasses import dataclass
-from typing import Any, Optional, Type, Dict
+from typing import Optional, Type, Dict
 
 
 from ..gym import ABREnv, AbstractABRStateObserver
-from ..gym.combinations import create_env as create_gym_env
+from ..gym.combinations import (
+    create_env_with_observer_class,
+    create_imitation_env_with_observer_class,
+)
 from .abc import AbstractAgent
 from .trainable import AbstractTrainableAgent
 
@@ -162,24 +165,23 @@ def create_agent(
 
 def create_env(
     name: str,
-    observer_options: Dict[str, Any] = {},
     *args,
     **kwargs,
 ) -> ABREnv:
     """Create an environment by name.
 
     This factory function creates an environment instance based on the given name.
-    It retrieves the observer class from REGISTRY, instantiates it with observer_options,
-    and then creates the environment using the gym combinations.create_env function.
+    It retrieves the observer class from REGISTRY and uses create_env_with_observer_class
+    to automatically extract observer constructor arguments from kwargs.
 
     Args:
         name: Name of the agent/environment to create (case-sensitive).
             Must be registered in REGISTRY.
-        observer_options: Dictionary of keyword arguments passed to observer constructor
-            (e.g., levels_quality, rebuf_penalty). Defaults to empty dict.
-        *args: Positional arguments passed to create_gym_env (which forwards to create_simulator).
-        **kwargs: Keyword arguments passed to create_gym_env
-            (e.g., initial_level, trace_folder, video_size_file_prefix).
+        *args: Positional arguments passed to create_simulator.
+        **kwargs: Keyword arguments. Arguments matching the observer's
+            constructor args (e.g., levels_quality, rebuf_penalty) will be
+            extracted for observer construction, and the rest (e.g., initial_level,
+            trace_folder, video_size_file_prefix) will be passed to create_simulator.
 
     Returns:
         An instance of the requested environment (ABREnv).
@@ -190,10 +192,8 @@ def create_env(
     Example:
         >>> env = create_env(
         ...     name="ppo",
-        ...     observer_options={
-        ...         "levels_quality": VIDEO_BIT_RATE,
-        ...         "rebuf_penalty": 4.3,
-        ...     },
+        ...     levels_quality=VIDEO_BIT_RATE,
+        ...     rebuf_penalty=4.3,
         ...     initial_level=0,
         ...     trace_folder=trace_folder,
         ...     video_size_file_prefix=video_size_file_prefix,
@@ -206,16 +206,65 @@ def create_env(
         )
 
     entry = REGISTRY[name]
-    observer_cls = entry.observer_cls
+    return create_env_with_observer_class(entry.observer_cls, *args, **kwargs)
 
-    # Create observer instance
-    observer = observer_cls(**observer_options)
 
-    # Create environment using gym combinations.create_env
-    env = create_gym_env(
-        observer=observer,
+def create_imitation_env(
+    student_name: str,
+    teacher_name: str,
+    *args,
+    **kwargs,
+) -> ABREnv:
+    """Create an imitation learning environment by agent names.
+
+    This factory function creates an environment for imitation learning where
+    a student agent learns from a teacher agent. It retrieves observer classes
+    from REGISTRY and uses create_imitation_env_with_observer_class to
+    automatically extract observer constructor arguments from kwargs.
+
+    Args:
+        student_name: Name of the student agent (case-sensitive).
+            Must be registered in REGISTRY.
+        teacher_name: Name of the teacher agent (case-sensitive).
+            Must be registered in REGISTRY.
+        *args: Positional arguments passed to create_simulator.
+        **kwargs: Keyword arguments. Arguments matching either observer's
+            constructor args (e.g., levels_quality, rebuf_penalty) will be
+            extracted for observer construction (shared args go to both),
+            and the rest will be passed to create_simulator.
+
+    Returns:
+        An instance of ABREnv with ImitationObserver.
+
+    Raises:
+        ValueError: If either agent name is not recognized in REGISTRY.
+
+    Example:
+        >>> env = create_imitation_env(
+        ...     student_name="ppo",
+        ...     teacher_name="bba",
+        ...     levels_quality=VIDEO_BIT_RATE,
+        ...     trace_folder=trace_folder,
+        ...     video_size_file_prefix=video_size_file_prefix,
+        ... )
+    """
+    if student_name not in REGISTRY:
+        available = ", ".join(get_available_agents())
+        raise ValueError(
+            f"Unknown student agent: '{student_name}'. Available agents: {available}"
+        )
+    if teacher_name not in REGISTRY:
+        available = ", ".join(get_available_agents())
+        raise ValueError(
+            f"Unknown teacher agent: '{teacher_name}'. Available agents: {available}"
+        )
+
+    student_entry = REGISTRY[student_name]
+    teacher_entry = REGISTRY[teacher_name]
+
+    return create_imitation_env_with_observer_class(
+        student_entry.observer_cls,
+        teacher_entry.observer_cls,
         *args,
         **kwargs,
     )
-
-    return env
