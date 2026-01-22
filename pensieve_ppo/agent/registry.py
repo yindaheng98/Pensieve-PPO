@@ -5,11 +5,12 @@ allowing for easy switching between different implementations.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Type, Dict
+from typing import Any, Optional, Type, Dict
 
 import gymnasium as gym
 
 from ..gym import ABREnv, AbstractABRStateObserver
+from ..gym.combinations import create_env as create_gym_env
 from .abc import AbstractAgent
 from .trainable import AbstractTrainableAgent
 
@@ -76,18 +77,6 @@ def register(
         observer_cls=observer_cls,
     )
     REGISTRY[name] = entry
-
-
-# Registry of available agents
-AGENT_REGISTRY: Dict[str, Type[AbstractAgent]] = {}
-
-# Registry of trainable agents (subset of AGENT_REGISTRY)
-TRAINABLEAGENT_REGISTRY: Dict[str, Type[AbstractTrainableAgent]] = {}
-
-# Registry of available environments
-ENV_REGISTRY: Dict[str, Type[ABREnv]] = {}
-
-
 
 
 def get_available_agents() -> list[str]:
@@ -172,55 +161,62 @@ def create_agent(
     return agent
 
 
-
-
-def get_available_envs() -> list[str]:
-    """Get a list of available environment names.
-
-    Returns:
-        List of registered environment names.
-    """
-    return list(ENV_REGISTRY.keys())
-
-
 def create_env(
     name: str,
-    *args,
-    **kwargs,
-) -> gym.Env:
+    env_options: Dict[str, Any] = {},
+    observer_options: Dict[str, Any] = {},
+) -> ABREnv:
     """Create an environment by name.
 
     This factory function creates an environment instance based on the given name.
-    Since different environments may have different constructor signatures, all
-    positional and keyword arguments are passed directly to the environment class.
+    It retrieves the observer class from REGISTRY, instantiates it with observer_options,
+    and then creates the environment using the gym combinations.create_env function.
 
     Args:
-        name: Name of the environment to create (case-insensitive).
-        *args: Positional arguments passed to the environment constructor.
-        **kwargs: Keyword arguments passed to the environment constructor.
+        name: Name of the agent/environment to create (case-sensitive).
+            Must be registered in REGISTRY.
+        env_options: Dictionary of keyword arguments passed to create_gym_env
+            (e.g., initial_level, trace_folder, video_size_file_prefix).
+            Defaults to empty dict.
+        observer_options: Dictionary of keyword arguments passed to observer constructor
+            (e.g., levels_quality, rebuf_penalty). Defaults to empty dict.
 
     Returns:
-        An instance of the requested environment.
+        An instance of the requested environment (ABREnv).
 
     Raises:
-        ValueError: If the environment name is not recognized.
+        ValueError: If the agent name is not recognized in REGISTRY.
 
     Example:
         >>> env = create_env(
-        ...     name="abr",
-        ...     simulator=simulator,
-        ...     observer=observer,
-        ...     initial_level=0,
+        ...     name="ppo",
+        ...     env_options={
+        ...         "initial_level": 0,
+        ...         "trace_folder": trace_folder,
+        ...         "video_size_file_prefix": video_size_file_prefix,
+        ...     },
+        ...     observer_options={
+        ...         "levels_quality": VIDEO_BIT_RATE,
+        ...         "rebuf_penalty": 4.3,
+        ...     },
         ... )
     """
-    if name not in ENV_REGISTRY:
-        available = ", ".join(get_available_envs())
+    if name not in REGISTRY:
+        available = ", ".join(get_available_agents())
         raise ValueError(
-            f"Unknown environment: '{name}'. Available environments: {available}"
+            f"Unknown agent/environment: '{name}'. Available agents: {available}"
         )
 
-    env_class = ENV_REGISTRY[name]
-    env = env_class(*args, **kwargs)
-    if not isinstance(env, ABREnv):
-        raise ValueError(f"Environment class must be a subclass of ABREnv, got {env.__class__}")
+    entry = REGISTRY[name]
+    observer_cls = entry.observer_cls
+
+    # Create observer instance
+    observer = observer_cls(**observer_options)
+
+    # Create environment using gym combinations.create_env
+    env = create_gym_env(
+        observer=observer,
+        **env_options,
+    )
+
     return env
