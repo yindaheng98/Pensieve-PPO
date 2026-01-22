@@ -32,7 +32,7 @@ Example:
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 from gymnasium import spaces
 
@@ -77,6 +77,18 @@ class ImitationObserver(AbstractABRStateObserver):
         student_observer: Observer for the student agent.
         teacher_observer: Observer for the teacher agent.
     """
+
+    @classmethod
+    def get_constructor_args(cls) -> List[str]:
+        """Get the list of all constructor argument names.
+
+        Raises:
+            NotImplementedError: ImitationObserver should not be constructed via registry.
+        """
+        raise NotImplementedError(
+            "ImitationObserver should not be constructed via registry. "
+            "Use direct instantiation with student_observer and teacher_observer."
+        )
 
     def __init__(
         self,
