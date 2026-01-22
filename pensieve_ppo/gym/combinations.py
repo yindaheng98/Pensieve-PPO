@@ -1,8 +1,57 @@
 """Convenience functions for creating ABR gymnasium environments."""
 
+from typing import Type
+
 from ..core import create_simulator
 from .env import ABREnv, AbstractABRStateObserver
 from .imitate import ImitationObserver
+
+
+def create_env_with_observer_class(
+    observer_class: Type[AbstractABRStateObserver],
+    *args,
+    initial_level: int = 0,
+    **kwargs,
+) -> ABREnv:
+    """Create an ABREnv by automatically constructing an observer from kwargs.
+
+    This function automatically extracts the required constructor arguments
+    for the given observer class from kwargs, creates the observer, and
+    then creates the ABREnv with the remaining kwargs passed to create_simulator.
+
+    Args:
+        observer_class: The observer class to instantiate. Must define
+                       REQUIRED_ARGS class variable listing required constructor
+                       argument names.
+        *args: Positional arguments passed to create_simulator.
+        initial_level: Initial quality level index on reset (default: 0).
+        **kwargs: Keyword arguments. Arguments matching the observer's
+                 REQUIRED_ARGS will be extracted for observer construction,
+                 and the rest will be passed to create_simulator.
+
+    Returns:
+        Configured ABREnv instance.
+
+    Example:
+        >>> from pensieve_ppo.agent.rl import RLABRStateObserver
+        >>> env = create_env_with_observer_class(
+        ...     RLABRStateObserver,
+        ...     trace_folder=trace_folder,
+        ...     video_size_file_prefix=video_size_file_prefix,
+        ...     levels_quality=[300, 750, 1200, 1850, 2850, 4300],
+        ... )
+    """
+    # Get required args for the observer
+    required_args = observer_class.get_required_args()
+
+    # Extract observer args from kwargs
+    observer_kwargs = {arg: kwargs.pop(arg) for arg in required_args if arg in kwargs}
+
+    # Create the observer
+    observer = observer_class(**observer_kwargs)
+
+    # Create and return the environment
+    return create_env(observer, *args, initial_level=initial_level, **kwargs)
 
 
 def create_env(

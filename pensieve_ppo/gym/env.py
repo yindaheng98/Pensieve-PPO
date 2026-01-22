@@ -9,7 +9,7 @@ Reference:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
@@ -38,7 +38,21 @@ class AbstractABRStateObserver(ABC):
     This class defines the interface that ABREnv uses to interact with
     state observers. Subclasses must implement state observation and
     reward calculation logic.
+
+    Subclasses must also implement the `get_required_args` class method,
+    which returns the constructor argument names required by the observer.
+    This enables automatic observer construction from keyword arguments.
     """
+
+    @classmethod
+    @abstractmethod
+    def get_required_args(cls) -> List[str]:
+        """Get the list of required constructor argument names.
+
+        Returns:
+            List of argument names required to construct this observer.
+        """
+        pass
 
     @property
     @abstractmethod
