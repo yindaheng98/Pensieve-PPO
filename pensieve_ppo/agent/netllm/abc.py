@@ -121,6 +121,8 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
     def __init__(
         self,
         action_dim: int,
+        min_reward: float,
+        max_reward: float,
         device: str = 'cuda' if torch.cuda.is_available() else 'cpu',
         gamma: float = 1.0,
         return_scale: float = 10.0,
@@ -132,6 +134,10 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
 
         Args:
             action_dim: Number of discrete actions (bitrate levels).
+            min_reward: Global minimum reward for normalization.
+                Reference: dataset.py#L86-L93
+            max_reward: Global maximum reward for normalization.
+                Reference: dataset.py#L86-L93
             device: Device to run the model on ('cuda' or 'cpu').
             gamma: Discount factor for return computation.
                 Reference: dataset.py#L19 (gamma=1.)
@@ -146,6 +152,12 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
         self.action_dim = action_dim
         self.device = device
 
+        # Global reward normalization parameters
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/dataset.py#L86-L93
+        assert max_reward > min_reward, "max_reward must be greater than min_reward"
+        self.min_reward = min_reward
+        self.max_reward = max_reward
+
         # Training parameters
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/dataset.py#L19
         self.gamma = gamma
@@ -157,10 +169,6 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
         # Loss function
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/trainer.py#L62
         self.loss_fn = loss_fn
-
-        # Statistics for reward normalization (updated in produce_training_batch)
-        self._min_reward: Optional[float] = None
-        self._max_reward: Optional[float] = None
 
     # =========================================================================
     # Abstract Methods (Model Interface)
@@ -308,3 +316,81 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
             Action probability is one-hot for NetLLM (argmax action selection).
         """
         return self.select_action(state)
+
+    def produce_training_batch(
+        self,
+        trajectory: List[Step],
+        done: bool,
+    ) -> NetLLMTrainingBatch:
+        """Process raw trajectory data into training batch.
+
+        This method implements the data processing from dataset.py:
+        1. Extract raw data from trajectory (states, actions, rewards, dones)
+        2. Normalize rewards
+        3. Compute discounted returns
+        4. Compute timesteps for each step
+        5. Convert to tensors with correct shapes
+
+        Reference:
+            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/dataset.py#L15-L117
+            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/utils/utils.py#L11-L24
+
+        Args:
+            trajectory: List of Step objects collected during environment rollout.
+                Each Step.state is a NetLLMState containing raw data.
+            done: Whether the trajectory ended in a terminal state.
+
+        Returns:
+            NetLLMTrainingBatch with processed tensors.
+        """
+        # Step 1: Extract raw data from trajectory
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/dataset.py#L66-L76
+        states: List[np.ndarray] = []
+        actions: List[int] = []
+        rewards: List[float] = []
+        dones: List[bool] = []
+
+        for step in trajectory:
+            netllm_state: NetLLMState = step.state  # type: ignore
+            states.append(netllm_state.state_matrix)
+            actions.append(netllm_state.action)
+            rewards.append(netllm_state.reward)
+            dones.append(netllm_state.done)
+
+        # Step 2: Normalize rewards using global min/max
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/dataset.py#L86-L93
+        rewards = [(r - self.min_reward) / (self.max_reward - self.min_reward) for r in rewards]
+
+        # Step 3: Compute discounted returns
+        returns: List[float] = []
+        timesteps: List[int] = []
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/dataset.py#L95-L107
+        episode_start = 0
+        while episode_start < len(rewards):
+            try:  # Find episode end
+                episode_end = dones.index(True, episode_start) + 1
+            except ValueError:
+                episode_end = len(rewards)
+            returns.extend(discount_returns(rewards[episode_start:episode_end], self.gamma, self.return_scale))
+            timesteps.extend(list(range(episode_end - episode_start)))
+            episode_start = episode_end
+        assert len(returns) == len(timesteps)
+
+        # Step 4: Convert to tensors
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/utils/utils.py#L11-L24
+        states_array = np.stack(states, axis=0)  # (seq_len, S_INFO, S_LEN)
+        states = torch.as_tensor(states_array, dtype=torch.float32, device=self.device).unsqueeze(0)  # (1, seq_len, S_INFO, S_LEN)
+        actions_array = np.array(actions, dtype=np.float32)  # (seq_len,)
+        labels = torch.as_tensor(actions, dtype=torch.long, device=self.device).unsqueeze(0)  # (1, seq_len)
+        actions_normalized = (actions_array + 1) / self.action_dim  # (seq_len,)
+        actions = torch.as_tensor(actions_normalized, dtype=torch.float32, device=self.device).reshape(1, -1, 1)  # (1, seq_len, 1)
+        returns = torch.as_tensor(returns, dtype=torch.float32, device=self.device).reshape(1, -1, 1)  # (1, seq_len, 1)
+        timesteps = torch.as_tensor(timesteps, dtype=torch.int32, device=self.device).unsqueeze(0)  # (1, seq_len)
+
+        return NetLLMTrainingBatch(
+            states=states,
+            actions=actions,
+            returns=returns,
+            timesteps=timesteps,
+            labels=labels,
+        )
