@@ -129,6 +129,7 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
         max_length: int = 30,
         loss_fn: nn.Module = nn.CrossEntropyLoss(),
         grad_clip: float = 0.25,
+        grad_accum_steps: int = 1,
     ):
         """Initialize the NetLLM agent.
 
@@ -148,6 +149,8 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
             loss_fn: Loss function for training. Defaults to CrossEntropyLoss.
             grad_clip: Gradient clipping value.
                 Reference: trainer.py#L41 (clip_grad_norm_ 0.25)
+            grad_accum_steps: Number of steps to accumulate gradients before updating.
+                Reference: trainer.py#L20 (grad_accum_steps=1)
         """
         self.action_dim = action_dim
         self.device = device
@@ -165,6 +168,8 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
         self.max_length = max_length
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/trainer.py#L41
         self.grad_clip = grad_clip
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/trainer.py#L20
+        self.grad_accum_steps = grad_accum_steps
 
         # Loss function
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/trainer.py#L62
@@ -394,3 +399,119 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
             timesteps=timesteps,
             labels=labels,
         )
+
+    def train_batch(
+        self,
+        training_batches: List[NetLLMTrainingBatch],
+        epoch: int,
+    ) -> Dict[str, float]:
+        """Train on multiple training batches.
+
+        This method implements the training step from trainer.py:
+        1. For each batch, call train_step() to get loss
+        2. Backpropagate and update parameters with gradient clipping
+
+        Reference:
+            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/trainer.py#L26-L56
+            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/trainer.py#L58-L63
+
+        Args:
+            training_batches: List of NetLLMTrainingBatch from workers.
+            epoch: Current training epoch.
+
+        Returns:
+            Dictionary containing training metrics (logs).
+        """
+        train_losses = []
+        logs = dict()
+
+        dataset_size = len(training_batches)
+
+        self.model.train()
+        for step, batch in enumerate(training_batches):
+            train_loss = self.train_step(batch)
+            train_losses.append(train_loss.item())
+
+            # perform gradient accumulation update
+            # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/trainer.py#L38-L46
+            train_loss = train_loss / self.grad_accum_steps
+            train_loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
+            if ((step + 1) % self.grad_accum_steps == 0) or (step + 1 == dataset_size):
+                self.optimizer.step()
+                self.optimizer.zero_grad(set_to_none=True)
+                if self.lr_scheduler is not None:
+                    self.lr_scheduler.step()
+
+        logs['training/train_loss_mean'] = np.mean(train_losses) if train_losses else 0.0
+        logs['training/train_loss_std'] = np.std(train_losses) if train_losses else 0.0
+
+        logs['training/train_losses'] = train_losses
+
+        return logs
+
+    def train_step(self, batch: NetLLMTrainingBatch) -> torch.Tensor:
+        """Perform a single training step.
+
+        This method computes the loss for a single batch following trainer.py.
+
+        Reference:
+            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/trainer.py#L58-L63
+
+        Args:
+            batch: A NetLLMTrainingBatch containing states, actions, returns, timesteps, labels.
+
+        Returns:
+            Loss tensor for this batch.
+        """
+        states, actions, returns, timesteps, labels = batch.states, batch.actions, batch.returns, batch.timesteps, batch.labels
+        actions_pred = self.forward(states, actions, returns, timesteps)
+        actions_pred = actions_pred.permute(0, 2, 1)
+        loss = self.loss_fn(actions_pred, labels)
+        return loss
+
+    # =========================================================================
+    # Abstract Properties (to be implemented by subclass)
+    # =========================================================================
+
+    @property
+    @abstractmethod
+    def optimizer(self) -> torch.optim.Optimizer:
+        """Get the optimizer for training.
+
+        Subclasses must implement this property to return their optimizer.
+
+        Returns:
+            PyTorch optimizer instance.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def model(self) -> nn.Module:
+        """Get the model module for training.
+
+        Subclasses must implement this property to return their model.
+        Used for model.train() and gradient clipping.
+
+        Returns:
+            PyTorch nn.Module instance.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def lr_scheduler(self) -> Optional[torch.optim.lr_scheduler.LRScheduler]:
+        """Get the learning rate scheduler for training.
+
+        Subclasses must implement this property to return their lr_scheduler.
+        Can return None if no scheduler is used.
+
+        Reference:
+            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/trainer.py#L21
+            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/trainer.py#L45-L46
+
+        Returns:
+            PyTorch lr_scheduler instance or None.
+        """
+        pass
