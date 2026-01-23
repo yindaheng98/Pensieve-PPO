@@ -26,7 +26,6 @@ Reference:
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Tuple
 
-import numpy as np
 
 from ..rl import RLABRStateObserver, RLState
 from ...core.simulator import StepResult
