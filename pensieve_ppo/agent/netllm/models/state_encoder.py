@@ -11,7 +11,7 @@ class EncoderNetwork(nn.Module):
     This design of the network is from Pensieve/Genet.
     """
 
-    def __init__(self, conv_size=4, bitrate_levels=A_DIM, embed_dim=128):
+    def __init__(self, conv_size=4, bitrate_levels=6, embed_dim=128):
         super().__init__()
         self.past_k = conv_size
         self.bitrate_levels = bitrate_levels
