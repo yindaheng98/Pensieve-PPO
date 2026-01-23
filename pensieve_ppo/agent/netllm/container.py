@@ -65,25 +65,20 @@ class NetLLMAgent(AbstractNetLLMAgent):
     def __init__(
         self,
         action_dim: int,
-        min_reward: float,
-        max_reward: float,
+        *args,
         plm: nn.Module,
         plm_embed_size: int,
         learning_rate: float = 1e-4,
         weight_decay: float = 0.0,
         warmup_steps: int = 0,
         device: str = 'cuda' if torch.cuda.is_available() else 'cpu',
-        gamma: float = 1.0,
-        return_scale: float = 10.0,
         max_length: int = 30,
         max_ep_len: int = 100,
-        loss_fn: nn.Module = nn.CrossEntropyLoss(),
-        grad_clip: float = 0.25,
-        grad_accum_steps: int = 1,
         state_feature_dim: int = 128,
         conv_size: int = 4,
         residual: bool = False,
         which_layer: int = -1,
+        **kwargs,
     ):
         """Initialize the NetLLM agent.
 
@@ -94,8 +89,8 @@ class NetLLMAgent(AbstractNetLLMAgent):
 
         Args:
             action_dim: Number of discrete actions (bitrate levels).
-            min_reward: Global minimum reward for normalization.
-            max_reward: Global maximum reward for normalization.
+            *args: Positional arguments passed to AbstractNetLLMAgent
+                (min_reward, max_reward).
             plm: Pre-trained language model backbone (e.g., GPT2Model).
             plm_embed_size: Embedding dimension of the PLM.
             learning_rate: Learning rate for optimizer.
@@ -106,20 +101,10 @@ class NetLLMAgent(AbstractNetLLMAgent):
                 Reference: run_plm.py#L255 (default 2000)
                 Set to 0 to disable warmup/scheduler.
             device: Device to run the model on ('cuda' or 'cpu').
-            gamma: Discount factor for return computation.
-                Reference: run_plm.py#L252 (default 1.)
-            return_scale: Scale factor for returns.
-                Reference: run_plm.py#L266 (default 1000)
             max_length: Maximum sequence length (w value in paper).
                 Reference: run_plm.py#L251 (default 20)
             max_ep_len: Maximum episode length for timestep embedding.
                 Reference: run_plm.py#L191
-            loss_fn: Loss function for training.
-                Reference: run_plm.py#L81
-            grad_clip: Gradient clipping value.
-                Reference: trainer.py#L41 (0.25)
-            grad_accum_steps: Number of steps to accumulate gradients.
-                Reference: run_plm.py#L264 (default 32)
             state_feature_dim: Dimension of state encoder features.
                 Reference: run_plm.py#L249 (default 256)
             conv_size: Convolution kernel size for state encoder.
@@ -128,19 +113,16 @@ class NetLLMAgent(AbstractNetLLMAgent):
                 Reference: rl_policy.py#L26
             which_layer: Which PLM layer to stop at (-1 for all layers).
                 Reference: run_plm.py#L260, rl_policy.py#L28
+            **kwargs: Additional arguments passed to AbstractNetLLMAgent
+                (gamma, return_scale, loss_fn, grad_clip, grad_accum_steps).
         """
         # Initialize AbstractNetLLMAgent
         super().__init__(
-            action_dim=action_dim,
-            min_reward=min_reward,
-            max_reward=max_reward,
+            action_dim,
+            *args,
             device=device,
-            gamma=gamma,
-            return_scale=return_scale,
             max_length=max_length,
-            loss_fn=loss_fn,
-            grad_clip=grad_clip,
-            grad_accum_steps=grad_accum_steps,
+            **kwargs,
         )
 
         # Create state encoder
