@@ -58,13 +58,10 @@ class ExperiencePool:
         for f in dataclasses.fields(batch):
             field_name = f.name
             field_value = getattr(batch, field_name)
+            assert isinstance(field_value, list), f"Field {field_name} must be a list."
             if field_name not in self.data:
                 self.data[field_name] = []
-            # If the field is a list, extend; otherwise append
-            if isinstance(field_value, list):
-                self.data[field_name].extend(field_value)
-            else:
-                self.data[field_name].append(field_value)
+            self.data[field_name].extend(field_value)
 
     def __len__(self) -> int:
         if not self.data:
@@ -119,11 +116,14 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
         """Delegate all attribute access to wrapped agent except our own attributes."""
         return getattr(self._wrapped_agent, name)
 
-    def save(self) -> None:
+    def save(self, path: str = None) -> None:
         """Save the experience pool instead of the model.
 
         Reference:
             https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L367-L368
+
+        Args:
+            path: Ignored. Always saves to the configured exp_pool_path.
         """
         self._exp_pool.save(self._exp_pool_path)
 
@@ -201,6 +201,28 @@ class ExpPoolWriterAgentFactory:
         )
 
 
+def exp_pool_epoch_end_callback(epoch: int, actor: ExpPoolWriterAgent, train_info: Dict[str, Any]) -> None:
+    """Callback for logging epoch information and saving experience pool.
+
+    This callback is invoked at the end of each epoch during experience pool generation.
+    It outputs the epoch number and training info, and saves the experience pool.
+
+    Reference:
+        https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L31-L75
+
+    Args:
+        epoch: Current training epoch.
+        actor: The actor agent (ExpPoolWriterAgent).
+        train_info: Dictionary containing training/collection metrics.
+    """
+    # Output epoch and train_info
+    info_str = ', '.join(f'{k}={v}' for k, v in train_info.items())
+    print(f'Epoch {epoch}: {info_str}')
+
+    # Save experience pool
+    actor.save()
+
+
 def prepare_exp_pool_generation(
     *args,
     exp_pool_path: str,
@@ -229,7 +251,7 @@ def prepare_exp_pool_generation(
         Tuple of (configured ImitationTrainer, ExperiencePool).
     """
     # Call prepare_imitation to get a configured trainer
-    trainer = prepare_imitation(*args, **kwargs)
+    trainer = prepare_imitation(*args, **kwargs, on_epoch_end=exp_pool_epoch_end_callback)  # Epoch end callback for logging and saving
 
     # Create experience pool
     # Reference: https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L334
