@@ -134,14 +134,16 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         """
         super().__init__(*args, state_history_len=state_history_len, **kwargs)
 
-        # Initial target return for inference
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L13
-        self.target_return_clone = target_return
-
         # Inference tracking variables (reset in build_and_set_initial_state)
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L26-L27
         self.timestep: int = 0
+        self.target_return_clone = target_return
         self.target_return: float = target_return
+
+        # Episode statistics tracking (reset in build_and_set_initial_state)
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L29
+        self.episodes_return: float = 0.0
+        self.episodes_len: int = 0
 
     def build_and_set_initial_state(
         self,
@@ -168,6 +170,11 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L26-L27
         self.timestep = 0
         self.target_return = self.target_return_clone
+
+        # Reset episode statistics
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L29
+        self.episodes_return = 0.0
+        self.episodes_len = 0
 
         # Get initial state from parent (creates zero state array)
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L247
@@ -229,10 +236,13 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         rl_state = self.compute_and_update_state(env, bit_rate, result)
 
         # Step 3: Update return-to-go for inference (skip first timestep like Pensieve)
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L56-L58
+        # Also accumulate episode statistics
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L56-L60
         if self.timestep > 0:
             processed_reward = process_reward_fn(reward) if process_reward_fn else reward
             self.target_return -= processed_reward
+            self.episodes_return += processed_reward
+            self.episodes_len += 1
 
         # Step 4: Update last_bit_rate for next step's reward calculation
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L264
@@ -256,7 +266,10 @@ class NetLLMABRStateObserver(RLABRStateObserver):
             target_return=self.target_return,
         )
 
-        # Build info dict
+        # Build info dict with episode statistics
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L76-L80
         info = self.build_info_dict(env, bit_rate, result)
+        info['episodes_return'] = self.episodes_return
+        info['episodes_len'] = self.episodes_len
 
         return state, reward, info
