@@ -24,10 +24,24 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Tuple
 
 from .agent import AbstractTrainableAgent, ImitationTrainer, get_available_agents
-from .agent.trainable import TrainingBatch
+from .agent.trainable import Step, TrainingBatch
 from .imitate import prepare_imitation, add_teacher_arguments
 from .args import add_env_agent_arguments, parse_env_agent_args, parse_options
 from .train import add_training_arguments
+
+
+@dataclass
+class DictTrainingBatch(TrainingBatch):
+    """A flexible training batch that stores data as a dictionary of lists.
+
+    This batch type dynamically adapts its fields based on the state's fields,
+    making it suitable for experience pool generation where the exact state
+    structure may vary.
+
+    Attributes:
+        data: Dictionary mapping field names to lists of values.
+    """
+    data: Dict[str, List[Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -43,22 +57,16 @@ class ExperiencePool:
     """
     data: Dict[str, List[Any]] = field(default_factory=dict)
 
-    def add_batch(self, batch: TrainingBatch) -> None:
+    def add_batch(self, batch: DictTrainingBatch) -> None:
         """Add a training batch to the pool.
-
-        Automatically extracts all fields from the TrainingBatch dataclass and
-        extends the corresponding lists in the pool.
 
         Reference:
             https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L365-L366
 
         Args:
-            batch: A TrainingBatch dataclass instance.
+            batch: A DictTrainingBatch instance.
         """
-        for f in dataclasses.fields(batch):
-            field_name = f.name
-            field_value = getattr(batch, field_name)
-            assert isinstance(field_value, list), f"Field {field_name} must be a list."
+        for field_name, field_value in batch.data.items():
             if field_name not in self.data:
                 self.data[field_name] = []
             self.data[field_name].extend(field_value)
@@ -112,9 +120,51 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
         self._exp_pool = exp_pool
         self._exp_pool_path = exp_pool_path
 
-    def __getattr__(self, name: str) -> Any:
-        """Delegate all attribute access to wrapped agent except our own attributes."""
-        return getattr(self._wrapped_agent, name)
+    def get_params(self):
+        raise NotImplementedError("ExpPoolWriterAgent.get_params should not be called")
+
+    def set_params(self, params):
+        raise NotImplementedError("ExpPoolWriterAgent.set_params should not be called")
+
+    def select_action(self, state):
+        raise NotImplementedError("ExpPoolWriterAgent.select_action should not be called")
+
+    def select_action_for_training(self, state):
+        raise NotImplementedError("ExpPoolWriterAgent.select_action_for_training should not be called")
+
+    def produce_training_batch(
+        self,
+        trajectory: List[Step],
+        done: bool,
+    ) -> DictTrainingBatch:
+        """Produce a training batch from a trajectory by extracting state fields.
+
+        This method extracts all fields from each state in the trajectory and
+        concatenates them into lists, creating a flexible DictTrainingBatch.
+
+        Args:
+            trajectory: List of steps collected during environment rollout.
+            done: Whether the trajectory ended in a terminal state.
+
+        Returns:
+            DictTrainingBatch with fields extracted from states.
+        """
+        if not trajectory:
+            return DictTrainingBatch(data={})
+
+        data: Dict[str, List[Any]] = {}
+
+        for step in trajectory:
+            state = step.state
+            # Extract all fields from state dataclass
+            for f in dataclasses.fields(state):
+                field_name = f.name
+                field_value = getattr(state, field_name)
+                if field_name not in data:
+                    data[field_name] = []
+                data[field_name].append(field_value)
+
+        return DictTrainingBatch(data=data)
 
     def save(self, path: str = None) -> None:
         """Save the experience pool instead of the model.
@@ -129,19 +179,18 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
 
     def train_batch(
         self,
-        training_batches: List[TrainingBatch],
+        training_batches: List[DictTrainingBatch],
         epoch: int,
     ) -> Dict[str, float]:
         """Write training batch data to the experience pool instead of training.
 
-        This method extracts all fields from each training batch and adds them
-        to the experience pool.
+        This method adds each training batch to the experience pool.
 
         Reference:
             https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L365-L366
 
         Args:
-            training_batches: List of TrainingBatch from workers.
+            training_batches: List of DictTrainingBatch from workers.
             epoch: Current training epoch.
 
         Returns:
@@ -151,11 +200,9 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
         for batch in training_batches:
             self._exp_pool.add_batch(batch)
             # Estimate samples from first list field
-            for f in dataclasses.fields(batch):
-                field_value = getattr(batch, f.name)
-                if isinstance(field_value, list):
-                    total_samples += len(field_value)
-                    break
+            if batch.data:
+                first_key = next(iter(batch.data))
+                total_samples += len(batch.data[first_key])
 
         return {
             'exp_pool_size': len(self._exp_pool),
