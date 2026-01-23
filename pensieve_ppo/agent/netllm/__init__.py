@@ -8,8 +8,6 @@ Components:
 - NetLLMState: State container with raw data for training and inference
 - AbstractNetLLMAgent: Abstract base class defining agent interface
 - NetLLMTrainingBatch: Training batch with processed tensors
-- OfflineRLPolicy: Policy network combining state encoder with PLM
-- EncoderNetwork: State encoder for processing ABR state information
 
 Pre-defined agent combinations with specific PLM backbones:
 - GPT2NetLLMAgent: NetLLMAgent with GPT2 backbone
@@ -53,7 +51,6 @@ from . import models  # noqa: F401
 from ..registry import register
 
 # Register NetLLM agents
-register("netllm", NetLLMAgent, NetLLMABRStateObserver)
 register("netllm-gpt2", GPT2NetLLMAgent, NetLLMABRStateObserver)
 register("netllm-llama", LlamaNetLLMAgent, NetLLMABRStateObserver)
 register("netllm-mistral", MistralNetLLMAgent, NetLLMABRStateObserver)
@@ -71,7 +68,5 @@ __all__ = [
     'MistralNetLLMAgent',
     'OPTNetLLMAgent',
     'T5NetLLMAgent',
-    'OfflineRLPolicy',
-    'EncoderNetwork',
     'models',
 ]
