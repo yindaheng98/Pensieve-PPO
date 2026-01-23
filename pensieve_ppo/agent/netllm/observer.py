@@ -30,9 +30,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 from ..rl import RLABRStateObserver, RLState
 from ...core.simulator import StepResult
 from ...gym import ABREnv
-
-# Reference: NetLLM/adaptive_bitrate_streaming/baseline_special/utils/constants.py#L15
-S_LEN = 6
+from .container import S_LEN
 
 
 @dataclass

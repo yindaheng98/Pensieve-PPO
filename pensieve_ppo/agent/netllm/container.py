@@ -24,6 +24,11 @@ from .abc import AbstractNetLLMAgent
 from .models.rl_policy import OfflineRLPolicy
 from .models.state_encoder import EncoderNetwork
 
+# Reference: NetLLM/adaptive_bitrate_streaming/baseline_special/utils/constants.py#L15
+S_LEN = 6
+A_DIM = 6  # Number of bitrate levels
+S_INFO = 6  # Number of state information types
+
 
 class NetLLMAgent(AbstractNetLLMAgent):
     """Concrete NetLLM agent implementation.
@@ -64,7 +69,8 @@ class NetLLMAgent(AbstractNetLLMAgent):
 
     def __init__(
         self,
-        action_dim: int,
+        state_dim: tuple[int, int] = (S_INFO, S_LEN),
+        action_dim: int = A_DIM,
         *args,
         plm: nn.Module,
         plm_embed_size: int,
@@ -91,6 +97,8 @@ class NetLLMAgent(AbstractNetLLMAgent):
             https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/trainer.py#L12-L21
 
         Args:
+            state_dim: State dimension as (num_features, sequence_length).
+                Must match (S_INFO, S_LEN) = (6, 6).
             action_dim: Number of discrete actions (bitrate levels).
             *args: Positional arguments passed to AbstractNetLLMAgent
                 (min_reward, max_reward).
@@ -130,6 +138,12 @@ class NetLLMAgent(AbstractNetLLMAgent):
             gamma=gamma,
             **kwargs,
         )
+
+        # Validate state_dim matches expected dimensions
+        num_features, sequence_length = state_dim
+        assert sequence_length == S_LEN, f"sequence_length ({sequence_length}) must equal S_LEN ({S_LEN})"
+        assert num_features == S_INFO, f"num_features ({num_features}) must equal S_INFO ({S_INFO})"
+        assert action_dim == A_DIM, f"action_dim ({action_dim}) must equal A_DIM ({A_DIM})"
 
         # Create state encoder
         # Reference: https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/run_plm.py#L186-L187
