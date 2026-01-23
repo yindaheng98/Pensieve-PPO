@@ -20,7 +20,7 @@ import os
 from typing import Callable
 
 
-from .agent import AbstractTrainableAgent, ImitationTrainer, get_available_agents
+from .agent import AbstractTrainableAgent, ImitationTrainer, EpochEndCallback, SaveModelCallback, get_available_agents
 from .defaults import create_imitation_env_agent_factory_with_default
 from .args import add_env_agent_arguments, parse_env_agent_args, parse_options
 from .test import add_testing_arguments
@@ -35,7 +35,8 @@ def prepare_imitation(
     train_epochs: int = TRAIN_EPOCH,
     model_save_interval: int = MODEL_SAVE_INTERVAL,
     pretrained_model_path: str = None,
-    on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = None,
+    on_epoch_end: Callable[[int, AbstractTrainableAgent, dict], None] = EpochEndCallback(),
+    on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = SaveModelCallback(),
     **kwargs,
 ) -> ImitationTrainer:
     """Prepare trainer for distributed imitation learning.
@@ -57,6 +58,8 @@ def prepare_imitation(
         train_epochs: Total number of training epochs.
         model_save_interval: Interval for saving model checkpoints.
         pretrained_model_path: Path to pre-trained model to resume from (for student agent).
+        on_epoch_end: Callback function invoked at the end of each epoch.
+                     Signature: (epoch: int, agent: AbstractTrainableAgent, info: dict) -> None
         on_save_model: Callback function invoked when model is saved.
                      Signature: (epoch: int, model_path: str, agent: AbstractTrainableAgent) -> None
         **kwargs: Keyword arguments passed to create_imitation_env_agent_factory_with_default.
@@ -86,6 +89,7 @@ def prepare_imitation(
         model_save_interval=model_save_interval,
         output_dir=output_dir,
         pretrained_model_path=pretrained_model_path,
+        on_epoch_end=on_epoch_end,
         on_save_model=on_save_model,
     )
 

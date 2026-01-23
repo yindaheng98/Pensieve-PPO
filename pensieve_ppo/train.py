@@ -15,7 +15,7 @@ from typing import Callable
 
 from torch.utils.tensorboard import SummaryWriter
 
-from .agent import AbstractTrainableAgent, Trainer, SaveModelCallback, get_available_trainable_agents
+from .agent import AbstractTrainableAgent, Trainer, SaveModelCallback, EpochEndCallback, get_available_trainable_agents
 from .defaults import create_env_agent_factory_with_default, TRAIN_TRACES
 from .args import add_env_agent_arguments, parse_env_agent_args
 from .test import main as test_main, calculate_test_statistics, add_testing_arguments
@@ -109,7 +109,8 @@ def prepare_training(
     train_epochs: int = TRAIN_EPOCH,
     model_save_interval: int = MODEL_SAVE_INTERVAL,
     pretrained_model_path: str = None,
-    on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = None,
+    on_epoch_end: Callable[[int, AbstractTrainableAgent, dict], None] = EpochEndCallback(),
+    on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = SaveModelCallback(),
     **kwargs,
 ) -> Trainer:
     """Prepare trainer for distributed training.
@@ -128,6 +129,8 @@ def prepare_training(
         train_epochs: Total number of training epochs.
         model_save_interval: Interval for saving model checkpoints.
         pretrained_model_path: Path to pre-trained model to resume from.
+        on_epoch_end: Callback function invoked at the end of each epoch.
+                     Signature: (epoch: int, agent: AbstractTrainableAgent, info: dict) -> None
         on_save_model: Callback function invoked when model is saved.
                      Signature: (epoch: int, model_path: str, agent: AbstractTrainableAgent) -> None
         **kwargs: Keyword arguments passed to create_env_agent_factory_with_default.
@@ -156,6 +159,7 @@ def prepare_training(
         model_save_interval=model_save_interval,
         output_dir=output_dir,
         pretrained_model_path=pretrained_model_path,
+        on_epoch_end=on_epoch_end,
         on_save_model=on_save_model,
     )
 
