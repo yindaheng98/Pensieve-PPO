@@ -12,6 +12,13 @@ Available models:
 - OPTModel: Based on OPT
 - T5Model: Based on T5
 
+Available agents (pre-configured with specific PLM backbones):
+- GPT2NetLLMAgent: NetLLMAgent with GPT2 backbone
+- LlamaNetLLMAgent: NetLLMAgent with Llama backbone
+- MistralNetLLMAgent: NetLLMAgent with Mistral backbone
+- OPTNetLLMAgent: NetLLMAgent with OPT backbone
+- T5NetLLMAgent: NetLLMAgent with T5 backbone
+
 Reference:
     https://github.com/duowuyms/NetLLM/tree/main/adaptive_bitrate_streaming/plm_special/models
 """
@@ -24,6 +31,12 @@ from .t5 import T5Model
 from .rl_policy import OfflineRLPolicy
 from .state_encoder import EncoderNetwork
 
+from .gpt2agent import GPT2NetLLMAgent
+from .llamaagent import LlamaNetLLMAgent
+from .mistralagent import MistralNetLLMAgent
+from .optagent import OPTNetLLMAgent
+from .t5agent import T5NetLLMAgent
+
 __all__ = [
     'GPT2Model',
     'LlamaModel',
@@ -32,4 +45,9 @@ __all__ = [
     'T5Model',
     'OfflineRLPolicy',
     'EncoderNetwork',
+    'GPT2NetLLMAgent',
+    'LlamaNetLLMAgent',
+    'MistralNetLLMAgent',
+    'OPTNetLLMAgent',
+    'T5NetLLMAgent',
 ]

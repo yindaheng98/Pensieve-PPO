@@ -11,6 +11,13 @@ Components:
 - OfflineRLPolicy: Policy network combining state encoder with PLM
 - EncoderNetwork: State encoder for processing ABR state information
 
+Pre-defined agent combinations with specific PLM backbones:
+- GPT2NetLLMAgent: NetLLMAgent with GPT2 backbone
+- LlamaNetLLMAgent: NetLLMAgent with Llama backbone
+- MistralNetLLMAgent: NetLLMAgent with Mistral backbone
+- OPTNetLLMAgent: NetLLMAgent with OPT backbone
+- T5NetLLMAgent: NetLLMAgent with T5 backbone
+
 The module implements the separation between:
 - Raw data collection: NetLLMABRStateObserver (observer.py)
 - Data processing: AbstractNetLLMAgent.produce_training_batch() (abc.py)
@@ -34,6 +41,14 @@ from .abc import (
 
 from .container import NetLLMAgent
 
+from .models import (
+    GPT2NetLLMAgent,
+    LlamaNetLLMAgent,
+    MistralNetLLMAgent,
+    OPTNetLLMAgent,
+    T5NetLLMAgent,
+)
+
 from . import models  # noqa: F401
 
 __all__ = [
@@ -42,6 +57,11 @@ __all__ = [
     'AbstractNetLLMAgent',
     'NetLLMTrainingBatch',
     'NetLLMAgent',
+    'GPT2NetLLMAgent',
+    'LlamaNetLLMAgent',
+    'MistralNetLLMAgent',
+    'OPTNetLLMAgent',
+    'T5NetLLMAgent',
     'OfflineRLPolicy',
     'EncoderNetwork',
     'models',
