@@ -1,14 +1,4 @@
-"""Offline RL Policy for NetLLM agents.
-
-This module provides the OfflineRLPolicy class that combines a state encoder
-with a pre-trained language model (PLM) for offline reinforcement learning.
-The policy follows the Decision Transformer architecture, conditioning action
-prediction on states, actions, and return-to-go values.
-
-Copy from:
-    https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/models/rl_policy.py
-"""
-
+"""Copy from https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/models/rl_policy.py"""
 import random
 import numpy as np
 import torch
@@ -16,6 +6,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from collections import deque
+
+
+INF = 1e5
 
 
 class OfflineRLPolicy(nn.Module):

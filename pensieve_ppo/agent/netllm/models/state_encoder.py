@@ -1,17 +1,10 @@
-"""State encoder network for NetLLM agents.
-
-This module provides the EncoderNetwork class that encodes state information
-for NetLLM-based ABR agents. The encoder processes the 6-dimensional state
-(bitrate, buffer, throughput, delay, chunk sizes, remaining chunks) into
-feature embeddings.
-
-Copy from:
-    https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/models/state_encoder.py
+"""Copy from https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/models/state_encoder.py"""
+"""
+Customized state encoder based on Pensieve's encoder.
 """
 
+
 import torch.nn as nn
-
-
 class EncoderNetwork(nn.Module):
     """
     The encoder network for encoding each piece of information of the state.
@@ -21,7 +14,7 @@ class EncoderNetwork(nn.Module):
     def __init__(self, conv_size=4, bitrate_levels=6, embed_dim=128):
         super().__init__()
         self.past_k = conv_size
-        self.bitrate_levels = bitrate_levels
+        self.bitrate_levels = 6
         self.embed_dim = embed_dim
         self.fc1 = nn.Sequential(nn.Linear(1, embed_dim), nn.LeakyReLU())  # last bitrate
         self.fc2 = nn.Sequential(nn.Linear(1, embed_dim), nn.LeakyReLU())  # current buffer size

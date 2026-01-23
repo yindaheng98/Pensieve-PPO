@@ -27,7 +27,7 @@ class OPTModel(OPTPreTrainedModel):
 
     def get_decoder(self):
         return self.decoder
-    
+
     def forward(
         self,
         input_ids: torch.LongTensor = None,

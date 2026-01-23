@@ -53,7 +53,7 @@ class T5Model(T5PreTrainedModel):
         # Model parallel
         self.model_parallel = False
         self.device_map = None
-    
+
     def parallelize(self, device_map=None):
         warnings.warn(
             "`T5Model.parallelize` is deprecated and will be removed in v5 of Transformers, you should load your model"

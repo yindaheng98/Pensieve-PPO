@@ -10,7 +10,6 @@ from transformers.modeling_outputs import BaseModelOutputWithPast
 from transformers.utils import add_start_docstrings, logging
 
 
-
 logger = logging.get_logger(__name__)
 
 
@@ -114,7 +113,7 @@ class LlamaModel(LlamaPreTrainedModel):
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
-        stop_layer_idx = -1,
+        stop_layer_idx=-1,
         **kwargs,
     ) -> Union[Tuple, BaseModelOutputWithPast]:
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
@@ -177,7 +176,7 @@ class LlamaModel(LlamaPreTrainedModel):
                     "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
                 )
                 use_cache = False
-        
+
         try:
             stop_layer_idx = self.layer_indices[stop_layer_idx]
         except IndexError:
@@ -224,7 +223,7 @@ class LlamaModel(LlamaPreTrainedModel):
 
             if output_attentions:
                 all_self_attns += (layer_outputs[1],)
-            
+
             if idx >= stop_layer_idx:
                 break
 
@@ -243,4 +242,3 @@ class LlamaModel(LlamaPreTrainedModel):
             hidden_states=all_hidden_states,
             attentions=all_self_attns,
         )
-
