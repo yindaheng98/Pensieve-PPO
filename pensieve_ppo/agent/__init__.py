@@ -13,6 +13,7 @@ from .registry import create_agent, register, get_available_agents, get_availabl
 from . import rl  # noqa: F401
 from . import bba  # noqa: F401
 from . import mpc  # noqa: F401
+from . import netllm
 
 __all__ = [
     'AbstractAgent',
@@ -32,4 +33,5 @@ __all__ = [
     'rl',
     'bba',
     'mpc',
+    'netllm',
 ]
