@@ -248,23 +248,26 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L264
         self.last_bit_rate = bit_rate
 
-        # Step 5: Increment timestep
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L63
-        self.timestep += 1
-
         # Get done flag from result
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L252-L254
         done = result.end_of_video
 
         # Build NetLLMState with raw data
+        # Note: Use current timestep BEFORE incrementing, matching evaluate.py
+        # where model.sample(state, target_return, timestep) is called before timestep += 1
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L62-L63
         state = NetLLMState(
             state=rl_state.state_matrix,
             action=bit_rate,
             reward=reward,  # Raw reward (unnormalized)
             done=done,
-            timestep=self.timestep,
+            timestep=self.timestep,  # Use timestep BEFORE increment
             target_return=self.target_return,
         )
+
+        # Step 5: Increment timestep AFTER building state
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L63
+        self.timestep += 1
 
         # Build info dict with episode statistics
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L76-L80
