@@ -37,36 +37,12 @@ from .abc import (
     NetLLMTrainingBatch,
 )
 
-from .container import NetLLMAgent
-
-from .models import (
-    GPT2NetLLMAgent,
-    LlamaNetLLMAgent,
-    MistralNetLLMAgent,
-    OPTNetLLMAgent,
-    T5NetLLMAgent,
-)
-
 from . import models  # noqa: F401
-from ..registry import register
-
-# Register NetLLM agents
-register("netllm-gpt2", GPT2NetLLMAgent, NetLLMABRStateObserver)
-register("netllm-llama", LlamaNetLLMAgent, NetLLMABRStateObserver)
-register("netllm-mistral", MistralNetLLMAgent, NetLLMABRStateObserver)
-register("netllm-opt", OPTNetLLMAgent, NetLLMABRStateObserver)
-register("netllm-t5", T5NetLLMAgent, NetLLMABRStateObserver)
 
 __all__ = [
     'NetLLMABRStateObserver',
     'NetLLMState',
     'AbstractNetLLMAgent',
     'NetLLMTrainingBatch',
-    'NetLLMAgent',
-    'GPT2NetLLMAgent',
-    'LlamaNetLLMAgent',
-    'MistralNetLLMAgent',
-    'OPTNetLLMAgent',
-    'T5NetLLMAgent',
     'models',
 ]
