@@ -1,16 +1,26 @@
 """NetLLM State Observer for NetLLM-based ABR agents.
 
 This module provides a state observer for NetLLM (Decision Transformer-based)
-ABR agents that provides state arrays compatible with NetLLM's input format.
+ABR agents. The observer is responsible for collecting raw data needed for
+both training and inference.
 
-The observer extends RLABRStateObserver (which handles state computation and
-reward calculation) and adds NetLLM-specific fields:
-- timestep: Current timestep within episode (for positional embedding)
-- target_return: Return-to-go value (for conditional generation)
+Raw data collection:
+- state: State array (S_INFO x S_LEN)
+- action: Bitrate level selected
+- reward: Step reward
+- done: Episode termination flag
 
-Copy from:
+For inference, additional tracking:
+- timestep: Current timestep within episode
+- target_return: Current return-to-go value
+
+The processing of raw data into training batches (computing returns, normalizing
+rewards, etc.) is done in AbstractNetLLMAgent.produce_training_batch(), not here.
+
+Reference:
+    https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py
     https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py
-    https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py
+    https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/exp_pool.py
 """
 
 from dataclasses import dataclass
@@ -28,37 +38,78 @@ S_LEN = 6
 
 @dataclass
 class NetLLMState:
-    """State class for NetLLM agents.
+    """State class for NetLLM agents containing raw data.
 
-    Wraps the numpy state array with NetLLM-specific fields for
-    Decision Transformer inference.
+    This dataclass contains only the raw data collected from the environment,
+    needed for both training data collection and inference. The raw data includes:
+
+    For training (ExperiencePool format):
+    - state: State array
+    - action: Bitrate action
+    - reward: Step reward
+    - done: Episode termination flag
+
+    For inference (rl_policy.sample() parameters):
+    - timestep: Current timestep within episode
+    - target_return: Return-to-go value
+
+    Note: The processing of raw data into training batches (normalization,
+    computing discounted returns, etc.) is done in AbstractNetLLMAgent.produce_training_batch().
+
+    Reference:
+        https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/exp_pool.py#L2-L16
+        https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L266-L269
+        https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/models/rl_policy.py#L145-L148
 
     Attributes:
-        state: Numpy array with shape (S_INFO, S_LEN).
-        timestep: Current timestep within episode.
-        target_return: Current return-to-go value.
-
-    Copy from:
-        https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L25-L29
-        https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L28-L32
+        state: Numpy array with shape (S_INFO, S_LEN), e.g., (6, 6).
+            Raw state observation from the environment.
+            Reference: generate_exp_pool.py#L276-L283 (state computation)
+        action: Current action (bitrate level).
+            Reference: generate_exp_pool.py#L267
+        reward: Current step reward (raw, unnormalized).
+            Reference: generate_exp_pool.py#L260-L262, #L268
+        done: Whether episode has ended (end_of_video).
+            Reference: generate_exp_pool.py#L269
+        timestep: Current timestep within episode (for positional embedding).
+            Reference: evaluate.py#L26, dataset.py#L106
+        target_return: Current return-to-go value (for conditional generation).
+            Reference: evaluate.py#L27 (target_return_clone), rl_policy.py#L145
     """
-    state: np.ndarray
-    timestep: int
-    target_return: float
+    # Raw data fields for training (ExperiencePool format)
+    # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/exp_pool.py#L12-L16
+    state: np.ndarray   # State array (S_INFO, S_LEN)
+    action: int         # Bitrate action
+    reward: float       # Raw step reward (unnormalized)
+    done: bool          # Episode termination flag
+
+    # Raw data fields for inference
+    # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/models/rl_policy.py#L145-L148
+    timestep: int           # Timestep within episode
+    target_return: float    # Return-to-go value
 
 
 class NetLLMABRStateObserver(RLABRStateObserver):
     """State observer for NetLLM-based ABR agents.
 
-    Extends RLABRStateObserver to add NetLLM-specific tracking:
-    - timestep: Tracks position within episode for timestep embedding
-    - target_return: Tracks return-to-go for conditional generation
+    This observer extends RLABRStateObserver to collect raw data needed for
+    both training and inference. It is responsible ONLY for raw data collection,
+    NOT for processing data into training batches.
 
-    The state computation and reward calculation are inherited from
-    RLABRStateObserver, which implements the same logic as NetLLM's
-    evaluate.py and test.py.
+    Raw data collection (done here):
+    - State computation (inherited from RLABRStateObserver)
+    - Reward calculation (inherited from RLABRStateObserver)
+    - Timestep tracking for inference
+    - Return-to-go tracking for inference
 
-    Copy from:
+    Data processing (done in AbstractNetLLMAgent.produce_training_batch):
+    - Reward normalization
+    - Discounted return computation
+    - Timestep computation for training
+    - Tensor conversion
+
+    Reference:
+        https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py
         https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py
         https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py
     """
@@ -67,25 +118,30 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         self,
         *args,
         state_history_len: int = S_LEN,
-        max_return: float = 0.0,
+        target_return: float = 0.0,
         **kwargs,
     ):
         """Initialize the NetLLM state observer.
 
         Args:
-            max_return: Initial target return-to-go value for episodes.
-                       Copy from: evaluate.py#L13 target_return parameter
+            state_history_len: History length for state (S_LEN).
+                Default is 6 for NetLLM (vs 8 for Pensieve-PPO).
+                Reference: baseline_special/utils/constants.py#L15
+            target_return: Initial return-to-go value for inference episodes.
+                Used as target_return in rl_policy.sample().
+                Reference: evaluate.py#L13 target_return parameter
             *args, **kwargs: Passed to RLABRStateObserver.
         """
         super().__init__(*args, state_history_len=state_history_len, **kwargs)
 
-        self.max_return = max_return
+        # Initial target return for inference
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L13
+        self.target_return_clone = target_return
 
-        # NetLLM-specific tracking
+        # Inference tracking variables (reset in build_and_set_initial_state)
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L26-L27
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L29-L30
         self.timestep: int = 0
-        self.target_return: float = max_return
+        self.target_return: float = target_return
 
     def build_and_set_initial_state(
         self,
@@ -94,29 +150,35 @@ class NetLLMABRStateObserver(RLABRStateObserver):
     ) -> NetLLMState:
         """Build initial NetLLMState on reset.
 
-        Copy from:
-            evaluate.py#L25: state = torch.zeros((1, 1, S_INFO, S_LEN), ...)
-            evaluate.py#L26-27: timestep = 0, target_return_clone = copy.deepcopy(target_return)
+        Initializes the raw data fields. For training, the initial state
+        typically has reward=0.0 and done=False.
+
+        Reference:
+            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L25-L27
+            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L245-L247
 
         Args:
             env: The ABREnv instance to observe.
             initial_bit_rate: Initial bitrate level index.
 
         Returns:
-            Initial NetLLMState with zero state array.
+            Initial NetLLMState with zero state array and initialized fields.
         """
-        # Reset NetLLM-specific state
+        # Reset inference tracking variables
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L26-L27
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L29-L30
         self.timestep = 0
-        self.target_return = self.max_return
+        self.target_return = self.target_return_clone
 
-        # Get initial state from parent
-        # Note: state_matrix is already copied in parent's build_and_set_initial_state
+        # Get initial state from parent (creates zero state array)
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L247
         rl_state = super().build_and_set_initial_state(env, initial_bit_rate)
 
+        # Build NetLLMState with raw data
         return NetLLMState(
             state=rl_state.state_matrix,
+            action=initial_bit_rate,
+            reward=0.0,  # No reward at initial state
+            done=False,  # Episode just started
             timestep=self.timestep,
             target_return=self.target_return,
         )
@@ -128,61 +190,68 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         result: StepResult,
         process_reward_fn: Optional[Callable[[float], float]] = None,
     ) -> Tuple[NetLLMState, float, Dict[str, Any]]:
-        """Process simulator result: compute reward and update state.
+        """Collect raw data from environment step.
 
-        Follows the exact order of operations from NetLLM's evaluate.py/test.py:
-        1. Compute reward (using last_bit_rate from previous step)
-        2. Update state (roll and fill new values)
-        3. Update target_return (skip first timestep, then subtract reward)
-        4. Update last_bit_rate
-        5. Increment timestep
+        This method collects raw data needed for both training and inference:
+        1. Computes raw reward (using last_bit_rate from previous step)
+        2. Updates state array (roll and fill new values)
+        3. Updates return-to-go for inference (subtract processed reward)
+        4. Updates last_bit_rate
+        5. Increments timestep
 
-        Copy from:
-            evaluate.py#L38-L63
-            test.py#L47-L77
+        Note: The reward stored in NetLLMState is the RAW reward. Reward
+        normalization and return computation for training is done in
+        AbstractNetLLMAgent.produce_training_batch().
+
+        Reference:
+            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L251-L270
+            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L38-L63
 
         Args:
             env: The ABREnv instance to observe.
             bit_rate: Current bitrate level selected.
             result: Result from simulator.step().
             process_reward_fn: Optional function to process reward before
-                              updating target_return.
-                              Copy from: evaluate.py#L14-L15, test.py#L15-L16
+                updating return-to-go for inference.
+                Reference: evaluate.py#L14-L15
 
         Returns:
-            Tuple of (NetLLMState_copy, reward, info_dict).
+            Tuple of (NetLLMState, reward, info_dict).
         """
-        # Step 1: Compute reward
+        # Step 1: Compute raw reward
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L260-L262
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L39-L41
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L48-L50
         reward = self.compute_reward(env, bit_rate, result)
 
-        # Step 2: Update state (dequeue history record)
-        # Note: state_matrix is already copied in parent's compute_and_update_state
+        # Step 2: Update state array (roll and fill new values)
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L273-L283
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L46-L54
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L60-L68
         rl_state = self.compute_and_update_state(env, bit_rate, result)
 
-        # Step 3: Update target_return (skip first timestep like Pensieve)
+        # Step 3: Update return-to-go for inference (skip first timestep like Pensieve)
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L56-L58
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L70-L72
         if self.timestep > 0:
             processed_reward = process_reward_fn(reward) if process_reward_fn else reward
             self.target_return -= processed_reward
 
         # Step 4: Update last_bit_rate for next step's reward calculation
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L43
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L54
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L264
         self.last_bit_rate = bit_rate
 
         # Step 5: Increment timestep
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L63
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py#L77
         self.timestep += 1
 
-        # Build state object
+        # Get done flag from result
+        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L252-L254
+        done = result.end_of_video
+
+        # Build NetLLMState with raw data
         state = NetLLMState(
             state=rl_state.state_matrix,
+            action=bit_rate,
+            reward=reward,  # Raw reward (unnormalized)
+            done=done,
             timestep=self.timestep,
             target_return=self.target_return,
         )
