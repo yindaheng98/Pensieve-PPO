@@ -28,7 +28,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import numpy as np
 
-from ..rl import RLABRStateObserver
+from ..rl import RLABRStateObserver, RLState
 from ...core.simulator import StepResult
 from ...gym import ABREnv
 
@@ -37,14 +37,15 @@ S_LEN = 6
 
 
 @dataclass
-class NetLLMState:
+class NetLLMState(RLState):
     """State class for NetLLM agents containing raw data.
 
-    This dataclass contains only the raw data collected from the environment,
-    needed for both training data collection and inference. The raw data includes:
+    This dataclass extends RLState to include additional fields needed for
+    NetLLM training and inference. It inherits state_matrix from RLState
+    for compatibility with RL-based state observers.
 
     For training (ExperiencePool format):
-    - state: State array
+    - state_matrix: State array (inherited from RLState)
     - action: Bitrate action
     - reward: Step reward
     - done: Episode termination flag
@@ -62,8 +63,8 @@ class NetLLMState:
         https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/models/rl_policy.py#L145-L148
 
     Attributes:
-        state: Numpy array with shape (S_INFO, S_LEN), e.g., (6, 6).
-            Raw state observation from the environment.
+        state_matrix: Numpy array with shape (S_INFO, S_LEN), e.g., (6, 6).
+            Raw state observation from the environment. (Inherited from RLState)
             Reference: generate_exp_pool.py#L276-L283 (state computation)
         action: Current action (bitrate level).
             Reference: generate_exp_pool.py#L267
@@ -78,7 +79,7 @@ class NetLLMState:
     """
     # Raw data fields for training (ExperiencePool format)
     # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/exp_pool.py#L12-L16
-    state: np.ndarray   # State array (S_INFO, S_LEN)
+    # state_matrix is inherited from RLState
     action: int         # Bitrate action
     reward: float       # Raw step reward (unnormalized)
     done: bool          # Episode termination flag
@@ -182,7 +183,7 @@ class NetLLMABRStateObserver(RLABRStateObserver):
 
         # Build NetLLMState with raw data
         return NetLLMState(
-            state=rl_state.state_matrix,
+            state_matrix=rl_state.state_matrix,
             action=initial_bit_rate,
             reward=0.0,  # No reward at initial state
             done=False,  # Episode just started
@@ -257,7 +258,7 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         # where model.sample(state, target_return, timestep) is called before timestep += 1
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L62-L63
         state = NetLLMState(
-            state=rl_state.state_matrix,
+            state_matrix=rl_state.state_matrix,
             action=bit_rate,
             reward=reward,  # Raw reward (unnormalized)
             done=done,
