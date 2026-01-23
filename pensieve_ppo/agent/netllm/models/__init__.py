@@ -21,11 +21,15 @@ from .llama import LlamaModel
 from .mistral import MistralModel
 from .opt import OPTModel
 from .t5 import T5Model
+from .rl_policy import OfflineRLPolicy
+from .state_encoder import EncoderNetwork
 
 __all__ = [
     'GPT2Model',
     'LlamaModel',
     'MistralModel',
     'OPTModel',
-    'T5Model'
+    'T5Model',
+    'OfflineRLPolicy',
+    'EncoderNetwork',
 ]
