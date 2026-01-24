@@ -6,5 +6,6 @@ agent rollouts.
 
 from .abc import DictTrainingBatch
 from .pool import ExperiencePool
+from .writer import ExpPoolWriterAgent
 
-__all__ = ['DictTrainingBatch', 'ExperiencePool']
+__all__ = ['DictTrainingBatch', 'ExperiencePool', 'ExpPoolWriterAgent']
