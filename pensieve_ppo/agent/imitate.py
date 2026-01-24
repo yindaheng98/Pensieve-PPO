@@ -90,7 +90,7 @@ class ImitationTrainer(Trainer):
             print('Model restored.')
 
         # while True:  # assemble training batches from agents, compute the gradients
-        for epoch in range(self.train_epochs):
+        for epoch in range(1, self.train_epochs + 1):
             # Send signal to worker agents to proceed (no parameter sync needed for imitation learning)
             for i in range(self.num_agents):
                 signal_queues[i].put(None)
@@ -145,7 +145,7 @@ class ImitationTrainer(Trainer):
 
         signal_queue.get()
 
-        for epoch in range(self.train_epochs):
+        for epoch in range(1, self.train_epochs + 1):
             obs, _ = env.reset()
             # obs should be ImitationState
             assert isinstance(obs, ImitationState), (

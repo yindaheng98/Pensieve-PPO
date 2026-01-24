@@ -118,7 +118,7 @@ class Trainer:
             print('Model restored.')
 
         # while True:  # assemble training batches from agents, compute the gradients
-        for epoch in range(self.train_epochs):
+        for epoch in range(1, self.train_epochs + 1):
             # Synchronize the network parameters to worker agents
             actor_net_params = actor.get_params()
             for i in range(self.num_agents):
@@ -170,7 +170,7 @@ class Trainer:
         actor_net_params = net_params_queue.get()
         actor.set_params(actor_net_params)
 
-        for epoch in range(self.train_epochs):
+        for epoch in range(1, self.train_epochs + 1):
             obs, _ = env.reset()
             actor.reset()  # Reset agent's "internal state" (e.g., embedding caches) for new episode
             trajectory: List[Step] = []
