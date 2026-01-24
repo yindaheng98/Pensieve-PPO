@@ -4,8 +4,7 @@ This module provides utilities for managing experience data collected during
 agent rollouts.
 """
 
-from .abc import DictTrainingBatch
 from .pool import ExperiencePool
-from .writer import ExpPoolWriterAgent
+from .writer import ExpPoolWriterAgent, TrajectoryBatch
 
-__all__ = ['DictTrainingBatch', 'ExperiencePool', 'ExpPoolWriterAgent']
+__all__ = ['TrajectoryBatch', 'ExperiencePool', 'ExpPoolWriterAgent']
