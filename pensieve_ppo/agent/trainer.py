@@ -57,7 +57,7 @@ class Trainer:
         env_factory: Callable[[int], ABREnv],
         agent_factory: Callable[[], AbstractTrainableAgent],
         parallel_workers: int = 16,
-        steps_per_epoch: int = 1000,
+        max_steps_per_epoch: int = 1000,
         train_epochs: int = 500000,
         model_save_interval: int = 300,
         output_dir: str = './ppo',
@@ -71,7 +71,10 @@ class Trainer:
             env_factory: Factory function (agent_id: int) -> env.
             agent_factory: Factory function () -> AbstractTrainableAgent.
             parallel_workers: Number of parallel worker agents for distributed training.
-            steps_per_epoch: Number of environment steps each worker collects per epoch.
+            max_steps_per_epoch: Maximum number of environment steps each worker collects
+                per epoch. The actual number of steps may be less if the episode
+                terminates or truncates early (i.e., env.step returns terminated=True
+                or truncated=True).
             train_epochs: Total number of training epochs.
             model_save_interval: Interval for saving model checkpoints.
             output_dir: Directory for saving logs and model checkpoints.
@@ -82,7 +85,7 @@ class Trainer:
         self.env_factory = env_factory
         self.agent_factory = agent_factory
         self.num_agents = parallel_workers
-        self.train_seq_len = steps_per_epoch
+        self.train_seq_len = max_steps_per_epoch  # max steps per epoch (actual may be less if episode ends)
         self.train_epochs = train_epochs
         self.model_save_interval = model_save_interval
         self.summary_dir = output_dir

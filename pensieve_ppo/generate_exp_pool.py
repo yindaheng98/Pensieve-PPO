@@ -168,7 +168,7 @@ if __name__ == '__main__':
         # Training parameters (control how much data to collect)
         output_dir=args.output_dir,
         parallel_workers=args.parallel_workers,
-        steps_per_epoch=args.steps_per_epoch,
+        max_steps_per_epoch=args.max_steps_per_epoch,
         train_epochs=args.train_epochs,
         model_save_interval=args.model_save_interval,
         pretrained_model_path=args.pretrained_model_path,
@@ -186,7 +186,7 @@ if __name__ == '__main__':
     print(f"Experience pool path: {args.exp_pool_path}")
     print(f"Output directory: {args.output_dir}")
     print(f"Total epochs: {args.train_epochs}")
-    print(f"Steps per epoch: {args.steps_per_epoch}")
+    print(f"Max steps per epoch: {args.max_steps_per_epoch}")
     trainer.train()
 
     # Load the final saved experience pool from disk

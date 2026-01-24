@@ -31,7 +31,7 @@ def prepare_imitation(
     *args,
     output_dir: str = SUMMARY_DIR,
     parallel_workers: int = NUM_AGENTS,
-    steps_per_epoch: int = TRAIN_SEQ_LEN,
+    max_steps_per_epoch: int = TRAIN_SEQ_LEN,
     train_epochs: int = TRAIN_EPOCH,
     model_save_interval: int = MODEL_SAVE_INTERVAL,
     pretrained_model_path: str = None,
@@ -54,7 +54,8 @@ def prepare_imitation(
         *args: Positional arguments passed to create_imitation_env_agent_factory_with_default.
         output_dir: Directory for saving logs and model checkpoints.
         parallel_workers: Number of parallel worker agents.
-        steps_per_epoch: Number of environment steps per epoch per worker.
+        max_steps_per_epoch: Maximum number of environment steps per epoch per worker.
+            The actual number may be less if the episode terminates or truncates early.
         train_epochs: Total number of training epochs.
         model_save_interval: Interval for saving model checkpoints.
         pretrained_model_path: Path to pre-trained model to resume from (for student agent).
@@ -84,7 +85,7 @@ def prepare_imitation(
         agent_factory=student_agent_factory,
         teacher_agent_factory=teacher_agent_factory,
         parallel_workers=parallel_workers,
-        steps_per_epoch=steps_per_epoch,
+        max_steps_per_epoch=max_steps_per_epoch,
         train_epochs=train_epochs,
         model_save_interval=model_save_interval,
         output_dir=output_dir,
@@ -151,7 +152,7 @@ if __name__ == '__main__':
         # Training parameters
         output_dir=args.output_dir,
         parallel_workers=args.parallel_workers,
-        steps_per_epoch=args.steps_per_epoch,
+        max_steps_per_epoch=args.max_steps_per_epoch,
         train_epochs=args.train_epochs,
         model_save_interval=args.model_save_interval,
         pretrained_model_path=args.pretrained_model_path,

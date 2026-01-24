@@ -105,7 +105,7 @@ def prepare_training(
     *args,
     output_dir: str = SUMMARY_DIR,
     parallel_workers: int = NUM_AGENTS,
-    steps_per_epoch: int = TRAIN_SEQ_LEN,
+    max_steps_per_epoch: int = TRAIN_SEQ_LEN,
     train_epochs: int = TRAIN_EPOCH,
     model_save_interval: int = MODEL_SAVE_INTERVAL,
     pretrained_model_path: str = None,
@@ -125,7 +125,8 @@ def prepare_training(
         *args: Positional arguments passed to create_env_agent_factory_with_default.
         output_dir: Directory for saving logs and model checkpoints.
         parallel_workers: Number of parallel worker agents.
-        steps_per_epoch: Number of environment steps per epoch per worker.
+        max_steps_per_epoch: Maximum number of environment steps per epoch per worker.
+            The actual number may be less if the episode terminates or truncates early.
         train_epochs: Total number of training epochs.
         model_save_interval: Interval for saving model checkpoints.
         pretrained_model_path: Path to pre-trained model to resume from.
@@ -154,7 +155,7 @@ def prepare_training(
         env_factory=env_factory,
         agent_factory=agent_factory,
         parallel_workers=parallel_workers,
-        steps_per_epoch=steps_per_epoch,
+        max_steps_per_epoch=max_steps_per_epoch,
         train_epochs=train_epochs,
         model_save_interval=model_save_interval,
         output_dir=output_dir,
@@ -176,8 +177,10 @@ def add_training_arguments(parser: argparse.ArgumentParser) -> None:
                              f"(default: '{SUMMARY_DIR}')")
     parser.add_argument('--parallel-workers', type=int, default=NUM_AGENTS,
                         help=f"Number of parallel worker agents (default: {NUM_AGENTS})")
-    parser.add_argument('--steps-per-epoch', type=int, default=TRAIN_SEQ_LEN,
-                        help=f"Number of environment steps per epoch per worker "
+    parser.add_argument('--max-steps-per-epoch', type=int, default=TRAIN_SEQ_LEN,
+                        dest='max_steps_per_epoch',
+                        help=f"Maximum number of environment steps per epoch per worker. "
+                             f"Actual steps may be less if episode ends early "
                              f"(default: {TRAIN_SEQ_LEN})")
     parser.add_argument('--train-epochs', type=int, default=TRAIN_EPOCH,
                         help=f"Total number of training epochs (default: {TRAIN_EPOCH})")
@@ -216,7 +219,7 @@ if __name__ == '__main__':
         # Training parameters
         output_dir=args.output_dir,
         parallel_workers=args.parallel_workers,
-        steps_per_epoch=args.steps_per_epoch,
+        max_steps_per_epoch=args.max_steps_per_epoch,
         train_epochs=args.train_epochs,
         model_save_interval=args.model_save_interval,
         pretrained_model_path=args.pretrained_model_path,
