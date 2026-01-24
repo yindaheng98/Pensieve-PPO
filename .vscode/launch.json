@@ -61,6 +61,8 @@
             "args": [
                 "--agent-name=netllm-llama",
                 "--teacher-agent-name=bba",
+                "--parallel-workers=4",
+                "--train-epochs=900",
             ],
             "cwd": "${workspaceFolder}",
         },
