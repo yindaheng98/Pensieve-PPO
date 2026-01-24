@@ -53,5 +53,16 @@
             ],
             "cwd": "${workspaceFolder}",
         },
+        {
+            "name": "generate exp pool",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pensieve_ppo.generate_exp_pool",
+            "args": [
+                "--agent-name=netllm-llama",
+                "--teacher-agent-name=bba",
+            ],
+            "cwd": "${workspaceFolder}",
+        },
     ]
 }
