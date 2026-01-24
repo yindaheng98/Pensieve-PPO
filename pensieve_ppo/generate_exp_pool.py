@@ -19,29 +19,14 @@ Reference:
 import argparse
 import dataclasses
 import os
-import pickle
-from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
 from .agent import AbstractTrainableAgent, ImitationTrainer, get_available_agents
-from .agent.trainable import Step, TrainingBatch
+from .agent.trainable import Step
 from .imitate import prepare_imitation, add_teacher_arguments
 from .args import add_env_agent_arguments, parse_env_agent_args, parse_options
 from .train import add_training_arguments
-
-
-@dataclass
-class DictTrainingBatch(TrainingBatch):
-    """A flexible training batch that stores data as a dictionary of lists.
-
-    This batch type dynamically adapts its fields based on the state's fields,
-    making it suitable for experience pool generation where the exact state
-    structure may vary.
-
-    Attributes:
-        data: Dictionary mapping field names to lists of values.
-    """
-    data: Dict[str, List[Any]] = field(default_factory=dict)
+from .exp_pool import DictTrainingBatch, ExperiencePool
 
 
 class ExpPoolWriterAgent(AbstractTrainableAgent):
@@ -63,7 +48,7 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
             exp_pool_path: Path to save the experience pool file.
         """
         self._exp_pool_path = exp_pool_path
-        self._data: Dict[str, List[Any]] = {}
+        self._exp_pool = ExperiencePool()
 
     def get_params(self):
         raise NotImplementedError("ExpPoolWriterAgent.get_params should not be called")
@@ -120,9 +105,7 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
         Args:
             path: Ignored. Always saves to the configured exp_pool_path.
         """
-        os.makedirs(os.path.dirname(self._exp_pool_path) or '.', exist_ok=True)
-        with open(self._exp_pool_path, 'wb') as f:
-            pickle.dump({'data': self._data}, f)
+        self._exp_pool.save(self._exp_pool_path)
 
     def train_batch(
         self,
@@ -145,22 +128,11 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
         """
         total_samples = 0
         for batch in training_batches:
-            for field_name, field_value in batch.data.items():
-                if field_name not in self._data:
-                    self._data[field_name] = []
-                self._data[field_name].extend(field_value)
-            # Estimate samples from first list field
-            if batch.data:
-                first_key = next(iter(batch.data))
-                total_samples += len(batch.data[first_key])
-
-        exp_pool_size = 0
-        if self._data:
-            first_key = next(iter(self._data))
-            exp_pool_size = len(self._data[first_key])
+            samples_added = self._exp_pool.add_batch(batch)
+            total_samples += samples_added
 
         return {
-            'exp_pool_size': exp_pool_size,
+            'exp_pool_size': len(self._exp_pool),
             'new_samples': total_samples,
             'epoch': epoch,
         }
@@ -333,12 +305,10 @@ if __name__ == '__main__':
     # periodically via ExpPoolWriterAgent.save() calls.
     # Reference: https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L367-L369
     if os.path.exists(args.exp_pool_path):
-        with open(args.exp_pool_path, 'rb') as f:
-            final_exp_pool = pickle.load(f)
-        data = final_exp_pool.get('data', {})
-        sample_count = len(data.get(next(iter(data)), [])) if data else 0
+        final_exp_pool = ExperiencePool.load(args.exp_pool_path)
         print(f"\nDone. Experience pool saved at: {args.exp_pool_path}")
-        print(f"Total samples collected: {sample_count}")
+        print(f"Total samples collected: {len(final_exp_pool)}")
+        print(f"Fields: {final_exp_pool.get_fields()}")
     else:
         print(f"\nWarning: Experience pool file not found at {args.exp_pool_path}")
         print("This may happen if no epochs were saved. Check model_save_interval setting.")
