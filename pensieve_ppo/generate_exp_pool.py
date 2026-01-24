@@ -8,8 +8,8 @@ instead of training a neural network.
 The key concepts:
 - Actor agent: The agent that makes decisions during rollouts (e.g., MPC, BBA, trained PPO).
   This is equivalent to the "teacher" agent in imitation learning.
-- Observer agent: A wrapper that receives training batches and writes them to an experience
-  pool file instead of performing actual training. This wraps a dummy AbstractTrainableAgent.
+- Observer agent: ExpPoolWriterAgent that receives training batches and writes them to an
+  experience pool file instead of performing actual training.
 
 Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py
@@ -21,7 +21,7 @@ import dataclasses
 import os
 import pickle
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Dict, List
 
 from .agent import AbstractTrainableAgent, ImitationTrainer, get_available_agents
 from .agent.trainable import Step, TrainingBatch
@@ -44,81 +44,26 @@ class DictTrainingBatch(TrainingBatch):
     data: Dict[str, List[Any]] = field(default_factory=dict)
 
 
-@dataclass
-class ExperiencePool:
-    """Experience pool for collecting trajectories.
-
-    This is similar to the ExperiencePool in the NetLLM reference implementation.
-    Stores training batch data collected during rollouts, with fields dynamically
-    determined by the TrainingBatch dataclass structure.
-
-    Reference:
-        https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/exp_pool.py
-    """
-    data: Dict[str, List[Any]] = field(default_factory=dict)
-
-    def add_batch(self, batch: DictTrainingBatch) -> None:
-        """Add a training batch to the pool.
-
-        Reference:
-            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L365-L366
-
-        Args:
-            batch: A DictTrainingBatch instance.
-        """
-        for field_name, field_value in batch.data.items():
-            if field_name not in self.data:
-                self.data[field_name] = []
-            self.data[field_name].extend(field_value)
-
-    def __len__(self) -> int:
-        if not self.data:
-            return 0
-        # Return length of first field
-        first_key = next(iter(self.data))
-        return len(self.data[first_key])
-
-    def save(self, path: str) -> None:
-        """Save the experience pool to disk.
-
-        Reference:
-            https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L367-L368
-
-        Args:
-            path: Path to save the experience pool file.
-        """
-        os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
-        with open(path, 'wb') as f:
-            pickle.dump(self, f)
-
-
 class ExpPoolWriterAgent(AbstractTrainableAgent):
-    """A wrapper agent that writes training data to an experience pool instead of training.
+    """Agent that collects training data into an experience pool instead of training.
 
-    This agent wraps any AbstractTrainableAgent and overrides the train_batch method
-    to write the training batches to an experience pool file. All other methods are
-    delegated to the wrapped agent.
+    This agent implements AbstractTrainableAgent interface but instead of training
+    a neural network, it collects all training batches into an internal experience
+    pool and saves them to disk.
 
     Reference:
         https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py
+        https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/exp_pool.py
     """
 
-    def __init__(
-        self,
-        wrapped_agent: AbstractTrainableAgent,
-        exp_pool: ExperiencePool,
-        exp_pool_path: str,
-    ):
+    def __init__(self, exp_pool_path: str):
         """Initialize the experience pool writer agent.
 
         Args:
-            wrapped_agent: The underlying AbstractTrainableAgent to wrap.
-            exp_pool: The experience pool to write data to.
             exp_pool_path: Path to save the experience pool file.
         """
-        self._wrapped_agent = wrapped_agent
-        self._exp_pool = exp_pool
         self._exp_pool_path = exp_pool_path
+        self._data: Dict[str, List[Any]] = {}
 
     def get_params(self):
         raise NotImplementedError("ExpPoolWriterAgent.get_params should not be called")
@@ -167,7 +112,7 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
         return DictTrainingBatch(data=data)
 
     def save(self, path: str = None) -> None:
-        """Save the experience pool instead of the model.
+        """Save the experience pool to disk.
 
         Reference:
             https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L367-L368
@@ -175,7 +120,9 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
         Args:
             path: Ignored. Always saves to the configured exp_pool_path.
         """
-        self._exp_pool.save(self._exp_pool_path)
+        os.makedirs(os.path.dirname(self._exp_pool_path) or '.', exist_ok=True)
+        with open(self._exp_pool_path, 'wb') as f:
+            pickle.dump({'data': self._data}, f)
 
     def train_batch(
         self,
@@ -184,7 +131,7 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
     ) -> Dict[str, float]:
         """Write training batch data to the experience pool instead of training.
 
-        This method adds each training batch to the experience pool.
+        This method adds each training batch to the internal experience pool.
 
         Reference:
             https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L365-L366
@@ -198,14 +145,22 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
         """
         total_samples = 0
         for batch in training_batches:
-            self._exp_pool.add_batch(batch)
+            for field_name, field_value in batch.data.items():
+                if field_name not in self._data:
+                    self._data[field_name] = []
+                self._data[field_name].extend(field_value)
             # Estimate samples from first list field
             if batch.data:
                 first_key = next(iter(batch.data))
                 total_samples += len(batch.data[first_key])
 
+        exp_pool_size = 0
+        if self._data:
+            first_key = next(iter(self._data))
+            exp_pool_size = len(self._data[first_key])
+
         return {
-            'exp_pool_size': len(self._exp_pool),
+            'exp_pool_size': exp_pool_size,
             'new_samples': total_samples,
             'epoch': epoch,
         }
@@ -214,38 +169,24 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
 class ExpPoolWriterAgentFactory:
     """Factory class for creating ExpPoolWriterAgent instances.
 
-    This callable class wraps an original agent factory and creates ExpPoolWriterAgent
-    instances that write to a shared experience pool.
+    This callable class creates ExpPoolWriterAgent instances that write to an
+    experience pool file.
 
     Reference:
         https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py
     """
 
-    def __init__(
-        self,
-        original_factory: Callable[[], AbstractTrainableAgent],
-        exp_pool: ExperiencePool,
-        exp_pool_path: str,
-    ):
+    def __init__(self, exp_pool_path: str):
         """Initialize the factory.
 
         Args:
-            original_factory: The original agent factory function.
-            exp_pool: The experience pool to write data to.
             exp_pool_path: Path to save the experience pool file.
         """
-        self._original_factory = original_factory
-        self._exp_pool = exp_pool
         self._exp_pool_path = exp_pool_path
 
     def __call__(self) -> ExpPoolWriterAgent:
         """Create an ExpPoolWriterAgent instance."""
-        wrapped_agent = self._original_factory()
-        return ExpPoolWriterAgent(
-            wrapped_agent=wrapped_agent,
-            exp_pool=self._exp_pool,
-            exp_pool_path=self._exp_pool_path,
-        )
+        return ExpPoolWriterAgent(exp_pool_path=self._exp_pool_path)
 
 
 def exp_pool_epoch_end_callback(epoch: int, actor: ExpPoolWriterAgent, train_info: Dict[str, Any]) -> None:
@@ -274,7 +215,7 @@ def prepare_exp_pool_generation(
     *args,
     exp_pool_path: str,
     **kwargs,
-) -> Tuple[ImitationTrainer, ExperiencePool]:
+) -> ImitationTrainer:
     """Prepare trainer for experience pool generation.
 
     This function calls prepare_imitation and modifies the returned trainer's
@@ -283,8 +224,8 @@ def prepare_exp_pool_generation(
     Architecture:
     - Actor agent (--teacher-agent-name): Makes decisions during rollouts.
       This is equivalent to the "teacher" agent in imitation learning.
-    - Observer agent: A wrapper that receives training batches and writes them to
-      an experience pool file instead of performing actual training.
+    - Observer agent: ExpPoolWriterAgent that receives training batches and writes
+      them to an experience pool file instead of performing actual training.
 
     Reference:
         https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L315-L369
@@ -295,23 +236,15 @@ def prepare_exp_pool_generation(
         **kwargs: Keyword arguments passed to prepare_imitation.
 
     Returns:
-        Tuple of (configured ImitationTrainer, ExperiencePool).
+        Configured ImitationTrainer.
     """
     # Call prepare_imitation to get a configured trainer
     trainer = prepare_imitation(*args, **kwargs, on_epoch_end=exp_pool_epoch_end_callback)  # Epoch end callback for logging and saving
 
-    # Create experience pool
-    # Reference: https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L334
-    exp_pool = ExperiencePool()
-
     # Replace the agent factory in the trainer with ExpPoolWriterAgentFactory
-    trainer.agent_factory = ExpPoolWriterAgentFactory(
-        original_factory=trainer.agent_factory,
-        exp_pool=exp_pool,
-        exp_pool_path=exp_pool_path,
-    )
+    trainer.agent_factory = ExpPoolWriterAgentFactory(exp_pool_path=exp_pool_path)
 
-    return trainer, exp_pool
+    return trainer
 
 
 def add_exp_pool_arguments(parser: argparse.ArgumentParser) -> None:
@@ -340,7 +273,7 @@ if __name__ == '__main__':
 
     # Prepare trainer for experience pool generation
     # Reference: https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L315-L369
-    trainer, exp_pool = prepare_exp_pool_generation(
+    trainer = prepare_exp_pool_generation(
         trace_folder=args.train_trace_folder,
         # Observer agent parameters (the agent that records data)
         # This uses the main agent name for the underlying trainable agent interface
@@ -383,15 +316,16 @@ if __name__ == '__main__':
     trainer.train()
 
     # Load the final saved experience pool from disk
-    # Note: The exp_pool object in this process is empty because the actual data
-    # collection happens in a subprocess. The subprocess saves the data periodically
-    # via ExpPoolWriterAgent.save() calls.
+    # Note: The data collection happens in a subprocess. The subprocess saves the data
+    # periodically via ExpPoolWriterAgent.save() calls.
     # Reference: https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L367-L369
     if os.path.exists(args.exp_pool_path):
         with open(args.exp_pool_path, 'rb') as f:
             final_exp_pool = pickle.load(f)
+        data = final_exp_pool.get('data', {})
+        sample_count = len(data.get(next(iter(data)), [])) if data else 0
         print(f"\nDone. Experience pool saved at: {args.exp_pool_path}")
-        print(f"Total samples collected: {len(final_exp_pool.data.get(next(iter(final_exp_pool.data)), []))}" if final_exp_pool.data else "0")
+        print(f"Total samples collected: {sample_count}")
     else:
         print(f"\nWarning: Experience pool file not found at {args.exp_pool_path}")
         print("This may happen if no epochs were saved. Check model_save_interval setting.")
