@@ -83,11 +83,12 @@ class ImitationTrainer(Trainer):
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L83-L85
         actor = self.agent_factory()
 
-        # restore neural net parameters
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L90-L100
-        if self.nn_model is not None:
-            actor.load(self.nn_model)
-            print('Model restored.')
+        # Model loading is now handled in create_agent via model_path parameter
+        # # restore neural net parameters
+        # # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L90-L100
+        # if self.nn_model is not None:
+        #     actor.load(self.nn_model)
+        #     print('Model restored.')
 
         # while True:  # assemble training batches from agents, compute the gradients
         for epoch in range(1, self.train_epochs + 1):

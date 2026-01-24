@@ -61,7 +61,7 @@ class Trainer:
         train_epochs: int = 500000,
         model_save_interval: int = 300,
         output_dir: str = './ppo',
-        pretrained_model_path: Optional[str] = None,
+        # pretrained_model_path: Optional[str] = None,  # Model loading is handled in create_agent
         on_epoch_end: Callable[[int, AbstractTrainableAgent, Dict], None] = EpochEndCallback(),
         on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = SaveModelCallback(),
     ):
@@ -78,7 +78,6 @@ class Trainer:
             train_epochs: Total number of training epochs.
             model_save_interval: Interval for saving model checkpoints.
             output_dir: Directory for saving logs and model checkpoints.
-            pretrained_model_path: Path to pre-trained model to load (optional).
             on_epoch_end: Callback invoked at the end of each epoch.
             on_save_model: Callback invoked when model is saved.
         """
@@ -89,7 +88,7 @@ class Trainer:
         self.train_epochs = train_epochs
         self.model_save_interval = model_save_interval
         self.summary_dir = output_dir
-        self.nn_model = pretrained_model_path
+        # self.nn_model = pretrained_model_path  # Model loading is handled in create_agent
         self.on_epoch_end = on_epoch_end
         self.on_save_model = on_save_model
 
@@ -114,11 +113,12 @@ class Trainer:
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L83-L85
         actor = self.agent_factory()
 
-        # restore neural net parameters
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L90-L100
-        if self.nn_model is not None:
-            actor.load(self.nn_model)
-            print('Model restored.')
+        # Model loading is now handled in create_agent via model_path parameter
+        # # restore neural net parameters
+        # # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L90-L100
+        # if self.nn_model is not None:
+        #     actor.load(self.nn_model)
+        #     print('Model restored.')
 
         # while True:  # assemble training batches from agents, compute the gradients
         for epoch in range(1, self.train_epochs + 1):

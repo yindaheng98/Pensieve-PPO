@@ -26,6 +26,9 @@ from .args import add_env_agent_arguments, parse_env_agent_args, parse_options
 from .train import add_training_arguments
 from .exp_pool import ExperiencePool, ExpPoolWriterAgent
 
+# Default path for experience pool file
+EXP_POOL_PATH = './exp_pool/exp_pool.pkl'
+
 
 class ExpPoolWriterAgentFactory:
     """Factory class for creating ExpPoolWriterAgent instances.
@@ -126,9 +129,9 @@ def add_exp_pool_arguments(parser: argparse.ArgumentParser) -> None:
     Args:
         parser: ArgumentParser to add arguments to.
     """
-    parser.add_argument('--exp-pool-path', type=str, default='./exp_pool/exp_pool.pkl',
+    parser.add_argument('--exp-pool-path', type=str, default=EXP_POOL_PATH,
                         dest='exp_pool_path',
-                        help="Path to save the experience pool file (default: ./exp_pool/exp_pool.pkl)")
+                        help=f"Path to the experience pool file (default: {EXP_POOL_PATH})")
 
 
 if __name__ == '__main__':
@@ -171,7 +174,6 @@ if __name__ == '__main__':
         max_steps_per_epoch=args.max_steps_per_epoch,
         train_epochs=args.train_epochs,
         model_save_interval=args.model_save_interval,
-        pretrained_model_path=args.pretrained_model_path,
         on_epoch_end=exp_pool_epoch_end_callback,
         on_save_model=exp_pool_save_callback,
         # Experience pool parameters

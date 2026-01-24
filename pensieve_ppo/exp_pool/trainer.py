@@ -54,7 +54,7 @@ class ExpPoolTrainer:
         train_epochs: int = 100,
         model_save_interval: int = 10,
         output_dir: str = './exp_pool_ppo',
-        pretrained_model_path: Optional[str] = None,
+        # pretrained_model_path: Optional[str] = None,  # Model loading is handled in create_agent
         shuffle: bool = True,
         num_workers: int = 0,
         on_epoch_end: Callable[[int, AbstractTrainableAgent, Dict], None] = EpochEndCallback(),
@@ -69,7 +69,6 @@ class ExpPoolTrainer:
             train_epochs: Total number of training epochs.
             model_save_interval: Interval for saving model checkpoints.
             output_dir: Directory for saving logs and model checkpoints.
-            pretrained_model_path: Path to pre-trained model to load (optional).
             shuffle: Whether to shuffle the dataset each epoch.
             num_workers: Number of DataLoader workers (0 for main process only).
             on_epoch_end: Callback invoked at the end of each epoch.
@@ -81,7 +80,7 @@ class ExpPoolTrainer:
         self.train_epochs = train_epochs
         self.model_save_interval = model_save_interval
         self.summary_dir = output_dir
-        self.nn_model = pretrained_model_path
+        # self.nn_model = pretrained_model_path  # Model loading is handled in create_agent
         self.shuffle = shuffle
         self.num_workers = num_workers
         self.on_epoch_end = on_epoch_end
@@ -99,11 +98,12 @@ class ExpPoolTrainer:
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L83-L85
         actor = self.agent_factory()
 
-        # restore neural net parameters
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L90-L93
-        if self.nn_model is not None:
-            actor.load(self.nn_model)
-            print('Model restored.')
+        # Model loading is now handled in create_agent via model_path parameter
+        # # restore neural net parameters
+        # # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L90-L100
+        # if self.nn_model is not None:
+        #     actor.load(self.nn_model)
+        #     print('Model restored.')
 
         # Create dataset and dataloader
         dataset = ExpPoolDataset(self.exp_pool, actor)

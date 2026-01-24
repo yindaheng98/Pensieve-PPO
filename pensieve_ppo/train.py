@@ -108,7 +108,6 @@ def prepare_training(
     max_steps_per_epoch: int = TRAIN_SEQ_LEN,
     train_epochs: int = TRAIN_EPOCH,
     model_save_interval: int = MODEL_SAVE_INTERVAL,
-    pretrained_model_path: str = None,
     on_epoch_end: Callable[[int, AbstractTrainableAgent, dict], None] = EpochEndCallback(),
     on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = SaveModelCallback(),
     **kwargs,
@@ -129,7 +128,6 @@ def prepare_training(
             The actual number may be less if the episode terminates or truncates early.
         train_epochs: Total number of training epochs.
         model_save_interval: Interval for saving model checkpoints.
-        pretrained_model_path: Path to pre-trained model to resume from.
         on_epoch_end: Callback function invoked at the end of each epoch.
                      Signature: (epoch: int, agent: AbstractTrainableAgent, info: dict) -> None
         on_save_model: Callback function invoked when model is saved.
@@ -159,7 +157,6 @@ def prepare_training(
         train_epochs=train_epochs,
         model_save_interval=model_save_interval,
         output_dir=output_dir,
-        pretrained_model_path=pretrained_model_path,
         on_epoch_end=on_epoch_end,
         on_save_model=on_save_model,
     )
@@ -186,8 +183,6 @@ def add_training_arguments(parser: argparse.ArgumentParser) -> None:
                         help=f"Total number of training epochs (default: {TRAIN_EPOCH})")
     parser.add_argument('--model-save-interval', type=int, default=MODEL_SAVE_INTERVAL,
                         help=f"Interval for saving model checkpoints (default: {MODEL_SAVE_INTERVAL})")
-    parser.add_argument('--pretrained-model-path', type=str, default=None,
-                        help="Path to pre-trained model to resume training from (default: None)")
 
 
 if __name__ == '__main__':
@@ -222,7 +217,6 @@ if __name__ == '__main__':
         max_steps_per_epoch=args.max_steps_per_epoch,
         train_epochs=args.train_epochs,
         model_save_interval=args.model_save_interval,
-        pretrained_model_path=args.pretrained_model_path,
         on_save_model=on_save_model,
     )
 
