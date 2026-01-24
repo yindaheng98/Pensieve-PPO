@@ -190,10 +190,10 @@ class ExpPoolWriterAgentFactory:
 
 
 def exp_pool_epoch_end_callback(epoch: int, actor: ExpPoolWriterAgent, train_info: Dict[str, Any]) -> None:
-    """Callback for logging epoch information and saving experience pool.
+    """Callback for logging epoch information.
 
     This callback is invoked at the end of each epoch during experience pool generation.
-    It outputs the epoch number and training info, and saves the experience pool.
+    It outputs the epoch number and training info.
 
     Reference:
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L31-L75
@@ -207,7 +207,19 @@ def exp_pool_epoch_end_callback(epoch: int, actor: ExpPoolWriterAgent, train_inf
     info_str = ', '.join(f'{k}={v}' for k, v in train_info.items())
     print(f'Epoch {epoch}: {info_str}')
 
-    # Save experience pool
+
+def exp_pool_save_callback(epoch: int, model_path: str, actor: ExpPoolWriterAgent) -> None:
+    """Callback for saving experience pool when model save interval is reached.
+
+    This callback is invoked when the model would be saved (based on model_save_interval).
+    It saves the experience pool to disk.
+
+    Args:
+        epoch: Current training epoch.
+        model_path: Path where model would be saved (ignored, we use exp_pool_path).
+        actor: The actor agent (ExpPoolWriterAgent).
+    """
+    print(f'Epoch {epoch}: Saving experience pool...')
     actor.save()
 
 
@@ -300,6 +312,7 @@ if __name__ == '__main__':
         model_save_interval=args.model_save_interval,
         pretrained_model_path=args.pretrained_model_path,
         on_epoch_end=exp_pool_epoch_end_callback,
+        on_save_model=exp_pool_save_callback,
         # Experience pool parameters
         exp_pool_path=args.exp_pool_path,
     )
