@@ -239,7 +239,7 @@ def prepare_exp_pool_generation(
         Configured ImitationTrainer.
     """
     # Call prepare_imitation to get a configured trainer
-    trainer = prepare_imitation(*args, **kwargs, on_epoch_end=exp_pool_epoch_end_callback)  # Epoch end callback for logging and saving
+    trainer = prepare_imitation(*args, **kwargs)
 
     # Replace the agent factory in the trainer with ExpPoolWriterAgentFactory
     trainer.agent_factory = ExpPoolWriterAgentFactory(exp_pool_path=exp_pool_path)
@@ -299,7 +299,7 @@ if __name__ == '__main__':
         train_epochs=args.train_epochs,
         model_save_interval=args.model_save_interval,
         pretrained_model_path=args.pretrained_model_path,
-        on_save_model=None,  # No model saving callback needed
+        on_epoch_end=exp_pool_epoch_end_callback,
         # Experience pool parameters
         exp_pool_path=args.exp_pool_path,
     )
