@@ -11,10 +11,10 @@ from typing import Dict, List
 
 from ..agent import AbstractTrainableAgent
 from ..agent.trainable import Step
-from .pool import ExperiencePool
+from .pool import ExperiencePool, Trajectory
 
-# TrajectoryBatch is simply a list of Steps
-TrajectoryBatch = List[Step]
+# StepBatch is simply a list of Steps (same as Trajectory)
+StepBatch = Trajectory
 
 
 class ExpPoolWriterAgent(AbstractTrainableAgent):
@@ -54,7 +54,7 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
         self,
         trajectory: List[Step],
         done: bool,
-    ) -> TrajectoryBatch:
+    ) -> StepBatch:
         """Produce a training batch from a trajectory.
 
         This method simply returns the trajectory as a TrajectoryBatch.
@@ -81,12 +81,12 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
 
     def train_batch(
         self,
-        training_batches: List[TrajectoryBatch],
+        training_batches: List[StepBatch],
         epoch: int,
     ) -> Dict[str, float]:
         """Write training batch data to the experience pool instead of training.
 
-        This method adds each training batch to the internal experience pool.
+        This method adds each trajectory to the internal experience pool.
 
         Reference:
             https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L365-L366
@@ -98,12 +98,13 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
         Returns:
             Dictionary containing experience collection metrics.
         """
-        total_samples = 0
-        for batch in training_batches:
-            total_samples += self._exp_pool.add_batch(batch)
+        total_steps = 0
+        for trajectory in training_batches:
+            total_steps += self._exp_pool.add_trajectory(trajectory)
 
         return {
-            'exp_pool_size': len(self._exp_pool),
-            'new_samples': total_samples,
+            'exp_pool_trajectories': len(self._exp_pool),
+            'exp_pool_total_steps': self._exp_pool.total_steps,
+            'new_steps': total_steps,
             'epoch': epoch,
         }

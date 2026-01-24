@@ -5,6 +5,6 @@ agent rollouts.
 """
 
 from .pool import ExperiencePool
-from .writer import ExpPoolWriterAgent, TrajectoryBatch
+from .writer import ExpPoolWriterAgent, StepBatch
 
-__all__ = ['TrajectoryBatch', 'ExperiencePool', 'ExpPoolWriterAgent']
+__all__ = ['StepBatch', 'ExperiencePool', 'ExpPoolWriterAgent']

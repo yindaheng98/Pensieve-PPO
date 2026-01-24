@@ -14,59 +14,70 @@ from typing import List
 
 from ..agent.trainable import Step
 
+# Type alias for a single trajectory
+Trajectory = List[Step]
+
 
 class ExperiencePool:
     """Experience pool for collecting and storing trajectories.
 
-    This class stores experience data as a list of Steps.
+    This class stores experience data as a list of trajectories,
+    where each trajectory is a List[Step].
 
     Attributes:
-        data: List of Step objects.
+        data: List of trajectories (List[List[Step]]).
 
     Reference:
         https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/data/exp_pool.py
     """
 
-    def __init__(self, data: List[Step] = []):
+    def __init__(self, data: List[Trajectory] = []):
         """Initialize the experience pool.
 
         Args:
-            data: Optional initial list of Steps. If None, an empty list is used.
+            data: Optional initial list of trajectories. If None, an empty list is used.
         """
-        self._data: List[Step] = data
+        self._data: List[Trajectory] = data
 
     @property
-    def data(self) -> List[Step]:
-        """Get the internal data list."""
+    def data(self) -> List[Trajectory]:
+        """Get the internal data list (list of trajectories)."""
         return self._data
 
     def __len__(self) -> int:
-        """Return the number of experiences in the pool.
+        """Return the number of trajectories in the pool.
 
         Returns:
-            Number of Steps in the pool.
+            Number of trajectories in the pool.
         """
         return len(self._data)
 
-    def add_batch(self, batch: List[Step]) -> int:
-        """Add a training batch (TrajectoryBatch) to the experience pool.
-
-        This method extends the internal data list with Steps from the batch.
-
-        Args:
-            batch: A TrajectoryBatch (List[Step]) containing the data to add.
+    @property
+    def total_steps(self) -> int:
+        """Return the total number of steps across all trajectories.
 
         Returns:
-            Number of samples added from this batch.
+            Total number of Steps in all trajectories.
         """
-        samples_added = len(batch)
-        self._data.extend(batch)
-        return samples_added
+        return sum(len(traj) for traj in self._data)
+
+    def add_trajectory(self, trajectory: Trajectory) -> int:
+        """Add a single trajectory to the experience pool.
+
+        Args:
+            trajectory: A trajectory (List[Step]) to add.
+
+        Returns:
+            Number of steps added from this trajectory.
+        """
+        steps_added = len(trajectory)
+        self._data.append(trajectory)
+        return steps_added
 
     def save(self, path: str) -> None:
         """Save the experience pool to a file.
 
-        The data is saved as a pickle file containing a dictionary with a 'data' key.
+        The data is saved as a pickle file containing the list of trajectories.
 
         Reference:
             https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L367-L368
@@ -99,10 +110,10 @@ class ExperiencePool:
             raise FileNotFoundError(f"Experience pool file not found: {path}")
 
         with open(path, 'rb') as f:
-            data: List[Step] = pickle.load(f)
+            data: List[Trajectory] = pickle.load(f)
 
         return cls(data=data)
 
     def __repr__(self) -> str:
         """Return a string representation of the experience pool."""
-        return f"ExperiencePool(size={len(self)})"
+        return f"ExperiencePool(trajectories={len(self)}, total_steps={self.total_steps})"
