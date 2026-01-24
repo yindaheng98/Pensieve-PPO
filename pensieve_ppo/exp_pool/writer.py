@@ -9,8 +9,7 @@ Reference:
 
 from typing import Dict, List
 
-from ..agent import AbstractTrainableAgent
-from ..agent.trainable import Step
+from ..agent import AbstractTrainableAgent, Step
 from .pool import ExperiencePool, Trajectory
 
 # StepBatch is simply a list of Steps (same as Trajectory)

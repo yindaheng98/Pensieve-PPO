@@ -12,7 +12,7 @@ import os
 import pickle
 from typing import List
 
-from ..agent.trainable import Step
+from ..agent import Step
 
 # Type alias for a single trajectory
 Trajectory = List[Step]
