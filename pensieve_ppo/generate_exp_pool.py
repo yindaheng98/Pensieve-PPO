@@ -197,7 +197,6 @@ if __name__ == '__main__':
         final_exp_pool = ExperiencePool.load(args.exp_pool_path)
         print(f"\nDone. Experience pool saved at: {args.exp_pool_path}")
         print(f"Total samples collected: {len(final_exp_pool)}")
-        print(f"Fields: {final_exp_pool.get_fields()}")
     else:
         print(f"\nWarning: Experience pool file not found at {args.exp_pool_path}")
         print("This may happen if no epochs were saved. Check model_save_interval setting.")
