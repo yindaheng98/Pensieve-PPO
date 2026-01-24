@@ -171,7 +171,7 @@ class ImitationTrainer(Trainer):
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-158
                 # Store step with student_state for training the student agent
                 # The action and action_prob are from the teacher, which the student will learn to imitate
-                trajectory.append(Step(state=obs.student_state, action=action_vec, action_prob=action_prob, reward=rew, step=step))
+                trajectory.append(Step(state=obs.student_state, action=action_vec, action_prob=action_prob, reward=rew, step=step, done=done))
 
                 obs = next_obs
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L159-160

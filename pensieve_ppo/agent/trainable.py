@@ -39,6 +39,7 @@ class Step:
     action_prob: List[float]
     reward: float
     step: int
+    done: bool
 
 
 class TrainingBatch:
