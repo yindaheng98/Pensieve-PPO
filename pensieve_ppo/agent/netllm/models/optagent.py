@@ -13,14 +13,20 @@ from ..container import NetLLMAgent
 from .opt import OPTModel
 
 
-# PLM embed sizes from NetLLM config
-# https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/config.py#L35-L64
+# PLM embed sizes (hidden_size) for OPT models
+# NOTE: NetLLM config.py has INCORRECT values! These are the actual hidden_size
+# values from HuggingFace model configs:
+# - facebook/opt-125m: hidden_size=768
+# - facebook/opt-350m: hidden_size=1024
+# - facebook/opt-1.3b: hidden_size=2048
+# - facebook/opt-2.7b: hidden_size=2560
+# - facebook/opt-6.7b: hidden_size=4096
 _OPT_EMBED_SIZES = {
-    'large': 5120,
-    'base': 4096,
-    'small': 2560,
-    'xs': 2048,
-    'xxs': 512,
+    'large': 4096,   # facebook/opt-6.7b
+    'base': 2560,    # facebook/opt-2.7b
+    'small': 2048,   # facebook/opt-1.3b
+    'xs': 1024,      # facebook/opt-350m
+    'xxs': 768,      # facebook/opt-125m
 }
 
 # Model configurations: size -> HuggingFace ID
