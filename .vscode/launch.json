@@ -59,10 +59,22 @@
             "request": "launch",
             "module": "pensieve_ppo.generate_exp_pool",
             "args": [
-                "--agent-name=netllm-llama",
+                "--agent-name=netllm-llama-lora",
                 "--teacher-agent-name=bba",
                 "--parallel-workers=4",
                 "--train-epochs=900",
+                "--state-history-len=6",
+            ],
+            "cwd": "${workspaceFolder}",
+        },
+        {
+            "name": "download pretrained",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "tools/download_plm.py",
+            "args": [
+                "--model=llama",
+                "--size=base",
             ],
             "cwd": "${workspaceFolder}",
         },
