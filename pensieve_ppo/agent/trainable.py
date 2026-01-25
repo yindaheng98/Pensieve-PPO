@@ -10,7 +10,7 @@ Reference:
 """
 
 from abc import abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, Tuple, List, TYPE_CHECKING
 
 import torch
@@ -20,6 +20,23 @@ if TYPE_CHECKING:
 
 from .abc import AbstractAgent
 from ..gym import State
+
+
+@dataclass
+class TrainBatchInfo:
+    """Base class for training batch information returned by train_batch.
+
+    This dataclass contains common training metrics that all trainable agents
+    should report. Subclasses can extend this with algorithm-specific metrics.
+
+    Attributes:
+        loss: The training loss value. For agents that don't compute a loss
+            (e.g., ExpPoolWriterAgent), this can be set to 0.0 or NaN.
+        extra: Optional dictionary for additional metrics that don't fit into
+            the structured fields. Useful for backward compatibility.
+    """
+    loss: float
+    extra: Dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -108,7 +125,7 @@ class AbstractTrainableAgent(AbstractAgent):
         self,
         training_batches: List[TrainingBatch],
         epoch: int,
-    ) -> Dict[str, float]:
+    ) -> TrainBatchInfo:
         """Train on multiple training batches.
 
         Args:
@@ -116,7 +133,8 @@ class AbstractTrainableAgent(AbstractAgent):
             epoch: Current training epoch.
 
         Returns:
-            Dictionary containing training metrics.
+            TrainBatchInfo containing training metrics. Subclasses should return
+            their own subclass of TrainBatchInfo with additional fields.
         """
         pass
 
