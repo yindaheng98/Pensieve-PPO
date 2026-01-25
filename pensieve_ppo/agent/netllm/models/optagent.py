@@ -5,7 +5,7 @@ Reference:
     https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/config.py
 """
 
-from typing import Literal
+from typing import Literal, Optional
 
 import torch
 
@@ -23,6 +23,15 @@ _OPT_EMBED_SIZES = {
     'xxs': 512,
 }
 
+# Model configurations: size -> HuggingFace ID
+_OPT_MODEL_CONFIGS = {
+    "xxs": "facebook/opt-125m",
+    "xs": "facebook/opt-350m",
+    "small": "facebook/opt-1.3b",
+    "base": "facebook/opt-2.7b",
+    "large": "facebook/opt-6.7b",
+}
+
 
 class OPTNetLLMAgent(NetLLMAgent):
     """NetLLMAgent with OPT as the PLM backbone.
@@ -37,16 +46,16 @@ class OPTNetLLMAgent(NetLLMAgent):
         ...     action_dim=6,
         ...     min_reward=-10.0,
         ...     max_reward=10.0,
-        ...     pretrained_path='path/to/opt/base',
         ... )
     """
 
     def __init__(
         self,
         *args,
-        pretrained_path: str,
+        pretrained_path: Optional[str] = None,
         rank: int = -1,
         plm_size: Literal['large', 'base', 'small', 'xs', 'xxs'] = 'base',
+        cache_dir: str = 'downloaded_plms',
         device: str = 'cuda' if torch.cuda.is_available() else 'cpu',
         **kwargs,
     ):
@@ -55,17 +64,23 @@ class OPTNetLLMAgent(NetLLMAgent):
         Args:
             *args: Positional arguments passed to NetLLMAgent
                 (action_dim, min_reward, max_reward).
-            pretrained_path: Path to the pretrained OPT model.
+            pretrained_path: Path to the pretrained OPT model. If None, uses
+                the default HuggingFace model based on plm_size.
             rank: Must be -1 for full fine-tuning (no LoRA).
             plm_size: Size variant of OPT ('large', 'base', 'small', 'xs', 'xxs').
-                Used to determine plm_embed_size.
+                Used to determine plm_embed_size and default pretrained model.
+            cache_dir: Directory to cache downloaded models. Default is 'downloaded_plms'.
             device: Device to run the model on ('cuda' or 'cpu').
             **kwargs: Additional keyword arguments passed to NetLLMAgent.
         """
         assert rank == -1, f"OPTNetLLMAgent requires rank=-1 (full fine-tuning), got {rank}"
 
+        # Use default HuggingFace model if pretrained_path is not provided
+        if pretrained_path is None:
+            pretrained_path = _OPT_MODEL_CONFIGS[plm_size]
+
         # Load OPT model
-        plm = OPTModel.from_pretrained(pretrained_path).to(device)
+        plm = OPTModel.from_pretrained(pretrained_path, cache_dir=cache_dir).to(device)
         plm_embed_size = _OPT_EMBED_SIZES[plm_size]
 
         # Initialize parent with rank=-1 (full fine-tuning, no LoRA)
@@ -93,7 +108,6 @@ class OPTLoRANetLLMAgent(NetLLMAgent):
         ...     action_dim=6,
         ...     min_reward=-10.0,
         ...     max_reward=10.0,
-        ...     pretrained_path='path/to/opt/base',
         ...     rank=128,
         ... )
     """
@@ -101,9 +115,10 @@ class OPTLoRANetLLMAgent(NetLLMAgent):
     def __init__(
         self,
         *args,
-        pretrained_path: str,
+        pretrained_path: Optional[str] = None,
         rank: int = 128,
         plm_size: Literal['large', 'base', 'small', 'xs', 'xxs'] = 'base',
+        cache_dir: str = 'downloaded_plms',
         device: str = 'cuda' if torch.cuda.is_available() else 'cpu',
         **kwargs,
     ):
@@ -112,18 +127,24 @@ class OPTLoRANetLLMAgent(NetLLMAgent):
         Args:
             *args: Positional arguments passed to NetLLMAgent
                 (action_dim, min_reward, max_reward).
-            pretrained_path: Path to the pretrained OPT model.
+            pretrained_path: Path to the pretrained OPT model. If None, uses
+                the default HuggingFace model based on plm_size.
             rank: Rank of LoRA low-rank matrices. Must be > 0. Default is 128.
             plm_size: Size variant of OPT ('large', 'base', 'small', 'xs', 'xxs').
-                Used to determine plm_embed_size.
+                Used to determine plm_embed_size and default pretrained model.
+            cache_dir: Directory to cache downloaded models. Default is 'downloaded_plms'.
             device: Device to run the model on ('cuda' or 'cpu').
             **kwargs: Additional keyword arguments passed to NetLLMAgent.
         """
         assert rank > 0, f"OPTLoRANetLLMAgent requires rank > 0 (LoRA enabled), got {rank}"
 
+        # Use default HuggingFace model if pretrained_path is not provided
+        if pretrained_path is None:
+            pretrained_path = _OPT_MODEL_CONFIGS[plm_size]
+
         # Load OPT model (LoRA will be applied by NetLLMAgent based on rank)
         # Reference: https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/run_plm.py#L181-L182
-        plm = OPTModel.from_pretrained(pretrained_path).to(device)
+        plm = OPTModel.from_pretrained(pretrained_path, cache_dir=cache_dir).to(device)
         plm_embed_size = _OPT_EMBED_SIZES[plm_size]
 
         # Initialize parent with rank parameter (NetLLMAgent handles LoRA)
