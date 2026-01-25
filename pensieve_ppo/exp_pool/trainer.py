@@ -19,6 +19,20 @@ from .dataset import ExpPoolDataset
 from .pool import ExperiencePool
 
 
+# ExpBatchEndCallback is the same as EpochEndCallback for on_batch_end
+ExpBatchEndCallback = EpochEndCallback
+
+
+class ExpEpochEndCallback:
+    """No-op callback for ExpPoolTrainer epoch end events.
+    
+    Unlike EpochEndCallback, this callback does not include train_info but includes batch_count.
+    """
+
+    def __call__(self, epoch: int, agent: AbstractTrainableAgent, batch_count: int) -> None:
+        pass
+
+
 def _identity_collate_fn(batch):
     """Identity collate function that returns batch as-is.
 
@@ -66,7 +80,8 @@ class ExpPoolTrainer:
         # pretrained_model_path: Optional[str] = None,  # Model loading is handled in create_agent
         shuffle: bool = True,
         num_workers: int = 0,
-        on_epoch_end: Callable[[int, AbstractTrainableAgent, TrainBatchInfo], None] = EpochEndCallback(),
+        on_batch_end: Callable[[int, AbstractTrainableAgent, TrainBatchInfo], None] = ExpBatchEndCallback(),
+        on_epoch_end: Callable[[int, AbstractTrainableAgent, int], None] = ExpEpochEndCallback(),
         on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = SaveModelCallback(),
     ):
         """Initialize the ExpPoolTrainer.
@@ -80,7 +95,8 @@ class ExpPoolTrainer:
             output_dir: Directory for saving logs and model checkpoints.
             shuffle: Whether to shuffle the dataset each epoch.
             num_workers: Number of DataLoader workers (0 for main process only).
-            on_epoch_end: Callback invoked at the end of each epoch.
+            on_batch_end: Callback invoked at the end of each batch.
+            on_epoch_end: Callback invoked at the end of each epoch (with batch_count instead of train_info).
             on_save_model: Callback invoked when model is saved.
         """
         self.exp_pool = exp_pool
@@ -92,6 +108,7 @@ class ExpPoolTrainer:
         # self.nn_model = pretrained_model_path  # Model loading is handled in create_agent
         self.shuffle = shuffle
         self.num_workers = num_workers
+        self.on_batch_end = on_batch_end
         self.on_epoch_end = on_epoch_end
         self.on_save_model = on_save_model
 
@@ -154,12 +171,13 @@ class ExpPoolTrainer:
 
                 batch_count += 1
 
-            pbar.close()
-            # Add batch_count to the train_info's extra dict
-            train_info.extra['batch_count'] = batch_count
+                # Callback for batch end (same signature as EpochEndCallback)
+                self.on_batch_end(epoch, actor, train_info)
 
-            # Callback for epoch end
-            self.on_epoch_end(epoch, actor, train_info)  # TODO: epoch here is different with epoch in ..agent.trainer
+            pbar.close()
+
+            # Callback for epoch end (with batch_count instead of train_info)
+            self.on_epoch_end(epoch, actor, batch_count)
 
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L116-L127
             if epoch % self.model_save_interval == 0:
