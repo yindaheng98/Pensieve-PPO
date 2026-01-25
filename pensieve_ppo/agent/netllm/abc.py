@@ -20,13 +20,13 @@ Reference:
 
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
 
-from ..trainable import Step, TrainingBatch, AbstractTrainableAgent
+from ..trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
 from .observer import NetLLMState
 
 
@@ -404,7 +404,7 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
         self,
         training_batches: List[NetLLMTrainingBatch],
         epoch: int,
-    ) -> Dict[str, float]:
+    ) -> TrainBatchInfo:
         """Train on multiple training batches.
 
         This method implements the training step from trainer.py:
@@ -420,10 +420,10 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
             epoch: Current training epoch.
 
         Returns:
-            Dictionary containing training metrics (logs).
+            TrainBatchInfo containing training metrics. NetLLM-specific metrics
+            (train_loss_mean, train_loss_std) are stored in the extra dict.
         """
         train_losses = []
-        logs = dict()
 
         dataset_size = len(training_batches)
 
@@ -443,12 +443,16 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
                 if self.lr_scheduler is not None:
                     self.lr_scheduler.step()
 
-        logs['training/train_loss_mean'] = np.mean(train_losses) if train_losses else 0.0
-        logs['training/train_loss_std'] = np.std(train_losses) if train_losses else 0.0
+        train_loss_mean = float(np.mean(train_losses)) if train_losses else 0.0
+        train_loss_std = float(np.std(train_losses)) if train_losses else 0.0
 
-        logs['training/train_losses'] = train_losses
-
-        return logs
+        return TrainBatchInfo(
+            loss=train_loss_mean,
+            extra={
+                'train_loss_mean': train_loss_mean,
+                'train_loss_std': train_loss_std,
+            },
+        )
 
     def train_step(self, batch: NetLLMTrainingBatch) -> torch.Tensor:
         """Perform a single training step.

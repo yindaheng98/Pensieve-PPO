@@ -15,6 +15,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
+from ... import TrainBatchInfo
 from .. import AbstractRLAgent
 from ..observer import RLState
 from .model import Actor, Critic
@@ -113,7 +114,7 @@ class PPOAgent(AbstractRLAgent):
         p_batch: np.ndarray,
         v_batch: np.ndarray,
         epoch: int,
-    ) -> Dict[str, float]:
+    ) -> TrainBatchInfo:
         """Train the PPO agent on a batch of experiences.
 
         Reference:
@@ -127,7 +128,7 @@ class PPOAgent(AbstractRLAgent):
             epoch: Current training epoch.
 
         Returns:
-            Dictionary containing training metrics.
+            TrainBatchInfo containing training metrics.
         """
         total_loss = 0.0
 
@@ -162,11 +163,13 @@ class PPOAgent(AbstractRLAgent):
         self._entropy_weight -= self.lr_rate * _g * 0.1 * self.PPO_TRAINING_EPO
         self._entropy_weight = max(self._entropy_weight, 1e-2)
 
-        return {
-            "loss": total_loss / self.PPO_TRAINING_EPO,
-            "entropy_weight": self._entropy_weight,
-            "entropy": _H,
-        }
+        return TrainBatchInfo(
+            loss=total_loss / self.PPO_TRAINING_EPO,
+            extra={
+                "entropy_weight": self._entropy_weight,
+                "entropy": _H,
+            },
+        )
 
     def predict(self, state: np.ndarray) -> List[float]:
         """Predict action probabilities for a given state.

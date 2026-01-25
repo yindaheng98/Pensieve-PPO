@@ -16,6 +16,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
+from ... import TrainBatchInfo
 from .. import AbstractRLAgent
 from ..observer import RLState
 from .model import Actor, Critic
@@ -106,7 +107,7 @@ class A3CAgent(AbstractRLAgent):
         p_batch: np.ndarray,
         v_batch: np.ndarray,
         epoch: int,
-    ) -> Dict[str, float]:
+    ) -> TrainBatchInfo:
         """Train the A3C agent on a batch of experiences.
 
         This implements the A3C training step with:
@@ -125,7 +126,7 @@ class A3CAgent(AbstractRLAgent):
             epoch: Current training epoch.
 
         Returns:
-            Dictionary containing training metrics.
+            TrainBatchInfo containing training metrics.
         """
         # Convert to tensors
         s_batch = torch.from_numpy(s_batch).to(torch.float32).to(self.device)
@@ -184,12 +185,15 @@ class A3CAgent(AbstractRLAgent):
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/a3c.py#L263-L272
         avg_entropy = -entropy.item() / s_batch.shape[0]
 
-        return {
-            "actor_loss": actor_loss.item(),
-            "critic_loss": critic_loss.item(),
-            "td_loss": torch.mean(td_batch ** 2).item(),
-            "entropy": avg_entropy,
-        }
+        return TrainBatchInfo(
+            loss=actor_loss.item() + critic_loss.item(),
+            extra={
+                "actor_loss": actor_loss.item(),
+                "critic_loss": critic_loss.item(),
+                "td_loss": torch.mean(td_batch ** 2).item(),
+                "entropy": avg_entropy,
+            },
+        )
 
     def predict(self, state: np.ndarray) -> List[float]:
         """Predict action probabilities for a given state.

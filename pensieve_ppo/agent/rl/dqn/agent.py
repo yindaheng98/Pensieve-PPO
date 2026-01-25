@@ -17,6 +17,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
+from ... import TrainBatchInfo
 from .. import AbstractRLAgent
 from ..observer import RLState
 from .model import QNetwork
@@ -135,7 +136,7 @@ class DQNAgent(AbstractRLAgent):
         p_batch: np.ndarray,
         v_batch: np.ndarray,
         epoch: int,
-    ) -> Dict[str, float]:
+    ) -> TrainBatchInfo:
         """Train the DQN agent on a batch of experiences.
 
         Note: For DQN, the interface is different from policy gradient methods.
@@ -157,7 +158,7 @@ class DQNAgent(AbstractRLAgent):
             epoch: Current training epoch.
 
         Returns:
-            Dictionary containing training metrics.
+            TrainBatchInfo containing training metrics.
         """
         # For DQN, we need done flags. Since the standard interface doesn't include them,
         # we'll assume non-terminal transitions. For proper DQN training, use train_dqn method.
@@ -172,7 +173,7 @@ class DQNAgent(AbstractRLAgent):
         r_batch: np.ndarray,
         d_batch: np.ndarray,
         epoch: int,
-    ) -> Dict[str, float]:
+    ) -> TrainBatchInfo:
         """Train the DQN agent with full DQN interface.
 
         This is the proper DQN training interface that includes done flags.
@@ -189,7 +190,7 @@ class DQNAgent(AbstractRLAgent):
             epoch: Current training epoch.
 
         Returns:
-            Dictionary containing training metrics.
+            TrainBatchInfo containing training metrics.
         """
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L129-L134
         # Add experiences to replay buffer
@@ -261,10 +262,12 @@ class DQNAgent(AbstractRLAgent):
 
             loss_value = loss.item()
 
-        return {
-            "loss": loss_value,
-            "pool_size": len(self.pool),
-        }
+        return TrainBatchInfo(
+            loss=loss_value,
+            extra={
+                "pool_size": len(self.pool),
+            },
+        )
 
     def predict(self, state: np.ndarray) -> np.ndarray:
         """Predict Q-values for a given state.

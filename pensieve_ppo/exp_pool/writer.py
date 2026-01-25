@@ -7,9 +7,10 @@ Reference:
     https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py
 """
 
-from typing import Dict, List
+from typing import List
+import math
 
-from ..agent import AbstractTrainableAgent, Step
+from ..agent import AbstractTrainableAgent, Step, TrainBatchInfo
 from .pool import ExperiencePool, Trajectory
 
 # StepBatch is simply a list of Steps (same as Trajectory)
@@ -82,7 +83,7 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
         self,
         training_batches: List[StepBatch],
         epoch: int,
-    ) -> Dict[str, float]:
+    ) -> TrainBatchInfo:
         """Write training batch data to the experience pool instead of training.
 
         This method adds each trajectory to the internal experience pool.
@@ -95,15 +96,18 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
             epoch: Current training epoch.
 
         Returns:
-            Dictionary containing experience collection metrics.
+            TrainBatchInfo containing experience collection metrics in extra dict.
         """
         total_steps = 0
         for trajectory in training_batches:
             total_steps += self._exp_pool.add_trajectory(trajectory)
 
-        return {
-            'exp_pool_trajectories': len(self._exp_pool),
-            'exp_pool_total_steps': self._exp_pool.total_steps,
-            'new_steps': total_steps,
-            'epoch': epoch,
-        }
+        return TrainBatchInfo(
+            loss=math.nan,  # No training loss since this agent doesn't train
+            extra={
+                'exp_pool_trajectories': len(self._exp_pool),
+                'exp_pool_total_steps': self._exp_pool.total_steps,
+                'new_steps': total_steps,
+                'epoch': epoch,
+            },
+        )

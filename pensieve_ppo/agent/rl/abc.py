@@ -15,12 +15,12 @@ Reference:
 
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import List
 
 import numpy as np
 
 
-from .. import Step, TrainingBatch, AbstractTrainableAgent
+from .. import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
 from .observer import RLState
 
 
@@ -62,7 +62,7 @@ class AbstractRLAgent(AbstractTrainableAgent):
         p_batch: np.ndarray,
         v_batch: np.ndarray,
         epoch: int,
-    ) -> Dict[str, float]:
+    ) -> TrainBatchInfo:
         """Train the agent on a batch of experiences.
 
         Args:
@@ -73,7 +73,8 @@ class AbstractRLAgent(AbstractTrainableAgent):
             epoch: Current training epoch.
 
         Returns:
-            Dictionary containing training metrics (e.g., loss values).
+            TrainBatchInfo containing training metrics. Subclasses should
+            construct this with loss and any extra metrics in the extra dict.
         """
         pass
 
@@ -140,7 +141,7 @@ class AbstractRLAgent(AbstractTrainableAgent):
         self,
         training_batches: List[RLTrainingBatch],
         epoch: int,
-    ) -> Dict[str, float]:
+    ) -> TrainBatchInfo:
         """Train on multiple training batches.
 
         Concatenates data from all training batches and performs a training step.
@@ -153,7 +154,7 @@ class AbstractRLAgent(AbstractTrainableAgent):
             epoch: Current training epoch.
 
         Returns:
-            Dictionary containing training metrics.
+            TrainBatchInfo containing training metrics returned by train().
         """
         s: List[RLState] = []
         a, p, v = [], [], []

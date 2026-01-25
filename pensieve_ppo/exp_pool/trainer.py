@@ -8,12 +8,12 @@ Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py
 """
 
-from typing import Callable, Dict
+from typing import Callable
 
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ..agent.trainable import AbstractTrainableAgent
+from ..agent.trainable import AbstractTrainableAgent, TrainBatchInfo
 from ..agent.trainer import EpochEndCallback, SaveModelCallback
 from .dataset import ExpPoolDataset
 from .pool import ExperiencePool
@@ -66,7 +66,7 @@ class ExpPoolTrainer:
         # pretrained_model_path: Optional[str] = None,  # Model loading is handled in create_agent
         shuffle: bool = True,
         num_workers: int = 0,
-        on_epoch_end: Callable[[int, AbstractTrainableAgent, Dict], None] = EpochEndCallback(),
+        on_epoch_end: Callable[[int, AbstractTrainableAgent, TrainBatchInfo], None] = EpochEndCallback(),
         on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = SaveModelCallback(),
     ):
         """Initialize the ExpPoolTrainer.
@@ -133,8 +133,8 @@ class ExpPoolTrainer:
         # while True:  # assemble training batches from agents, compute the gradients
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L96
         for epoch in range(1, self.train_epochs + 1):
-            epoch_info: Dict[str, float] = {}
             batch_count = 0
+            train_info: TrainBatchInfo = None  # type: ignore[assignment]
 
             # Create progress bar for batches
             pbar = tqdm(dataloader, desc=f'Epoch {epoch}/{self.train_epochs}', leave=False)
@@ -149,16 +149,17 @@ class ExpPoolTrainer:
                 train_info = actor.train_batch(training_batches, epoch)
 
                 # Update progress bar with train_info
-                postfix = {k: f'{v:.4f}' for k, v in train_info.items()}
+                postfix = {'loss': f'{train_info.loss:.4f}'}
                 pbar.set_postfix(postfix)
 
                 batch_count += 1
 
             pbar.close()
-            epoch_info['batch_count'] = batch_count
+            # Add batch_count to the train_info's extra dict
+            train_info.extra['batch_count'] = batch_count
 
             # Callback for epoch end
-            self.on_epoch_end(epoch, actor, epoch_info)
+            self.on_epoch_end(epoch, actor, train_info)  # TODO: epoch here is different with epoch in ..agent.trainer
 
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L116-L127
             if epoch % self.model_save_interval == 0:
