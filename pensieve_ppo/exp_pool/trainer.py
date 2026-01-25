@@ -8,7 +8,7 @@ Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py
 """
 
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict
 
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -17,6 +17,15 @@ from ..agent.trainable import AbstractTrainableAgent
 from ..agent.trainer import EpochEndCallback, SaveModelCallback
 from .dataset import ExpPoolDataset
 from .pool import ExperiencePool
+
+
+def _identity_collate_fn(batch):
+    """Identity collate function that returns batch as-is.
+
+    This is defined at module level (not as a lambda) to allow pickling
+    when DataLoader uses num_workers > 0.
+    """
+    return batch
 
 
 class ExpPoolTrainer:
@@ -115,7 +124,7 @@ class ExpPoolTrainer:
             batch_size=self.batch_size,
             shuffle=self.shuffle,
             num_workers=self.num_workers,
-            collate_fn=lambda x: x,  # Return list of (trajectory, done) as-is
+            collate_fn=_identity_collate_fn,  # Return list of (trajectory, done) as-is
         )
 
         print(f'ExpPoolTrainer: {dataset.num_trajectories} trajectories, '
