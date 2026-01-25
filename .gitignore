@@ -1,3 +1,8 @@
+exp_pool/exp_pool.pkl
+downloaded_plms/
+ppo/
+test_results/
+
 src/__pycache__
 src/*.pyc
 src/test_results/
