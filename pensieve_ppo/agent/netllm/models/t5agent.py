@@ -13,13 +13,18 @@ from ..container import NetLLMAgent
 from .t5 import T5Model
 
 
-# PLM embed sizes from NetLLM config
-# https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/config.py#L35-L64
+# PLM embed sizes (d_model) for T5 models
+# NOTE: NetLLM config.py has INCORRECT value for 'large'! These are the actual d_model
+# values from HuggingFace model configs:
+# - google/t5-v1_1-small: d_model=512
+# - google/t5-v1_1-base: d_model=768
+# - google/t5-v1_1-large: d_model=1024 (NOT 4096 as in NetLLM config!)
+# - google/t5-v1_1-xl: d_model=2048
 _T5_EMBED_SIZES = {
-    'base': 768,
-    'small': 512,
-    'large': 4096,
-    'xl': 2048,
+    'small': 512,   # google/t5-v1_1-small
+    'base': 768,    # google/t5-v1_1-base
+    'large': 1024,  # google/t5-v1_1-large
+    'xl': 2048,     # google/t5-v1_1-xl
 }
 
 # Model configurations: size -> HuggingFace ID
