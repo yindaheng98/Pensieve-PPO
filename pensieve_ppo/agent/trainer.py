@@ -12,18 +12,18 @@ Reference:
 """
 
 import multiprocessing as mp
-from typing import Callable, Dict, List, Optional
+from typing import Callable, List
 
 import torch
 
 from ..gym import ABREnv
-from .trainable import AbstractTrainableAgent, Step, TrainingBatch
+from .trainable import AbstractTrainableAgent, Step, TrainingBatch, TrainBatchInfo
 
 
 class EpochEndCallback:
     """No-op callback for trainer events."""
 
-    def __call__(self, epoch: int, agent: AbstractTrainableAgent, info: Dict) -> None:
+    def __call__(self, epoch: int, agent: AbstractTrainableAgent, info: TrainBatchInfo) -> None:
         pass
 
 
@@ -62,7 +62,7 @@ class Trainer:
         model_save_interval: int = 300,
         output_dir: str = './ppo',
         # pretrained_model_path: Optional[str] = None,  # Model loading is handled in create_agent
-        on_epoch_end: Callable[[int, AbstractTrainableAgent, Dict], None] = EpochEndCallback(),
+        on_epoch_end: Callable[[int, AbstractTrainableAgent, TrainBatchInfo], None] = EpochEndCallback(),
         on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = SaveModelCallback(),
     ):
         """Initialize the trainer.
