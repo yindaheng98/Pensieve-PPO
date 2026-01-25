@@ -106,13 +106,16 @@ class ExpPoolTrainer:
         #     print('Model restored.')
 
         # Create dataset and dataloader
-        dataset = ExpPoolDataset(self.exp_pool, actor)
+        # Note: We don't pass the agent to the dataset to avoid pickle issues
+        # with models that have hooks (e.g., from enable_input_require_grads).
+        # The conversion to TrainingBatch is done in the training loop below.
+        dataset = ExpPoolDataset(self.exp_pool)
         dataloader = DataLoader(
             dataset,
             batch_size=self.batch_size,
             shuffle=self.shuffle,
             num_workers=self.num_workers,
-            collate_fn=lambda x: x,  # Return list of TrainingBatch as-is
+            collate_fn=lambda x: x,  # Return list of (trajectory, done) as-is
         )
 
         print(f'ExpPoolTrainer: {dataset.num_trajectories} trajectories, '
@@ -126,8 +129,13 @@ class ExpPoolTrainer:
 
             # Create progress bar for batches
             pbar = tqdm(dataloader, desc=f'Epoch {epoch}/{self.train_epochs}', leave=False)
-            for training_batches in pbar:
-                # training_batches is List[TrainingBatch]
+            for trajectory_batch in pbar:
+                # trajectory_batch is List[(trajectory, done)]
+                # Convert to TrainingBatch here to avoid pickle issues with agent
+                training_batches = [
+                    actor.produce_training_batch(trajectory, done)
+                    for trajectory, done in trajectory_batch
+                ]
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L114
                 train_info = actor.train_batch(training_batches, epoch)
 
