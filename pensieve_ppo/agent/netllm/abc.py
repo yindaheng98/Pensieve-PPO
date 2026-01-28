@@ -293,12 +293,13 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
         ).unsqueeze(0).unsqueeze(0)  # (S_INFO, S_LEN) -> (1, 1, S_INFO, S_LEN)
 
         # Call sample for inference
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L62
-        action = self.sample(
-            state_tensor,
-            state.target_return,
-            state.timestep,
-        )
+        with torch.no_grad():
+            # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L62
+            action = self.sample(
+                state_tensor,
+                state.target_return,
+                state.timestep,
+            )
 
         # Return one-hot probability distribution
         # NetLLM uses argmax for action selection, so we return 1.0 for selected action

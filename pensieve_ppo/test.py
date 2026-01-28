@@ -13,6 +13,7 @@ import os
 from typing import Dict, Tuple
 
 import numpy as np
+from tqdm import tqdm
 
 from .agent import AbstractAgent, get_available_agents
 from .defaults import create_env_agent_with_default
@@ -98,12 +99,18 @@ def testing(
     entropy_ = 0.5
     video_count = 0
 
+    # Progress bar for testing
+    total_chunks = env.simulator.video_player.total_chunks
+    pbar = tqdm(total=len(all_file_names), desc="Testing", unit="trace", position=0)
+    pbar_step = tqdm(total=total_chunks, desc="Steps", unit="chunk", position=1, leave=False)
+
     while True:  # serve video forever
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L69-L85
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L100-L115
         # the action is from the last decision
         # this is to make the framework similar to the real
         state, reward, end_of_video, truncated, info = env.step(bit_rate)
+        pbar_step.update(1)
 
         # r_batch.append(reward)
 
@@ -151,8 +158,12 @@ def testing(
             entropy_record = []
 
             video_count += 1
+            pbar.update(1)
+            pbar_step.reset()
 
             if video_count >= len(all_file_names):
+                pbar_step.close()
+                pbar.close()
                 break
 
             # Reset for next trace - only initializes state
