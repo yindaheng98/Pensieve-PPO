@@ -29,7 +29,7 @@ pip install --target . --upgrade . --no-deps
 ### Dependencies
 
 ```bash
-pip install torch numpy gymnasium tensorboard
+pip install torch numpy gymnasium tensorboard tqdm transformers peft
 ```
 
 ## Quick Start
@@ -70,13 +70,20 @@ python -m pensieve_ppo.train \
 
 ```bash
 # Test with a trained model
-python -m pensieve_ppo.test --model-path ./ppo/model_ep300.pt
+python -m pensieve_ppo.test --model-path ./ppo/nn_model_ep_300.pth
 
 # Test with custom trace folder
 python -m pensieve_ppo.test \
-    --model-path ./ppo/model_ep300.pt \
+    --model-path ./ppo/nn_model_ep_300.pth \
     --test-trace-folder ./src/test/
 ```
+
+> **Data path note**: The default training traces, test traces, and video chunk
+> size files are currently read from the legacy `src/` tree:
+> `./src/train/`, `./src/test/`, and `./src/envivio/video_size_`.
+> Keep those folders present when using the default configuration, or pass
+> explicit `--train-trace-folder`, `--test-trace-folder`, and
+> `video_size_file_prefix` values.
 
 ## Package Structure
 
@@ -87,14 +94,17 @@ pensieve_ppo/
 │   ├── video/             # Video processing (chunk sizes, bitrates, playback)
 │   └── simulator/         # Combines trace & video into ABR simulator
 ├── gym/                   # Gymnasium environment wrapper
-│   └── env.py             # ABREnv - standard RL environment interface
-├── agent/                 # RL agent implementations
+│   ├── env.py             # ABREnv - standard RL environment interface
+│   └── imitate.py         # Imitation observer wrapper
+├── agent/                 # Agent implementations and training loops
 │   ├── abc.py             # Abstract base classes
 │   ├── registry.py        # Agent factory and registration
 │   ├── trainer.py         # Distributed training framework
-│   └── rl/
-│       ├── observer.py    # State observation and reward calculation
-│       └── ppo/           # PPO agent implementation
+│   ├── bba/               # Buffer-based baseline
+│   ├── mpc/               # MPC and oracle MPC baselines
+│   ├── netllm/            # NetLLM-style Decision Transformer agents
+│   └── rl/                # PPO, A3C, and DQN agents
+├── exp_pool/              # Experience pool data and offline trainer
 ├── defaults.py            # Default parameters and factory functions
 ├── train.py               # Training script
 └── test.py                # Testing script
@@ -357,14 +367,14 @@ env = create_env_with_default(
 
 # Create compatible env and agent pair
 env, agent = create_env_agent_with_default(
-    agent_name='ppo',
-    model_path='./ppo/model.pt',  # Optional: load pretrained weights
+    name='ppo',
+    model_path='./ppo/nn_model_ep_300.pth',  # Optional: load pretrained weights
     device='cuda',
 )
 
 # Create factories for distributed training
 env_factory, agent_factory = create_env_agent_factory_with_default(
-    agent_name='ppo',
+    name='ppo',
     train=True,
 )
 ```
@@ -462,7 +472,7 @@ register("my-trainable", MyTrainableAgent, MyCustomObserver)
 
 # Can be used for training
 from pensieve_ppo.defaults import create_env_agent_with_default
-env, agent = create_env_agent_with_default(agent_name="my-trainable")
+env, agent = create_env_agent_with_default(name="my-trainable")
 ```
 
 **Checking Available Agents**:
@@ -496,6 +506,26 @@ print(trainable_agents)  # ['ppo', 'dqn', 'a3c', ...]
 
 **Reward**: `quality - 4.3 * rebuffer - 1.0 * |quality_change|`
 
+### NetLLM Agents
+
+NetLLM-style agents are registered under names such as `netllm-gpt2`,
+`netllm-llama`, and `netllm-gpt2-lora`. They use the `NetLLMABRStateObserver`
+and the model wrappers in `pensieve_ppo.agent.netllm`.
+
+When creating a NetLLM agent, provide the reward normalization range required
+by the offline RL data processing:
+
+```bash
+python -m pensieve_ppo.imitate_exp_pool \
+    --agent-name netllm-gpt2 \
+    --state-history-len 6 \
+    -o min_reward=-10.0 max_reward=10.0 plm_size='small'
+```
+
+NetLLM currently expects a state history length of `6`, while the default PPO
+observer uses `8`. Pass `--state-history-len 6` for NetLLM runs unless you are
+using a custom NetLLM-compatible state encoder.
+
 ## Command Line Options
 
 ### Training (`pensieve_ppo.train`)
@@ -504,10 +534,10 @@ print(trainable_agents)  # ['ppo', 'dqn', 'a3c', ...]
 --train-trace-folder    Training trace folder (default: ./src/train/)
 --output-dir            Output directory (default: ./ppo)
 --parallel-workers      Number of parallel workers (default: 16)
---steps-per-epoch       Steps per epoch per worker (default: 1000)
+--max-steps-per-epoch   Maximum steps per epoch per worker (default: 1000)
 --train-epochs          Total training epochs (default: 500000)
 --model-save-interval   Model checkpoint interval (default: 300)
---pretrained-model-path Resume from pretrained model
+--model-path            Resume from pretrained model
 ```
 
 ### Testing (`pensieve_ppo.test`)
@@ -529,6 +559,9 @@ print(trainable_agents)  # ['ppo', 'dqn', 'a3c', ...]
 -o, --agent-options     Extra agent kwargs (e.g., learning_rate=1e-4)
 -e, --env-options       Extra env kwargs (e.g., rebuf_penalty=4.3)
 ```
+
+Values passed through `--agent-options` and `--env-options` are parsed as Python
+expressions. Quote string values, for example `plm_size='small'`.
 
 ## TensorBoard Monitoring
 

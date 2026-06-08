@@ -112,6 +112,11 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py
     """
 
+    @classmethod
+    def get_constructor_args(cls) -> list[str]:
+        """Get constructor argument names accepted by the observer factory."""
+        return RLABRStateObserver.get_constructor_args() + ["target_return"]
+
     def __init__(
         self,
         *args,
