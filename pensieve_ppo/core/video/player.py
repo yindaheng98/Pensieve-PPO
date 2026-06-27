@@ -1,8 +1,15 @@
 """Video player for tracking playback position and chunk information."""
 
-from typing import List, Tuple
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
 
-from .data import VideoData
+from .data import EnvivioVideoData
+
+
+@dataclass(frozen=True)
+class VideoChunkRequest:
+    """Request for a video chunk at a bitrate ladder level."""
+    level: int
 
 
 class VideoPlayer:
@@ -12,7 +19,7 @@ class VideoPlayer:
     to get chunk sizes and advance through the video.
     """
 
-    def __init__(self, video_data: VideoData):
+    def __init__(self, video_data: EnvivioVideoData):
         """Initialize the video player.
 
         Args:
@@ -28,18 +35,39 @@ class VideoPlayer:
         """
         self.video_chunk_counter = 0
 
-    def get_chunk_size(self, quality: int, chunk_idx: int = None) -> int:
-        """Get the size of current chunk at given quality level.
+    def get_chunk_quality(
+        self,
+        chunk_request: VideoChunkRequest,
+        chunk_idx: Optional[int] = None,
+    ) -> float:
+        """Get the actual quality level for a chunk request.
+
+        Args:
+            chunk_request: Request used to resolve the chunk quality.
+            chunk_idx: Video chunk index. Defaults to the current position.
+
+        Returns:
+            Quality value for the selected bitrate level.
+        """
+        return self._video_data.get_chunk_quality(chunk_request.level, chunk_idx or self.video_chunk_counter)
+
+    def get_chunk_size(
+        self,
+        chunk_request: VideoChunkRequest,
+        chunk_idx: Optional[int] = None,
+    ) -> int:
+        """Get the size of current chunk for a video chunk request.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L54
 
         Args:
-            quality: Bitrate level (0 to num_bitrates-1)
+            chunk_request: Request used to resolve the chunk quality.
+            chunk_idx: Video chunk index. Defaults to the current position.
 
         Returns:
             Chunk size in bytes
         """
-        return self._video_data.get_chunk_size(quality, chunk_idx or self.video_chunk_counter)
+        return self._video_data.get_chunk_size(chunk_request.level, chunk_idx or self.video_chunk_counter)
 
     def get_next_chunk_sizes(self) -> List[int]:
         """Get sizes of next chunk at all quality levels.
