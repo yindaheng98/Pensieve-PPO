@@ -26,9 +26,13 @@ class VideoData:
         """Total number of video chunks."""
         return self.video_size.shape[1]
 
-    def get_chunk_size(self, bitrate: int, chunk_idx: int) -> int:
-        """Get size of a specific chunk at given bitrate."""
-        return int(self.video_size[bitrate, chunk_idx])
+    def get_chunk_size(self, level: int, chunk_idx: int) -> int:
+        """Get size of a specific chunk at given bitrate level."""
+        return int(self.video_size[level, chunk_idx])
+
+    def get_chunk_quality(self, level: int, chunk_idx: int) -> float:
+        """Get quality of a specific chunk at given bitrate level."""
+        return VIDEO_BIT_RATE[level]
 
     def get_next_chunk_sizes(self, chunk_idx: int) -> List[int]:
         """Get sizes of next chunk for all bitrate levels."""
