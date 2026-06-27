@@ -7,6 +7,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 
+# From src/env.py
+VIDEO_BIT_RATE = [300., 750., 1200., 1850., 2850., 4300.]  # Kbps, https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L13
+
+
 @dataclass
 class VideoData:
     """Container for loaded video chunk size data."""

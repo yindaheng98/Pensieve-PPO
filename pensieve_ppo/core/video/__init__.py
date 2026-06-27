@@ -1,6 +1,6 @@
 """Video data loading module."""
 
-from .data import VideoData
+from .data import VIDEO_BIT_RATE, VideoData
 from .loader import load_video_size
 from .player import VideoPlayer
 
