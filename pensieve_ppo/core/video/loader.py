@@ -4,15 +4,14 @@ import os
 from typing import Optional
 
 import numpy as np
-
-from .data import VideoData
+from numpy.typing import NDArray
 
 
 def load_video_size(
     video_size_file_prefix: str,
     bitrate_levels: Optional[int] = None,
     max_chunks: Optional[int] = None,
-) -> VideoData:
+) -> NDArray[np.int64]:
     """
     Load video chunk sizes for all bitrate levels.
 
@@ -30,7 +29,7 @@ def load_video_size(
                    the loaded data to this limit. If None, load all chunks.
 
     Returns:
-        VideoData object containing chunk sizes for all bitrates
+        Matrix containing chunk sizes for all bitrates
     """
     # Auto-detect bitrate_levels if not specified
     if bitrate_levels is None:
@@ -63,4 +62,4 @@ def load_video_size(
         dtype=np.int64,
     )
 
-    return VideoData(video_size=video_size)
+    return video_size
