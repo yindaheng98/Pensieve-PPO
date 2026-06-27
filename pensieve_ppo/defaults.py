@@ -13,7 +13,7 @@ from typing import Callable, Optional, Tuple, Union
 
 import torch
 
-from .core.video import VIDEO_BIT_RATE
+from .core.video import VIDEO_BIT_RATE, VIDEO_SIZE_FILE_PREFIX
 from .agent import (
     AbstractAgent,
     AbstractTrainableAgent,
@@ -30,7 +30,6 @@ from .gym import ABREnv
 
 # From src/core.py
 TOTAL_VIDEO_CHUNKS = 48  # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L9
-VIDEO_SIZE_FILE_PREFIX = './src/envivio/video_size_'  # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L17
 
 # From src/env.py
 DEFAULT_QUALITY = 1  # default video quality without agent, https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L19

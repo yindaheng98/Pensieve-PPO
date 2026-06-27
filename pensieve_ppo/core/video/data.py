@@ -8,6 +8,9 @@ from numpy.typing import NDArray
 from .loader import load_video_size
 
 
+# From src/core.py
+VIDEO_SIZE_FILE_PREFIX = './src/envivio/video_size_'  # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L17
+
 # From src/env.py
 VIDEO_BIT_RATE = [300., 750., 1200., 1850., 2850., 4300.]  # Kbps, https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L13
 
@@ -17,32 +20,31 @@ class EnvivioVideoData:
 
     def __init__(
         self,
-        video_size_file_prefix: str,
-        bitrate_levels: Optional[int] = None,
+        video_size_file_prefix: str = VIDEO_SIZE_FILE_PREFIX,
+        quality: List[float] = VIDEO_BIT_RATE,
         max_chunks: Optional[int] = None,
     ):
         """Initialize Envivio video data from video size files.
 
         Args:
             video_size_file_prefix: Path prefix for video size files
-            bitrate_levels: Number of bitrate levels. If None, auto-detect by
-                       finding the maximum bitrate level with existing files.
+            quality: Quality metric list for each bitrate level.
             max_chunks: Maximum number of chunks to load. If specified, truncates
                    the loaded data to this limit. If None, load all chunks.
         """
+        self.quality = list(quality)
 
         video_size: NDArray[np.int64] = load_video_size(
             video_size_file_prefix,
-            bitrate_levels=bitrate_levels,
             max_chunks=max_chunks,
         )  # shape: [bitrate_levels, total_chunks]
 
-        # Validate loaded video data matches the fixed quality ladder.
-        if video_size.shape[0] != len(VIDEO_BIT_RATE):
+        # Validate loaded video data matches the quality ladder.
+        if video_size.shape[0] != len(self.quality):
             raise ValueError(
                 "video_size bitrate dimension "
                 f"({video_size.shape[0]}) must match "
-                f"VIDEO_BIT_RATE length ({len(VIDEO_BIT_RATE)})"
+                f"quality length ({len(self.quality)})"
             )
 
         self.video_size = video_size
@@ -63,7 +65,7 @@ class EnvivioVideoData:
 
     def get_chunk_quality(self, level: int, chunk_idx: int) -> float:
         """Get quality of a specific chunk at given bitrate level."""
-        return VIDEO_BIT_RATE[level]
+        return self.quality[level]
 
     def get_next_chunk_sizes(self, chunk_idx: int) -> List[int]:
         """Get sizes of next chunk for all bitrate levels."""
