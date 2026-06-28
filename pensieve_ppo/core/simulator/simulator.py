@@ -10,9 +10,9 @@ in the StepResult, while keeping delay and sleep_time in milliseconds for compat
 """
 
 from dataclasses import dataclass
-from typing import List
+from typing import Generic, List
 
-from ..video.player import VideoPlayer
+from ..video import VideoChunkRequestType, VideoPlayer
 from ..trace.abc import AbstractTraceSimulator
 
 
@@ -40,15 +40,16 @@ class StepResult:
     next_video_chunk_sizes: List[int]   # [bytes] Sizes of next chunk at each bitrate
     end_of_video: bool                  # Whether video has ended
     video_chunk_remain: int             # Number of remaining chunks
+    video_chunk_quality: float          # Resolved quality value of downloaded chunk
 
 
-class Simulator:
+class Simulator(Generic[VideoChunkRequestType]):
     """Simulator that combines VideoPlayer and TraceSimulator.
 
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L18
 
     The `step` method orchestrates these components in order:
-        1. video_player.get_chunk_size - Get chunk size for requested quality
+        1. video_player.get_chunk_size - Get chunk size for requested chunk
         2. trace_simulator.step - Simulate network download, update buffer, handle overflow
         3. video_player.advance - Move to next chunk
         4. trace_simulator.on_video_finished - Handle video end (if needed)
@@ -57,7 +58,7 @@ class Simulator:
 
     def __init__(
         self,
-        video_player: VideoPlayer,
+        video_player: VideoPlayer[VideoChunkRequestType],
         trace_simulator: AbstractTraceSimulator,
     ):
         """Initialize the simulator.
@@ -77,24 +78,24 @@ class Simulator:
         self.video_player.reset()
         self.trace_simulator.reset()
 
-    def step(self, quality: int) -> StepResult:
-        """Simulate downloading a video chunk at given quality level.
+    def step(self, chunk_request: VideoChunkRequestType) -> StepResult:
+        """Simulate downloading a video chunk for the given chunk request.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L48
 
         Args:
-            quality: Bitrate level to download (0 to num_bitrates-1)
+            chunk_request: Request used to resolve the chunk quality and size.
 
         Returns:
             StepResult containing simulation results
             - delay, sleep_time: in milliseconds
             - buffer_size, rebuffer: converted to seconds
         """
-        assert quality >= 0
-        assert quality < self.video_player.bitrate_levels
+        chunk_idx = self.video_player.video_chunk_counter
+        video_chunk_quality = self.video_player.get_chunk_quality(chunk_request, chunk_idx)
 
-        # 1. Get chunk size for requested quality
-        video_chunk_size = self.video_player.get_chunk_size(quality)
+        # 1. Get chunk size for requested chunk
+        video_chunk_size = self.video_player.get_chunk_size(chunk_request, chunk_idx)
 
         # 2. Simulate network download, update buffer, handle overflow
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L55-L129
@@ -126,4 +127,5 @@ class Simulator:
             next_video_chunk_sizes=next_video_chunk_sizes,          # [bytes]
             end_of_video=end_of_video,
             video_chunk_remain=video_chunk_remain,
+            video_chunk_quality=video_chunk_quality,
         )
