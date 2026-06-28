@@ -1,11 +1,11 @@
-"""Convenience functions for creating combined Simulator configurations."""
+"""Convenience functions for creating Simulator configurations."""
 
 from typing import Any, Optional
 
 from .simulator import Simulator
-from .trace import load_trace
-from .trace.ext import create_train_simulator, create_test_simulator
-from .video import VideoChunkRequestType, create_video_player
+from ..trace import load_trace
+from ..trace.ext import create_train_simulator, create_test_simulator
+from ..video import VideoChunkRequestType, create_video_player
 
 
 def create_simulator(
