@@ -2,23 +2,24 @@
 
 from typing import Type
 
-from ..core import create_simulator
+from ..core.video import VideoChunkRequestType
+from ..core.simulator import create_simulator
 from .env import ABREnv, AbstractABRStateObserver
 from .imitate import ImitationObserver
 
 
 def create_env(
-    observer: AbstractABRStateObserver,
+    observer: AbstractABRStateObserver[VideoChunkRequestType],
     *args,
-    initial_level: int = 0,
+    initial_chunk_request: VideoChunkRequestType,
     **kwargs,
-) -> ABREnv:
+) -> ABREnv[VideoChunkRequestType]:
     """Create an ABREnv with a configured Simulator.
 
     Args:
         observer: ABRStateObserver instance for state observation and reward.
         *args: Positional arguments passed to create_simulator.
-        initial_level: Initial quality level index on reset (default: 0).
+        initial_chunk_request: Initial video chunk request on reset.
         **kwargs: Keyword arguments passed to create_simulator.
 
     Returns:
@@ -29,16 +30,16 @@ def create_env(
     return ABREnv(
         simulator=simulator,
         observer=observer,
-        initial_level=initial_level,
+        initial_chunk_request=initial_chunk_request,
     )
 
 
 def create_env_with_observer_class(
-    observer_class: Type[AbstractABRStateObserver],
+    observer_class: Type[AbstractABRStateObserver[VideoChunkRequestType]],
     *args,
-    initial_level: int = 0,
+    initial_chunk_request: VideoChunkRequestType,
     **kwargs,
-) -> ABREnv:
+) -> ABREnv[VideoChunkRequestType]:
     """Create an ABREnv by automatically constructing an observer from kwargs.
 
     This function automatically extracts the required constructor arguments
@@ -49,7 +50,7 @@ def create_env_with_observer_class(
         observer_class: The observer class to instantiate. Must implement
                        get_constructor_args() returning all constructor argument names.
         *args: Positional arguments passed to create_simulator.
-        initial_level: Initial quality level index on reset (default: 0).
+        initial_chunk_request: Initial video chunk request on reset.
         **kwargs: Keyword arguments. Arguments matching the observer's
                  init args will be extracted for observer construction,
                  and the rest will be passed to create_simulator.
@@ -76,16 +77,16 @@ def create_env_with_observer_class(
     observer = observer_class(**observer_kwargs)
 
     # Create and return the environment
-    return create_env(observer, *args, initial_level=initial_level, **kwargs)
+    return create_env(observer, *args, initial_chunk_request=initial_chunk_request, **kwargs)
 
 
 def create_imitation_env(
-    student_observer: AbstractABRStateObserver,
-    teacher_observer: AbstractABRStateObserver,
+    student_observer: AbstractABRStateObserver[VideoChunkRequestType],
+    teacher_observer: AbstractABRStateObserver[VideoChunkRequestType],
     *args,
-    initial_level: int = 0,
+    initial_chunk_request: VideoChunkRequestType,
     **kwargs,
-) -> ABREnv:
+) -> ABREnv[VideoChunkRequestType]:
     """Create an ABREnv for imitation learning with student and teacher observers.
 
     This is a convenience function that combines two observers using
@@ -111,7 +112,7 @@ def create_imitation_env(
         teacher_observer: Observer for the teacher agent. Used to generate
                          states for teacher's decision making.
         *args: Positional arguments passed to create_simulator.
-        initial_level: Initial quality level index on reset (default: 0).
+        initial_chunk_request: Initial video chunk request on reset.
         **kwargs: Keyword arguments passed to create_simulator.
 
     Returns:
@@ -125,18 +126,18 @@ def create_imitation_env(
     return create_env(
         imitation_observer,
         *args,
-        initial_level=initial_level,
+        initial_chunk_request=initial_chunk_request,
         **kwargs,
     )
 
 
 def create_imitation_env_with_observer_class(
-    student_observer_class: Type[AbstractABRStateObserver],
-    teacher_observer_class: Type[AbstractABRStateObserver],
+    student_observer_class: Type[AbstractABRStateObserver[VideoChunkRequestType]],
+    teacher_observer_class: Type[AbstractABRStateObserver[VideoChunkRequestType]],
     *args,
-    initial_level: int = 0,
+    initial_chunk_request: VideoChunkRequestType,
     **kwargs,
-) -> ABREnv:
+) -> ABREnv[VideoChunkRequestType]:
     """Create an ABREnv for imitation learning by auto-constructing observers from kwargs.
 
     This function automatically extracts required constructor arguments for both
@@ -147,7 +148,7 @@ def create_imitation_env_with_observer_class(
         student_observer_class: The student observer class to instantiate.
         teacher_observer_class: The teacher observer class to instantiate.
         *args: Positional arguments passed to create_simulator.
-        initial_level: Initial quality level index on reset (default: 0).
+        initial_chunk_request: Initial video chunk request on reset.
         **kwargs: Keyword arguments. Arguments matching either observer's
                  constructor args will be extracted for observer construction
                  (shared args go to both), and the rest will be passed to
@@ -189,6 +190,6 @@ def create_imitation_env_with_observer_class(
         student_observer,
         teacher_observer,
         *args,
-        initial_level=initial_level,
+        initial_chunk_request=initial_chunk_request,
         **kwargs,
     )
