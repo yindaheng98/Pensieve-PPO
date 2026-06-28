@@ -32,13 +32,13 @@ def create_simulator(
     # Load trace data
     trace_data = load_trace(trace_folder)
 
-    # Create video player
-    video_player = create_video_player(video_player_name, **video_configs)
-
     # Create trace simulator based on training mode
     if train:
         trace_simulator = create_train_simulator(trace_data, random_seed=random_seed)
     else:
         trace_simulator = create_test_simulator(trace_data)
+
+    # Create video player
+    video_player = create_video_player(video_player_name, **video_configs)
 
     return Simulator(video_player, trace_simulator)
