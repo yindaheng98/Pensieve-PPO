@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from .data import EnvivioVideoData
+from .envivio import EnvivioVideoData
 
 
 @dataclass(frozen=True)
