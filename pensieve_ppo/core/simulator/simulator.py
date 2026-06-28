@@ -10,9 +10,9 @@ in the StepResult, while keeping delay and sleep_time in milliseconds for compat
 """
 
 from dataclasses import dataclass
-from typing import Generic, List
+from typing import List
 
-from ..video import VideoChunkRequestType, VideoPlayer
+from ..video import VideoChunkRequest, VideoPlayer
 from ..trace.abc import AbstractTraceSimulator
 
 
@@ -43,7 +43,7 @@ class StepResult:
     video_chunk_quality: float          # Resolved quality value of downloaded chunk
 
 
-class Simulator(Generic[VideoChunkRequestType]):
+class Simulator:
     """Simulator that combines VideoPlayer and TraceSimulator.
 
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L18
@@ -58,7 +58,7 @@ class Simulator(Generic[VideoChunkRequestType]):
 
     def __init__(
         self,
-        video_player: VideoPlayer[VideoChunkRequestType],
+        video_player: VideoPlayer,
         trace_simulator: AbstractTraceSimulator,
     ):
         """Initialize the simulator.
@@ -78,7 +78,7 @@ class Simulator(Generic[VideoChunkRequestType]):
         self.video_player.reset()
         self.trace_simulator.reset()
 
-    def step(self, chunk_request: VideoChunkRequestType) -> StepResult:
+    def step(self, chunk_request: VideoChunkRequest) -> StepResult:
         """Simulate downloading a video chunk for the given chunk request.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L48
