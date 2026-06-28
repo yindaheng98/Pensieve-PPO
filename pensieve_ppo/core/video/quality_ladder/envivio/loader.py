@@ -7,8 +7,12 @@ import numpy as np
 from numpy.typing import NDArray
 
 
+# From src/core.py
+VIDEO_SIZE_FILE_PREFIX = './src/envivio/video_size_'  # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L17
+
+
 def load_video_size(
-    video_size_file_prefix: str,
+    video_size_file_prefix: str = VIDEO_SIZE_FILE_PREFIX,
     max_chunks: Optional[int] = None,
 ) -> NDArray[np.int64]:
     """
