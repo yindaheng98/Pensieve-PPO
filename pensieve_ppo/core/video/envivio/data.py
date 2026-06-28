@@ -71,3 +71,7 @@ class EnvivioVideoData:
         """Get sizes of next chunk for all bitrate levels."""
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L155-L157
         return self.video_size[:, chunk_idx].tolist()
+
+    def get_next_chunk_qualities(self, chunk_idx: int) -> List[float]:
+        """Get qualities of next chunk for all bitrate levels."""
+        return list(self.quality)
