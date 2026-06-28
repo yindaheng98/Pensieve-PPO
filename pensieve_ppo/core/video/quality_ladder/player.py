@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from ..player import VideoChunkRequest, VideoPlayer
-from .data import EnvivioVideoData
+from .envivio import EnvivioVideoData
 
 
 @dataclass(frozen=True)
