@@ -1,22 +1,27 @@
-"""Video chunk size data loader."""
+"""Envivio-backed quality ladder data loader."""
 
 import os
 from typing import Optional
 
 import numpy as np
-from numpy.typing import NDArray
+
+from .abc import QualityLadderData
 
 
 # From src/core.py
 VIDEO_SIZE_FILE_PREFIX = './src/envivio/video_size_'  # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L17
 
+# From src/env.py
+VIDEO_BIT_RATE = [300., 750., 1200., 1850., 2850., 4300.]  # Kbps, https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L13
+
 
 def load_video_size(
     video_size_file_prefix: str = VIDEO_SIZE_FILE_PREFIX,
     max_chunks: Optional[int] = None,
-) -> NDArray[np.int64]:
+    quality: list[float] = VIDEO_BIT_RATE,
+) -> QualityLadderData:
     """
-    Load video chunk sizes for all bitrate levels.
+    Load video chunk sizes and quality values for all bitrate levels.
 
     Video size files should be named as:
     - {prefix}0, {prefix}1, ..., {prefix}{bitrate_levels-1}
@@ -28,9 +33,10 @@ def load_video_size(
                                (e.g., './envivio/video_size_')
         max_chunks: Maximum number of chunks to load. If specified, truncates
                    the loaded data to this limit. If None, load all chunks.
+        quality: Quality metric list for each bitrate level.
 
     Returns:
-        Matrix containing chunk sizes for all bitrates
+        QualityLadderData with matching size and quality matrices.
     """
     # Auto-detect bitrate_levels
     bitrate_levels = 0
@@ -56,10 +62,17 @@ def load_video_size(
     if max_chunks is not None:
         total_chunks = min(max_chunks, total_chunks)
 
-    # Create matrix: [bitrate_levels, total_chunks]
+    # Create matrices: [bitrate_levels, total_chunks]
     video_size = np.array(
         [sizes[:total_chunks] for sizes in video_size_lists],
         dtype=np.int64,
     )
+    video_quality = np.broadcast_to(
+        np.asarray(quality, dtype=np.float64)[:, None],
+        video_size.shape,
+    ).copy()
 
-    return video_size
+    return QualityLadderData(
+        video_size=video_size,
+        video_quality=video_quality,
+    )
