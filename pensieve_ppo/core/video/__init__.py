@@ -1,6 +1,11 @@
 """Video data loading module."""
 
-from .player import VideoChunkRequest, VideoChunkRequestType, VideoPlayer
+from .player import (
+    VideoChunkRequest,
+    VideoChunkRequestTyped,
+    VideoChunkRequestType,
+    VideoPlayer,
+)
 from .registry import create_video_player, get_available_video_players, register
 
 # Import video implementations to trigger registration
@@ -11,6 +16,7 @@ __all__ = [
     'get_available_video_players',
     'register',
     'VideoChunkRequest',
+    'VideoChunkRequestTyped',
     'VideoChunkRequestType',
     'VideoPlayer',
     'envivio',

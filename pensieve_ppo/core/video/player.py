@@ -14,25 +14,17 @@ class VideoChunkRequest(ABC):
 VideoChunkRequestType = TypeVar("VideoChunkRequestType", bound=VideoChunkRequest)
 
 
-class VideoPlayer(ABC, Generic[VideoChunkRequestType]):
-    """Tracks video playback position and provides chunk information.
-
-    This class manages the video chunk counter and provides methods
-    to get chunk sizes and advance through the video.
-    """
-
-    def __init__(self):
-        """Initialize the video player."""
-        self.reset()
+class VideoChunkRequestTyped(ABC, Generic[VideoChunkRequestType]):
+    """Interface for objects parameterized by a VideoChunkRequest type."""
 
     @property
     def request_cls(self) -> type[VideoChunkRequestType]:
-        """Concrete request type accepted by this video player."""
+        """Concrete request dataclass used by this object."""
         cls = type(self)
         for mro_cls in cls.__mro__:
             for base in getattr(mro_cls, "__orig_bases__", ()):
                 origin = get_origin(base)
-                if not isinstance(origin, type) or not issubclass(origin, VideoPlayer):
+                if not isinstance(origin, type) or not issubclass(origin, VideoChunkRequestTyped):
                     continue
                 args = get_args(base)
                 if not args:
@@ -43,8 +35,20 @@ class VideoPlayer(ABC, Generic[VideoChunkRequestType]):
 
         raise TypeError(
             f"{cls.__name__} must declare a concrete VideoChunkRequest type via "
-            "VideoPlayer[RequestType]"
+            "VideoChunkRequestTyped[RequestType]"
         )
+
+
+class VideoPlayer(VideoChunkRequestTyped[VideoChunkRequestType]):
+    """Tracks video playback position and provides chunk information.
+
+    This class manages the video chunk counter and provides methods
+    to get chunk sizes and advance through the video.
+    """
+
+    def __init__(self):
+        """Initialize the video player."""
+        self.reset()
 
     def reset(self) -> None:
         """Reset the video playback position to the beginning.
