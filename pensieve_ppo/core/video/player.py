@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, List, Optional, Tuple, TypeVar
+from typing import Generic, List, Optional, Tuple, TypeVar, get_args, get_origin
 
 
 @dataclass(frozen=True)
@@ -24,6 +24,27 @@ class VideoPlayer(ABC, Generic[VideoChunkRequestType]):
     def __init__(self):
         """Initialize the video player."""
         self.reset()
+
+    @property
+    def request_cls(self) -> type[VideoChunkRequestType]:
+        """Concrete request type accepted by this video player."""
+        cls = type(self)
+        for mro_cls in cls.__mro__:
+            for base in getattr(mro_cls, "__orig_bases__", ()):
+                origin = get_origin(base)
+                if not isinstance(origin, type) or not issubclass(origin, VideoPlayer):
+                    continue
+                args = get_args(base)
+                if not args:
+                    continue
+                request_cls = args[0]
+                if isinstance(request_cls, type) and issubclass(request_cls, VideoChunkRequest):
+                    return request_cls
+
+        raise TypeError(
+            f"{cls.__name__} must declare a concrete VideoChunkRequest type via "
+            "VideoPlayer[RequestType]"
+        )
 
     def reset(self) -> None:
         """Reset the video playback position to the beginning.
