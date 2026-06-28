@@ -38,6 +38,7 @@ from gymnasium import spaces
 
 from .env import AbstractABRStateObserver, ABREnv, State
 from ..core.simulator import StepResult
+from ..core.video import VideoChunkRequest
 
 
 @dataclass
@@ -121,19 +122,19 @@ class ImitationObserver(AbstractABRStateObserver):
     def reset(
         self,
         env: ABREnv,
-        initial_bit_rate: int = 0,
+        initial_chunk_request: VideoChunkRequest,
     ) -> Tuple[ImitationState, Dict[str, Any]]:
         """Reset both observers and return combined initial state.
 
         Args:
             env: The ABREnv instance to observe.
-            initial_bit_rate: Initial bitrate level index.
+            initial_chunk_request: Initial video chunk request.
 
         Returns:
             Tuple of (ImitationState containing both states, combined info_dict).
         """
-        student_state, student_info = self.student_observer.reset(env, initial_bit_rate)
-        teacher_state, teacher_info = self.teacher_observer.reset(env, initial_bit_rate)
+        student_state, student_info = self.student_observer.reset(env, initial_chunk_request)
+        teacher_state, teacher_info = self.teacher_observer.reset(env, initial_chunk_request)
 
         state = ImitationState(
             student_state=student_state,
@@ -150,7 +151,7 @@ class ImitationObserver(AbstractABRStateObserver):
     def observe(
         self,
         env: ABREnv,
-        bit_rate: int,
+        chunk_request: VideoChunkRequest,
         result: StepResult,
     ) -> Tuple[ImitationState, float, Dict[str, Any]]:
         """Process simulator result using both observers.
@@ -160,7 +161,7 @@ class ImitationObserver(AbstractABRStateObserver):
 
         Args:
             env: The ABREnv instance to observe.
-            bit_rate: Current bitrate level selected.
+            chunk_request: Current video chunk request.
             result: Result from simulator.step().
 
         Returns:
@@ -168,12 +169,12 @@ class ImitationObserver(AbstractABRStateObserver):
         """
         # Student observer provides reward for training
         student_state, reward, student_info = self.student_observer.observe(
-            env, bit_rate, result
+            env, chunk_request, result
         )
 
         # Teacher observer provides state for teacher's decision (reward ignored)
         teacher_state, _, teacher_info = self.teacher_observer.observe(
-            env, bit_rate, result
+            env, chunk_request, result
         )
 
         state = ImitationState(
