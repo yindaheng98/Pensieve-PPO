@@ -9,13 +9,14 @@ Reference:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Generic, List, Optional, Tuple
 
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
 from ..core.simulator import Simulator, StepResult
+from ..core.video import VideoChunkRequestType
 
 
 @dataclass
@@ -32,7 +33,7 @@ class State:
     pass
 
 
-class AbstractABRStateObserver(ABC):
+class AbstractABRStateObserver(ABC, Generic[VideoChunkRequestType]):
     """Abstract base class for ABR state observers.
 
     This class defines the interface that ABREnv uses to interact with
@@ -67,14 +68,14 @@ class AbstractABRStateObserver(ABC):
     @abstractmethod
     def reset(
         self,
-        env: "ABREnv",
-        initial_bit_rate: int = 0,
+        env: "ABREnv[VideoChunkRequestType]",
+        initial_chunk_request: VideoChunkRequestType,
     ) -> Tuple[State, Dict[str, Any]]:
         """Reset observer state and return initial observation.
 
         Args:
             env: The ABREnv instance to observe.
-            initial_bit_rate: Initial bitrate level index.
+            initial_chunk_request: Initial video chunk request.
 
         Returns:
             Tuple of (state, info_dict).
@@ -84,15 +85,15 @@ class AbstractABRStateObserver(ABC):
     @abstractmethod
     def observe(
         self,
-        env: "ABREnv",
-        bit_rate: int,
+        env: "ABREnv[VideoChunkRequestType]",
+        chunk_request: VideoChunkRequestType,
         result: StepResult,
     ) -> Tuple[State, float, Dict[str, Any]]:
         """Process simulator result: compute reward and update state.
 
         Args:
             env: The ABREnv instance to observe.
-            bit_rate: Current bitrate level selected.
+            chunk_request: Current video chunk request.
             result: Result from simulator.step().
 
         Returns:
@@ -101,7 +102,7 @@ class AbstractABRStateObserver(ABC):
         pass
 
 
-class ABREnv(gym.Env):
+class ABREnv(gym.Env, Generic[VideoChunkRequestType]):
     """Gymnasium environment for Adaptive Bitrate Streaming.
 
     This environment simulates video streaming over a network with
@@ -128,9 +129,9 @@ class ABREnv(gym.Env):
 
     def __init__(
         self,
-        simulator: Simulator,
-        observer: AbstractABRStateObserver,
-        initial_level: int = 0,
+        simulator: Simulator[VideoChunkRequestType],
+        observer: AbstractABRStateObserver[VideoChunkRequestType],
+        initial_chunk_request: VideoChunkRequestType,
     ):
         """Initialize the ABR environment.
 
@@ -140,7 +141,7 @@ class ABREnv(gym.Env):
             observer: ABRStateObserver instance for state observation and reward
                      calculation. Its levels_quality length must match
                      simulator.video_player.bitrate_levels.
-            initial_level: Initial quality level index on reset (default: 0)
+            initial_chunk_request: Initial video chunk request on reset.
         """
         super().__init__()
 
@@ -150,8 +151,8 @@ class ABREnv(gym.Env):
         # Store observer
         self.observer = observer
 
-        # Store initial bitrate
-        self.initial_bitrate = initial_level
+        # Store initial chunk request
+        self.initial_chunk_request = initial_chunk_request
 
         # timestamp in ms for logging purposes
         self.time_stamp = 0.0
@@ -179,8 +180,8 @@ class ABREnv(gym.Env):
                 - reset_time_stamp (bool): Whether to reset time_stamp to 0.
                   Default is True. Set to False for testing mode where time_stamp
                   should accumulate across traces.
-                - initial_level (int): Override initial bitrate level for last_bit_rate.
-                  If not specified, uses initial_level from __init__.
+                - initial_chunk_request: Override initial video chunk request.
+                  If not specified, uses initial_chunk_request from __init__.
 
         Returns:
             Tuple of (observation, info_dict)
@@ -193,13 +194,13 @@ class ABREnv(gym.Env):
         # Parse options
         options = options or {}
         reset_time_stamp = options.get('reset_time_stamp', True)
-        initial_level = options.get('initial_level', self.initial_bitrate)
+        initial_chunk_request = options.get('initial_chunk_request', self.initial_chunk_request)
 
         if reset_time_stamp:
             self.time_stamp = 0
 
         # Reset observer and get initial state
-        state, observer_info = self.observer.reset(self, initial_level)
+        state, observer_info = self.observer.reset(self, initial_chunk_request)
 
         info = {
             "time_stamp": self.time_stamp,
@@ -209,29 +210,28 @@ class ABREnv(gym.Env):
         return state, info
 
     def step(
-        self, action: Union[int, np.ndarray]
+        self, action: VideoChunkRequestType,
     ) -> Tuple[State, float, bool, bool, Dict[str, Any]]:
         """Execute one step in the environment.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L72-L106
 
         Args:
-            action: Bitrate level to select (0 to bitrate_levels-1)
+            action: Video chunk request for this step.
 
         Returns:
             Tuple of (observation, reward, terminated, truncated, info)
         """
-        bit_rate = int(action)
         # the action is from the last decision
         # this is to make the framework similar to the real
-        result = self.simulator.step(bit_rate)
+        result = self.simulator.step(action)
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L80-L81
         self.time_stamp += result.delay  # in ms
         self.time_stamp += result.sleep_time  # in ms
 
         # Observe state and compute reward
-        state, reward, observer_info = self.observer.observe(self, bit_rate, result)
+        state, reward, observer_info = self.observer.observe(self, action, result)
 
         # Episode termination
         terminated = result.end_of_video
@@ -244,6 +244,7 @@ class ABREnv(gym.Env):
             "buffer_size": result.buffer_size,
             "rebuffer": result.rebuffer,
             "video_chunk_size": result.video_chunk_size,
+            "video_chunk_quality": result.video_chunk_quality,
             "next_video_chunk_sizes": result.next_video_chunk_sizes,
             "video_chunk_remain": result.video_chunk_remain,
             "end_of_video": result.end_of_video,
