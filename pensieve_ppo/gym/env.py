@@ -19,6 +19,7 @@ from ..core.simulator import Simulator, StepResult
 from ..core.video import (
     VideoChunkRequestType,
     VideoChunkRequestTyped,
+    VideoPlayer,
 )
 
 
@@ -67,6 +68,13 @@ class AbstractABRStateObserver(VideoChunkRequestTyped[VideoChunkRequestType], AB
             Gymnasium Box space defining the observation shape and bounds.
         """
         pass
+
+    def validate_video_player(
+        self,
+        video_player: VideoPlayer[VideoChunkRequestType],
+    ) -> None:
+        """Validate that this observer supports the video player's request type."""
+        self.validate_request_cls_match(video_player)
 
     @abstractmethod
     def reset(
@@ -157,7 +165,7 @@ class ABREnv(gym.Env, Generic[VideoChunkRequestType]):
         # Store initial chunk request
         self.initial_chunk_request = initial_chunk_request
 
-        observer.validate_request_cls_match(simulator.video_player)
+        observer.validate_video_player(simulator.video_player)
 
         # timestamp in ms for logging purposes
         self.time_stamp = 0.0

@@ -38,7 +38,7 @@ from gymnasium import spaces
 
 from .env import AbstractABRStateObserver, ABREnv, State
 from ..core.simulator import StepResult
-from ..core.video import VideoChunkRequest
+from ..core.video import VideoChunkRequestType, VideoPlayer
 
 
 @dataclass
@@ -60,7 +60,7 @@ class ImitationState(State):
     teacher_state: State
 
 
-class ImitationObserver(AbstractABRStateObserver):
+class ImitationObserver(AbstractABRStateObserver[VideoChunkRequestType]):
     """Observer that combines student and teacher observers for imitation learning.
 
     This observer enables imitation learning by composing two different observers:
@@ -93,8 +93,8 @@ class ImitationObserver(AbstractABRStateObserver):
 
     def __init__(
         self,
-        student_observer: AbstractABRStateObserver,
-        teacher_observer: AbstractABRStateObserver,
+        student_observer: AbstractABRStateObserver[VideoChunkRequestType],
+        teacher_observer: AbstractABRStateObserver[VideoChunkRequestType],
     ):
         """Initialize the imitation observer.
 
@@ -104,8 +104,17 @@ class ImitationObserver(AbstractABRStateObserver):
             teacher_observer: Observer for the teacher agent. Used only to generate
                            states for teacher's decision making.
         """
+        teacher_observer.validate_request_cls_match(student_observer)
         self.student_observer = student_observer
         self.teacher_observer = teacher_observer
+
+    def validate_video_player(
+        self,
+        video_player: VideoPlayer[VideoChunkRequestType],
+    ) -> None:
+        """Validate that both composed observers support the video player's request type."""
+        self.student_observer.validate_video_player(video_player)
+        self.teacher_observer.validate_video_player(video_player)
 
     @property
     def observation_space(self) -> spaces.Box:
@@ -121,8 +130,8 @@ class ImitationObserver(AbstractABRStateObserver):
 
     def reset(
         self,
-        env: ABREnv,
-        initial_chunk_request: VideoChunkRequest,
+        env: ABREnv[VideoChunkRequestType],
+        initial_chunk_request: VideoChunkRequestType,
     ) -> Tuple[ImitationState, Dict[str, Any]]:
         """Reset both observers and return combined initial state.
 
@@ -150,8 +159,8 @@ class ImitationObserver(AbstractABRStateObserver):
 
     def observe(
         self,
-        env: ABREnv,
-        chunk_request: VideoChunkRequest,
+        env: ABREnv[VideoChunkRequestType],
+        chunk_request: VideoChunkRequestType,
         result: StepResult,
     ) -> Tuple[ImitationState, float, Dict[str, Any]]:
         """Process simulator result using both observers.
