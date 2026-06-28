@@ -3,7 +3,8 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
-from ..player import VideoChunkRequest, VideoPlayer
+from ..player import VideoPlayer
+from ..types import VideoChunkRequest
 from .data import EnvivioVideoData
 
 

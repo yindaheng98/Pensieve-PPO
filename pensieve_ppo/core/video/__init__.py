@@ -1,11 +1,7 @@
 """Video data loading module."""
 
-from .player import (
-    VideoChunkRequest,
-    VideoChunkRequestTyped,
-    VideoChunkRequestType,
-    VideoPlayer,
-)
+from .types import VideoChunkRequest, VideoChunkRequestTyped, VideoChunkRequestType
+from .player import VideoPlayer
 from .registry import create_video_player, get_available_video_players, register
 
 # Import video implementations to trigger registration
