@@ -4,11 +4,13 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from ..player import VideoChunkRequest, VideoPlayer
-from .envivio import load_video_size
+from .abc import QualityLadderLoader
+from .envivio import load_envivio_video_size
 
 
-# From src/env.py
-VIDEO_BIT_RATE = [300., 750., 1200., 1850., 2850., 4300.]  # Kbps, https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L13
+LOAD_VIDEO_SIZE: dict[str, QualityLadderLoader] = {
+    "envivio": load_envivio_video_size,
+}
 
 
 @dataclass(frozen=True)
@@ -20,22 +22,22 @@ class QualityLadderRequest(VideoChunkRequest):
 class QualityLadderVideoPlayer(VideoPlayer):
     """Video player backed by quality-ladder video chunk size data."""
 
-    def __init__(self, quality: List[float] = VIDEO_BIT_RATE, *args, **kwargs):
+    def __init__(self, name: str = "envivio", *args, **kwargs):
         """Initialize the quality ladder video player.
 
         Args:
-            quality: Quality metric list for each bitrate level.
-            *args: Positional arguments passed to load_video_size.
-            **kwargs: Keyword arguments passed to load_video_size.
+            name: Registered quality ladder loader name.
+            *args: Positional arguments passed to the selected loader.
+            **kwargs: Keyword arguments passed to the selected loader.
         """
-        self.quality = list(quality)
         # Video-size loading follows the original src/core.py fixed_env data layout.
-        self.video_size = load_video_size(*args, **kwargs)
-        if self.video_size.shape[0] != len(self.quality):
+        data = LOAD_VIDEO_SIZE[name](*args, **kwargs)
+        self.video_size = data.video_size
+        self.video_quality = data.video_quality
+        if self.video_size.shape != self.video_quality.shape:
             raise ValueError(
-                "video_size bitrate dimension "
-                f"({self.video_size.shape[0]}) must match "
-                f"quality length ({len(self.quality)})"
+                f"video_size shape {self.video_size.shape} must match "
+                f"video_quality shape {self.video_quality.shape}"
             )
         super().__init__()
 
@@ -45,7 +47,12 @@ class QualityLadderVideoPlayer(VideoPlayer):
         chunk_idx: Optional[int] = None,
     ) -> float:
         """Get the actual quality level for a chunk request."""
-        return self.quality[chunk_request.level]
+        return float(
+            self.video_quality[
+                chunk_request.level,
+                chunk_idx or self.video_chunk_counter,
+            ]
+        )
 
     def get_chunk_size(
         self,
@@ -72,7 +79,7 @@ class QualityLadderVideoPlayer(VideoPlayer):
 
     def get_next_chunk_qualities(self) -> List[float]:
         """Get qualities of next chunk at all quality levels."""
-        return list(self.quality)
+        return self.video_quality[:, self.video_chunk_counter].tolist()
 
     @property
     def bitrate_levels(self) -> int:
