@@ -1,90 +1,105 @@
 """Convenience functions for creating ABR gymnasium environments."""
 
-from typing import Type
+from typing import Any, Optional, Type
 
-from ..core import create_simulator
+from ..core.simulator import create_simulator
+from ..core.video import VideoChunkRequest, VideoPlayer
 from .env import ABREnv, AbstractABRStateObserver
 from .imitate import ImitationObserver
 
 
 def create_env(
+    video_player: VideoPlayer,
     observer: AbstractABRStateObserver,
-    *args,
-    initial_level: int = 0,
-    **kwargs,
+    initial_chunk_request: VideoChunkRequest,
+    trace_folder: str,
+    train: bool = True,
+    random_seed: Optional[int] = None,
 ) -> ABREnv:
     """Create an ABREnv with a configured Simulator.
 
     Args:
+        video_player: Pre-configured video player instance.
         observer: ABRStateObserver instance for state observation and reward.
-        *args: Positional arguments passed to create_simulator.
-        initial_level: Initial quality level index on reset (default: 0).
-        **kwargs: Keyword arguments passed to create_simulator.
+        initial_chunk_request: Initial video chunk request on reset.
+        trace_folder: Path to folder containing network trace files.
+        train: Whether to use training trace behavior.
+        random_seed: Random seed for training trace selection/noise.
 
     Returns:
         Configured ABREnv instance.
     """
-    simulator = create_simulator(*args, **kwargs)
+    simulator = create_simulator(
+        trace_folder=trace_folder,
+        video_player=video_player,
+        train=train,
+        random_seed=random_seed,
+    )
 
     return ABREnv(
         simulator=simulator,
         observer=observer,
-        initial_level=initial_level,
+        initial_chunk_request=initial_chunk_request,
     )
 
 
-def create_env_with_observer_class(
+def create_env_with_class(
+    video_player_class: Type[VideoPlayer],
     observer_class: Type[AbstractABRStateObserver],
-    *args,
-    initial_level: int = 0,
-    **kwargs,
+    initial_chunk_request: VideoChunkRequest,
+    trace_folder: str,
+    train: bool = True,
+    random_seed: Optional[int] = None,
+    video_player_kwargs: dict[str, Any] = {},
+    observer_kwargs: dict[str, Any] = {},
 ) -> ABREnv:
-    """Create an ABREnv by automatically constructing an observer from kwargs.
-
-    This function automatically extracts the required constructor arguments
-    for the given observer class from kwargs, creates the observer, and
-    then creates the ABREnv with the remaining kwargs passed to create_simulator.
+    """Create an ABREnv by constructing its player and observer classes.
 
     Args:
-        observer_class: The observer class to instantiate. Must implement
-                       get_constructor_args() returning all constructor argument names.
-        *args: Positional arguments passed to create_simulator.
-        initial_level: Initial quality level index on reset (default: 0).
-        **kwargs: Keyword arguments. Arguments matching the observer's
-                 init args will be extracted for observer construction,
-                 and the rest will be passed to create_simulator.
+        video_player_class: Video player class to instantiate.
+        observer_class: The observer class to instantiate.
+        initial_chunk_request: Initial video chunk request on reset.
+        trace_folder: Path to folder containing network trace files.
+        train: Whether to use training trace behavior.
+        random_seed: Random seed for training trace selection/noise.
+        video_player_kwargs: Keyword arguments passed to the video player constructor.
+        observer_kwargs: Keyword arguments passed to the observer constructor.
 
     Returns:
         Configured ABREnv instance.
 
     Example:
         >>> from pensieve_ppo.agent.rl import RLABRStateObserver
-        >>> env = create_env_with_observer_class(
+        >>> env = create_env_with_class(
+        ...     QualityLadderVideoPlayer,
         ...     RLABRStateObserver,
         ...     trace_folder=trace_folder,
-        ...     video_size_file_prefix=video_size_file_prefix,
-        ...     levels_quality=[300, 750, 1200, 1850, 2850, 4300],
+        ...     initial_chunk_request=QualityLadderRequest(0),
+        ...     observer_kwargs={"levels_quality": [300, 750, 1200, 1850, 2850, 4300]},
+        ...     video_player_kwargs={"video_size_file_prefix": video_size_file_prefix},
         ... )
     """
-    # Get constructor args for the observer
-    constructor_args = observer_class.get_constructor_args()
-
-    # Extract observer args from kwargs
-    observer_kwargs = {arg: kwargs.pop(arg) for arg in constructor_args if arg in kwargs}
-
-    # Create the observer
     observer = observer_class(**observer_kwargs)
+    video_player = video_player_class(**video_player_kwargs)
 
-    # Create and return the environment
-    return create_env(observer, *args, initial_level=initial_level, **kwargs)
+    return create_env(
+        video_player,
+        observer,
+        trace_folder=trace_folder,
+        initial_chunk_request=initial_chunk_request,
+        train=train,
+        random_seed=random_seed,
+    )
 
 
 def create_imitation_env(
+    video_player: VideoPlayer,
     student_observer: AbstractABRStateObserver,
     teacher_observer: AbstractABRStateObserver,
-    *args,
-    initial_level: int = 0,
-    **kwargs,
+    initial_chunk_request: VideoChunkRequest,
+    trace_folder: str,
+    train: bool = True,
+    random_seed: Optional[int] = None,
 ) -> ABREnv:
     """Create an ABREnv for imitation learning with student and teacher observers.
 
@@ -106,13 +121,15 @@ def create_imitation_env(
         >>> # state.teacher_state is BBAState (for BBA agent's decision)
 
     Args:
+        video_player: Pre-configured video player instance.
         student_observer: Observer for the student agent. Its observation_space
                          will be used as the environment's observation space.
         teacher_observer: Observer for the teacher agent. Used to generate
                          states for teacher's decision making.
-        *args: Positional arguments passed to create_simulator.
-        initial_level: Initial quality level index on reset (default: 0).
-        **kwargs: Keyword arguments passed to create_simulator.
+        initial_chunk_request: Initial video chunk request on reset.
+        trace_folder: Path to folder containing network trace files.
+        train: Whether to use training trace behavior.
+        random_seed: Random seed for training trace selection/noise.
 
     Returns:
         Configured ABREnv instance with ImitationObserver.
@@ -123,35 +140,40 @@ def create_imitation_env(
     )
 
     return create_env(
+        video_player,
         imitation_observer,
-        *args,
-        initial_level=initial_level,
-        **kwargs,
+        initial_chunk_request=initial_chunk_request,
+        trace_folder=trace_folder,
+        train=train,
+        random_seed=random_seed,
     )
 
 
-def create_imitation_env_with_observer_class(
+def create_imitation_env_with_class(
+    video_player_class: Type[VideoPlayer],
     student_observer_class: Type[AbstractABRStateObserver],
     teacher_observer_class: Type[AbstractABRStateObserver],
-    *args,
-    initial_level: int = 0,
-    **kwargs,
+    initial_chunk_request: VideoChunkRequest,
+    trace_folder: str,
+    train: bool = True,
+    random_seed: Optional[int] = None,
+    video_player_kwargs: dict[str, Any] = {},
+    student_observer_kwargs: dict[str, Any] = {},
+    teacher_observer_kwargs: dict[str, Any] = {},
 ) -> ABREnv:
-    """Create an ABREnv for imitation learning by auto-constructing observers from kwargs.
-
-    This function automatically extracts required constructor arguments for both
-    observer classes from kwargs, creates both observers, and creates an ABREnv
-    with an ImitationObserver. Shared arguments are passed to both observers.
+    """Create an imitation ABREnv by constructing player and observer classes.
 
     Args:
+        video_player_class: Video player class to instantiate.
         student_observer_class: The student observer class to instantiate.
         teacher_observer_class: The teacher observer class to instantiate.
-        *args: Positional arguments passed to create_simulator.
-        initial_level: Initial quality level index on reset (default: 0).
-        **kwargs: Keyword arguments. Arguments matching either observer's
-                 constructor args will be extracted for observer construction
-                 (shared args go to both), and the rest will be passed to
-                 create_simulator.
+        initial_chunk_request: Initial video chunk request on reset.
+        trace_folder: Path to folder containing network trace files.
+        train: Whether to use training trace behavior.
+        random_seed: Random seed for training trace selection/noise.
+        video_player_kwargs: Keyword arguments passed to the video player constructor.
+        student_observer_kwargs: Keyword arguments passed to the student observer.
+        teacher_observer_kwargs: Keyword arguments passed to the teacher observer.
 
     Returns:
         Configured ABREnv instance with ImitationObserver.
@@ -159,36 +181,27 @@ def create_imitation_env_with_observer_class(
     Example:
         >>> from pensieve_ppo.agent.rl import RLABRStateObserver
         >>> from pensieve_ppo.agent.bba import BBAStateObserver
-        >>> env = create_imitation_env_with_observer_class(
+        >>> env = create_imitation_env_with_class(
+        ...     QualityLadderVideoPlayer,
         ...     RLABRStateObserver,
         ...     BBAStateObserver,
         ...     trace_folder=trace_folder,
-        ...     video_size_file_prefix=video_size_file_prefix,
-        ...     levels_quality=[300, 750, 1200, 1850, 2850, 4300],
+        ...     initial_chunk_request=QualityLadderRequest(0),
+        ...     student_observer_kwargs={"levels_quality": [300, 750, 1200, 1850, 2850, 4300]},
+        ...     teacher_observer_kwargs={"levels_quality": [300, 750, 1200, 1850, 2850, 4300]},
+        ...     video_player_kwargs={"video_size_file_prefix": video_size_file_prefix},
         ... )
     """
-    # Get constructor args for both observers
-    student_args = set(student_observer_class.get_constructor_args())
-    teacher_args = set(teacher_observer_class.get_constructor_args())
-    all_observer_args = student_args | teacher_args
+    student_observer = student_observer_class(**student_observer_kwargs)
+    teacher_observer = teacher_observer_class(**teacher_observer_kwargs)
+    video_player = video_player_class(**video_player_kwargs)
 
-    # Extract observer args from kwargs (shared args go to both)
-    student_kwargs = {arg: kwargs[arg] for arg in student_args if arg in kwargs}
-    teacher_kwargs = {arg: kwargs[arg] for arg in teacher_args if arg in kwargs}
-
-    # Remove all observer args from kwargs
-    for arg in all_observer_args:
-        kwargs.pop(arg, None)
-
-    # Create observers
-    student_observer = student_observer_class(**student_kwargs)
-    teacher_observer = teacher_observer_class(**teacher_kwargs)
-
-    # Create and return the environment
     return create_imitation_env(
+        video_player,
         student_observer,
         teacher_observer,
-        *args,
-        initial_level=initial_level,
-        **kwargs,
+        trace_folder=trace_folder,
+        initial_chunk_request=initial_chunk_request,
+        train=train,
+        random_seed=random_seed,
     )

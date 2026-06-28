@@ -9,14 +9,14 @@ Reference:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
 from ..core.simulator import Simulator, StepResult
-from ..core.video import VideoChunkRequestType
+from ..core.video import VideoChunkRequest
 
 
 @dataclass
@@ -33,7 +33,7 @@ class State:
     pass
 
 
-class AbstractABRStateObserver(ABC, Generic[VideoChunkRequestType]):
+class AbstractABRStateObserver(ABC):
     """Abstract base class for ABR state observers.
 
     This class defines the interface that ABREnv uses to interact with
@@ -68,8 +68,8 @@ class AbstractABRStateObserver(ABC, Generic[VideoChunkRequestType]):
     @abstractmethod
     def reset(
         self,
-        env: "ABREnv[VideoChunkRequestType]",
-        initial_chunk_request: VideoChunkRequestType,
+        env: "ABREnv",
+        initial_chunk_request: VideoChunkRequest,
     ) -> Tuple[State, Dict[str, Any]]:
         """Reset observer state and return initial observation.
 
@@ -85,8 +85,8 @@ class AbstractABRStateObserver(ABC, Generic[VideoChunkRequestType]):
     @abstractmethod
     def observe(
         self,
-        env: "ABREnv[VideoChunkRequestType]",
-        chunk_request: VideoChunkRequestType,
+        env: "ABREnv",
+        chunk_request: VideoChunkRequest,
         result: StepResult,
     ) -> Tuple[State, float, Dict[str, Any]]:
         """Process simulator result: compute reward and update state.
@@ -102,7 +102,7 @@ class AbstractABRStateObserver(ABC, Generic[VideoChunkRequestType]):
         pass
 
 
-class ABREnv(gym.Env, Generic[VideoChunkRequestType]):
+class ABREnv(gym.Env):
     """Gymnasium environment for Adaptive Bitrate Streaming.
 
     This environment simulates video streaming over a network with
@@ -129,9 +129,9 @@ class ABREnv(gym.Env, Generic[VideoChunkRequestType]):
 
     def __init__(
         self,
-        simulator: Simulator[VideoChunkRequestType],
-        observer: AbstractABRStateObserver[VideoChunkRequestType],
-        initial_chunk_request: VideoChunkRequestType,
+        simulator: Simulator,
+        observer: AbstractABRStateObserver,
+        initial_chunk_request: VideoChunkRequest,
     ):
         """Initialize the ABR environment.
 
@@ -210,7 +210,7 @@ class ABREnv(gym.Env, Generic[VideoChunkRequestType]):
         return state, info
 
     def step(
-        self, action: VideoChunkRequestType,
+        self, action: VideoChunkRequest,
     ) -> Tuple[State, float, bool, bool, Dict[str, Any]]:
         """Execute one step in the environment.
 
