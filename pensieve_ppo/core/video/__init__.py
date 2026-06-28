@@ -4,6 +4,7 @@ from .envivio import (
     VIDEO_BIT_RATE,
     VIDEO_SIZE_FILE_PREFIX,
     EnvivioVideoData,
+    EnvivioVideoChunkRequest,
     EnvivioVideoPlayer,
     load_video_size,
 )
@@ -14,6 +15,7 @@ __all__ = [
     'VIDEO_BIT_RATE',
     'VIDEO_SIZE_FILE_PREFIX',
     'EnvivioVideoData',
+    'EnvivioVideoChunkRequest',
     'EnvivioVideoPlayer',
     'VideoChunkRequest',
     'VideoPlayer',

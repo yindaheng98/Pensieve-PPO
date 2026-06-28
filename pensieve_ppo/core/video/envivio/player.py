@@ -1,12 +1,19 @@
 """Envivio video player implementation."""
 
+from dataclasses import dataclass
 from typing import List, Optional
 
 from ..player import VideoChunkRequest, VideoPlayer
 from .data import EnvivioVideoData
 
 
-class EnvivioVideoPlayer(VideoPlayer):
+@dataclass(frozen=True)
+class EnvivioVideoChunkRequest(VideoChunkRequest):
+    """Request for an Envivio video chunk at a bitrate ladder level."""
+    level: int
+
+
+class EnvivioVideoPlayer(VideoPlayer[EnvivioVideoChunkRequest]):
     """Video player backed by Envivio video chunk size files."""
 
     def __init__(self, *args, **kwargs):
@@ -21,7 +28,7 @@ class EnvivioVideoPlayer(VideoPlayer):
 
     def get_chunk_quality(
         self,
-        chunk_request: VideoChunkRequest,
+        chunk_request: EnvivioVideoChunkRequest,
         chunk_idx: Optional[int] = None,
     ) -> float:
         """Get the actual quality level for a chunk request."""
@@ -29,7 +36,7 @@ class EnvivioVideoPlayer(VideoPlayer):
 
     def get_chunk_size(
         self,
-        chunk_request: VideoChunkRequest,
+        chunk_request: EnvivioVideoChunkRequest,
         chunk_idx: Optional[int] = None,
     ) -> int:
         """Get the size of current chunk for a video chunk request.
