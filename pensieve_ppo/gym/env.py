@@ -16,7 +16,10 @@ import numpy as np
 from gymnasium import spaces
 
 from ..core.simulator import Simulator, StepResult
-from ..core.video import VideoChunkRequestType
+from ..core.video import (
+    VideoChunkRequestType,
+    VideoChunkRequestTyped,
+)
 
 
 @dataclass
@@ -33,7 +36,7 @@ class State:
     pass
 
 
-class AbstractABRStateObserver(ABC, Generic[VideoChunkRequestType]):
+class AbstractABRStateObserver(VideoChunkRequestTyped[VideoChunkRequestType], ABC):
     """Abstract base class for ABR state observers.
 
     This class defines the interface that ABREnv uses to interact with
@@ -153,6 +156,8 @@ class ABREnv(gym.Env, Generic[VideoChunkRequestType]):
 
         # Store initial chunk request
         self.initial_chunk_request = initial_chunk_request
+
+        observer.validate_request_cls_match(simulator.video_player)
 
         # timestamp in ms for logging purposes
         self.time_stamp = 0.0
