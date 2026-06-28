@@ -2,7 +2,7 @@
 
 This module tests that:
 1. pensieve_ppo.core.trace.loader.load_trace matches src/load_trace.py
-2. pensieve_ppo.core.video.loader.load_video_size matches video loading in src/fixed_env.py
+2. pensieve_ppo.core.video.quality_ladder.envivio.load_envivio_video_size matches video loading in src/fixed_env.py
 
 Data sources reference:
 - src/test.py: TEST_TRACES = './test/'
@@ -16,8 +16,11 @@ import load_trace as src_load_trace
 import fixed_env as src_fixed_env
 from pensieve_ppo.core.trace.loader import load_trace
 from pensieve_ppo.core.trace.data import TraceData
-from pensieve_ppo.core.video.loader import load_video_size
-from pensieve_ppo.core.video.data import VideoData
+from pensieve_ppo.core.video.quality_ladder.envivio import (
+    VIDEO_BIT_RATE,
+    load_envivio_video_size,
+)
+from pensieve_ppo.core.video.quality_ladder import QualityLadderRequest, QualityLadderVideoPlayer
 
 
 # Import original implementations from src
@@ -161,7 +164,7 @@ class TestTraceLoaderMatchesOriginal(unittest.TestCase):
 # ==============================================================================
 
 class TestVideoLoaderMatchesOriginal(unittest.TestCase):
-    """Test that load_video_size matches the original fixed_env.py implementation."""
+    """Test that load_envivio_video_size matches the original fixed_env.py implementation."""
 
     @classmethod
     def setUpClass(cls):
@@ -183,7 +186,7 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
     def test_video_sizes_match(self):
         """Test that video chunk sizes match exactly with Environment.video_size."""
         # Load using our implementation
-        video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS)
+        video_data = load_envivio_video_size(VIDEO_SIZE_FILE)
 
         # Compare with Environment's video_size (loaded in setUpClass)
         for bitrate in range(BITRATE_LEVELS):
@@ -202,11 +205,20 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
                         f"Bitrate {bitrate}, Chunk {chunk_idx}: size mismatch"
                     )
 
-    def test_video_data_structure(self):
-        """Test that VideoData structure is correct."""
-        video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS)
+    def test_video_quality_matrix_matches_bitrate_ladder(self):
+        """Test that video_quality broadcasts the Envivio bitrate ladder per chunk."""
+        video_data = load_envivio_video_size(VIDEO_SIZE_FILE)
 
-        # Check that VideoData has required attributes
+        self.assertEqual(video_data.video_quality.shape, video_data.video_size.shape)
+        for bitrate, quality in enumerate(VIDEO_BIT_RATE):
+            with self.subTest(bitrate=bitrate):
+                self.assertTrue((video_data.video_quality[bitrate] == quality).all())
+
+    def test_video_data_structure(self):
+        """Test that QualityLadderVideoPlayer data structure is correct."""
+        video_data = QualityLadderVideoPlayer(video_size_file_prefix=VIDEO_SIZE_FILE)
+
+        # Check that QualityLadderVideoPlayer has required attributes
         self.assertTrue(hasattr(video_data, 'video_size'))
         self.assertTrue(hasattr(video_data, 'bitrate_levels'))
         self.assertTrue(hasattr(video_data, 'total_chunks'))
@@ -217,10 +229,11 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
         # Check that video_size matrix has correct shape
         self.assertEqual(video_data.video_size.shape[0], BITRATE_LEVELS)
         self.assertEqual(video_data.video_size.shape[1], video_data.total_chunks)
+        self.assertEqual(video_data.video_quality.shape, video_data.video_size.shape)
 
     def test_total_chunks_correct(self):
         """Test that total_chunks is computed correctly from matrix shape."""
-        video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS)
+        video_data = QualityLadderVideoPlayer(video_size_file_prefix=VIDEO_SIZE_FILE)
 
         # total_chunks should match the second dimension of the matrix
         self.assertEqual(video_data.total_chunks, video_data.video_size.shape[1])
@@ -229,23 +242,39 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
 
     def test_get_chunk_size_method(self):
         """Test the get_chunk_size method against Environment.video_size."""
-        video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS)
+        video_data = QualityLadderVideoPlayer(video_size_file_prefix=VIDEO_SIZE_FILE)
 
         for bitrate in range(BITRATE_LEVELS):
             for chunk_idx in range(min(10, video_data.total_chunks)):
                 with self.subTest(bitrate=bitrate, chunk_idx=chunk_idx):
                     self.assertEqual(
-                        video_data.get_chunk_size(bitrate, chunk_idx),
+                        video_data.get_chunk_size(QualityLadderRequest(bitrate), chunk_idx),
                         self.fixed_env.video_size[bitrate][chunk_idx]
+                    )
+
+    def test_get_chunk_quality_method(self):
+        """Test the get_chunk_quality method against the loaded quality matrix."""
+        video_data = QualityLadderVideoPlayer(video_size_file_prefix=VIDEO_SIZE_FILE)
+
+        for bitrate, quality in enumerate(VIDEO_BIT_RATE):
+            for chunk_idx in range(min(10, video_data.total_chunks)):
+                with self.subTest(bitrate=bitrate, chunk_idx=chunk_idx):
+                    self.assertEqual(
+                        video_data.get_chunk_quality(
+                            QualityLadderRequest(bitrate),
+                            chunk_idx,
+                        ),
+                        quality,
                     )
 
     def test_get_next_chunk_sizes_method(self):
         """Test the get_next_chunk_sizes method against Environment.video_size."""
-        video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS)
+        video_data = QualityLadderVideoPlayer(video_size_file_prefix=VIDEO_SIZE_FILE)
 
         for chunk_idx in range(min(10, video_data.total_chunks)):
             with self.subTest(chunk_idx=chunk_idx):
-                sizes = video_data.get_next_chunk_sizes(chunk_idx)
+                video_data.video_chunk_counter = chunk_idx
+                sizes = video_data.get_next_chunk_sizes()
 
                 self.assertEqual(len(sizes), BITRATE_LEVELS)
 
@@ -254,6 +283,15 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
                         sizes[bitrate],
                         self.fixed_env.video_size[bitrate][chunk_idx]
                     )
+
+    def test_get_next_chunk_qualities_method(self):
+        """Test get_next_chunk_qualities follows the current player position."""
+        video_data = QualityLadderVideoPlayer(video_size_file_prefix=VIDEO_SIZE_FILE)
+
+        for chunk_idx in range(min(10, video_data.total_chunks)):
+            with self.subTest(chunk_idx=chunk_idx):
+                video_data.video_chunk_counter = chunk_idx
+                self.assertEqual(video_data.get_next_chunk_qualities(), VIDEO_BIT_RATE)
 
 
 # ==============================================================================
@@ -300,7 +338,7 @@ class TestLoadersWithEnvironment(unittest.TestCase):
     def test_video_data_matches_environment(self):
         """Test that video sizes from our loader match Environment's internal data."""
         # Load using our implementation
-        video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS)
+        video_data = QualityLadderVideoPlayer(video_size_file_prefix=VIDEO_SIZE_FILE)
 
         # Load traces for Environment
         trace_data = load_trace(TEST_TRACES)
@@ -317,7 +355,7 @@ class TestLoadersWithEnvironment(unittest.TestCase):
             for chunk_idx in range(TOTAL_VIDEO_CHUNKS):
                 with self.subTest(bitrate=bitrate, chunk_idx=chunk_idx):
                     self.assertEqual(
-                        video_data.get_chunk_size(bitrate, chunk_idx),
+                        video_data.get_chunk_size(QualityLadderRequest(bitrate), chunk_idx),
                         env.video_size[bitrate][chunk_idx]
                     )
 
@@ -380,15 +418,22 @@ class TestLoaderEdgeCases(unittest.TestCase):
     def test_invalid_video_prefix_raises_error(self):
         """Test that invalid video prefix raises appropriate error."""
         with self.assertRaises(FileNotFoundError):
-            load_video_size('./nonexistent/video_size_', BITRATE_LEVELS)
+            load_envivio_video_size('./nonexistent/video_size_')
 
-    def test_different_bitrate_levels(self):
-        """Test loading with different number of bitrate levels."""
-        # Our implementation should work with fewer bitrates
-        video_data = load_video_size(VIDEO_SIZE_FILE, 3)
+    def test_load_envivio_video_size_loads_all_bitrate_levels(self):
+        """Test that load_envivio_video_size always loads all bitrate levels."""
+        video_data = load_envivio_video_size(VIDEO_SIZE_FILE)
 
-        self.assertEqual(video_data.bitrate_levels, 3)
-        self.assertEqual(video_data.video_size.shape[0], 3)
+        self.assertEqual(video_data.video_size.shape[0], BITRATE_LEVELS)
+        self.assertEqual(video_data.video_quality.shape, video_data.video_size.shape)
+
+    def test_quality_ladder_video_player_validates_bitrate_levels(self):
+        """Test that QualityLadderVideoPlayer requires a matching quality ladder shape."""
+        with self.assertRaises(ValueError):
+            QualityLadderVideoPlayer(
+                video_size_file_prefix=VIDEO_SIZE_FILE,
+                quality=[300., 750., 1200.],
+            )
 
 
 # ==============================================================================
