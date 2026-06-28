@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, List, Optional, Tuple, TypeVar
+from typing import List, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -11,10 +11,7 @@ class VideoChunkRequest(ABC):
     pass
 
 
-VideoChunkRequestType = TypeVar("VideoChunkRequestType", bound=VideoChunkRequest)
-
-
-class VideoPlayer(ABC, Generic[VideoChunkRequestType]):
+class VideoPlayer(ABC):
     """Tracks video playback position and provides chunk information.
 
     This class manages the video chunk counter and provides methods
@@ -35,7 +32,7 @@ class VideoPlayer(ABC, Generic[VideoChunkRequestType]):
     @abstractmethod
     def get_chunk_quality(
         self,
-        chunk_request: VideoChunkRequestType,
+        chunk_request: VideoChunkRequest,
         chunk_idx: Optional[int] = None,
     ) -> float:
         """Get the actual quality level for a chunk request.
@@ -52,7 +49,7 @@ class VideoPlayer(ABC, Generic[VideoChunkRequestType]):
     @abstractmethod
     def get_chunk_size(
         self,
-        chunk_request: VideoChunkRequestType,
+        chunk_request: VideoChunkRequest,
         chunk_idx: Optional[int] = None,
     ) -> int:
         """Get the size of current chunk for a video chunk request.
