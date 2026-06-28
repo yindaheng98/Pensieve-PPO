@@ -15,7 +15,7 @@ VIDEO_SIZE_FILE_PREFIX = './src/envivio/video_size_'  # https://github.com/godka
 VIDEO_BIT_RATE = [300., 750., 1200., 1850., 2850., 4300.]  # Kbps, https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L13
 
 
-def load_video_size(
+def load_envivio_video_size(
     video_size_file_prefix: str = VIDEO_SIZE_FILE_PREFIX,
     max_chunks: Optional[int] = None,
     quality: list[float] = VIDEO_BIT_RATE,
