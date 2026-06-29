@@ -120,7 +120,6 @@ class ABREnv(gym.Env):
         self,
         simulator: Simulator,
         observer: AbstractABRStateObserver,
-        initial_chunk_request: VideoChunkRequest,
     ):
         """Initialize the ABR environment.
 
@@ -130,7 +129,6 @@ class ABREnv(gym.Env):
             observer: ABRStateObserver instance for state observation and reward
                      calculation. Its levels_quality length must match
                      simulator.video_player.bitrate_levels.
-            initial_chunk_request: Initial video chunk request on reset.
         """
         super().__init__()
 
@@ -139,9 +137,6 @@ class ABREnv(gym.Env):
 
         # Store observer
         self.observer = observer
-
-        # Store initial chunk request
-        self.initial_chunk_request = initial_chunk_request
 
         # timestamp in ms for logging purposes
         self.time_stamp = 0.0
@@ -169,8 +164,7 @@ class ABREnv(gym.Env):
                 - reset_time_stamp (bool): Whether to reset time_stamp to 0.
                   Default is True. Set to False for testing mode where time_stamp
                   should accumulate across traces.
-                - initial_chunk_request: Override initial video chunk request.
-                  If not specified, uses initial_chunk_request from __init__.
+                - initial_chunk_request: Initial video chunk request. Required.
 
         Returns:
             Tuple of (observation, info_dict)
@@ -183,7 +177,7 @@ class ABREnv(gym.Env):
         # Parse options
         options = options or {}
         reset_time_stamp = options.get('reset_time_stamp', True)
-        initial_chunk_request = options.get('initial_chunk_request', self.initial_chunk_request)
+        initial_chunk_request = options['initial_chunk_request']
 
         if reset_time_stamp:
             self.time_stamp = 0

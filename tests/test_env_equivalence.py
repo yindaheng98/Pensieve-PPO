@@ -372,7 +372,9 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
         self.assertIsInstance(src_result, np.ndarray)
 
         # gym returns (state, info) tuple (zero state, no chunk executed)
-        gym_result = gym_abr.reset()
+        gym_result = gym_abr.reset(options={
+            'initial_chunk_request': QualityLadderRequest(1),
+        })
         self.assertIsInstance(gym_result, tuple)
         self.assertEqual(len(gym_result), 2)
         # gym state is now RLState object
@@ -389,7 +391,9 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
         src_abr = src_env.ABREnv(random_seed=RANDOM_SEED)
         src_abr.reset()
         gym_abr = self._create_gym_env(RANDOM_SEED)
-        gym_abr.reset()
+        gym_abr.reset(options={
+            'initial_chunk_request': QualityLadderRequest(1),
+        })
 
         # src returns (state, reward, done, info)
         src_result = src_abr.step(2)
@@ -398,6 +402,12 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
         # gym returns (state, reward, terminated, truncated, info)
         gym_result = gym_abr.step(QualityLadderRequest(2))
         self.assertEqual(len(gym_result), 5)
+
+    def test_reset_requires_initial_chunk_request(self):
+        """Test reset requires the caller to provide the initial request."""
+        gym_abr = self._create_gym_env(RANDOM_SEED)
+        with self.assertRaises(KeyError):
+            gym_abr.reset()
 
 
 class TestDeterminism(TestABREnvEquivalenceBase):

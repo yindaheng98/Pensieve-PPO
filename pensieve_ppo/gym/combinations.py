@@ -3,7 +3,7 @@
 from typing import Any, Optional, Type
 
 from ..core.simulator import create_simulator
-from ..core.video import VideoChunkRequest, VideoPlayer
+from ..core.video import VideoPlayer
 from .env import ABREnv, AbstractABRStateObserver
 from .imitate import ImitationObserver
 
@@ -11,7 +11,6 @@ from .imitate import ImitationObserver
 def create_env(
     video_player: VideoPlayer,
     observer: AbstractABRStateObserver,
-    initial_chunk_request: VideoChunkRequest,
     trace_folder: str,
     train: bool = True,
     random_seed: Optional[int] = None,
@@ -21,7 +20,6 @@ def create_env(
     Args:
         video_player: Pre-configured video player instance.
         observer: ABRStateObserver instance for state observation and reward.
-        initial_chunk_request: Initial video chunk request on reset.
         trace_folder: Path to folder containing network trace files.
         train: Whether to use training trace behavior.
         random_seed: Random seed for training trace selection/noise.
@@ -39,14 +37,12 @@ def create_env(
     return ABREnv(
         simulator=simulator,
         observer=observer,
-        initial_chunk_request=initial_chunk_request,
     )
 
 
 def create_env_with_class(
     video_player_class: Type[VideoPlayer],
     observer_class: Type[AbstractABRStateObserver],
-    initial_chunk_request: VideoChunkRequest,
     trace_folder: str,
     train: bool = True,
     random_seed: Optional[int] = None,
@@ -58,7 +54,6 @@ def create_env_with_class(
     Args:
         video_player_class: Video player class to instantiate.
         observer_class: The observer class to instantiate.
-        initial_chunk_request: Initial video chunk request on reset.
         trace_folder: Path to folder containing network trace files.
         train: Whether to use training trace behavior.
         random_seed: Random seed for training trace selection/noise.
@@ -74,7 +69,6 @@ def create_env_with_class(
         ...     QualityLadderVideoPlayer,
         ...     RLABRStateObserver,
         ...     trace_folder=trace_folder,
-        ...     initial_chunk_request=QualityLadderRequest(0),
         ...     observer_kwargs={"levels_quality": [300, 750, 1200, 1850, 2850, 4300]},
         ...     video_player_kwargs={"video_size_file_prefix": video_size_file_prefix},
         ... )
@@ -86,7 +80,6 @@ def create_env_with_class(
         video_player,
         observer,
         trace_folder=trace_folder,
-        initial_chunk_request=initial_chunk_request,
         train=train,
         random_seed=random_seed,
     )
@@ -96,7 +89,6 @@ def create_imitation_env(
     video_player: VideoPlayer,
     student_observer: AbstractABRStateObserver,
     teacher_observer: AbstractABRStateObserver,
-    initial_chunk_request: VideoChunkRequest,
     trace_folder: str,
     train: bool = True,
     random_seed: Optional[int] = None,
@@ -126,7 +118,6 @@ def create_imitation_env(
                          will be used as the environment's observation space.
         teacher_observer: Observer for the teacher agent. Used to generate
                          states for teacher's decision making.
-        initial_chunk_request: Initial video chunk request on reset.
         trace_folder: Path to folder containing network trace files.
         train: Whether to use training trace behavior.
         random_seed: Random seed for training trace selection/noise.
@@ -142,7 +133,6 @@ def create_imitation_env(
     return create_env(
         video_player,
         imitation_observer,
-        initial_chunk_request=initial_chunk_request,
         trace_folder=trace_folder,
         train=train,
         random_seed=random_seed,
@@ -153,7 +143,6 @@ def create_imitation_env_with_class(
     video_player_class: Type[VideoPlayer],
     student_observer_class: Type[AbstractABRStateObserver],
     teacher_observer_class: Type[AbstractABRStateObserver],
-    initial_chunk_request: VideoChunkRequest,
     trace_folder: str,
     train: bool = True,
     random_seed: Optional[int] = None,
@@ -167,7 +156,6 @@ def create_imitation_env_with_class(
         video_player_class: Video player class to instantiate.
         student_observer_class: The student observer class to instantiate.
         teacher_observer_class: The teacher observer class to instantiate.
-        initial_chunk_request: Initial video chunk request on reset.
         trace_folder: Path to folder containing network trace files.
         train: Whether to use training trace behavior.
         random_seed: Random seed for training trace selection/noise.
@@ -186,7 +174,6 @@ def create_imitation_env_with_class(
         ...     RLABRStateObserver,
         ...     BBAStateObserver,
         ...     trace_folder=trace_folder,
-        ...     initial_chunk_request=QualityLadderRequest(0),
         ...     student_observer_kwargs={"levels_quality": [300, 750, 1200, 1850, 2850, 4300]},
         ...     teacher_observer_kwargs={"levels_quality": [300, 750, 1200, 1850, 2850, 4300]},
         ...     video_player_kwargs={"video_size_file_prefix": video_size_file_prefix},
@@ -201,7 +188,6 @@ def create_imitation_env_with_class(
         student_observer,
         teacher_observer,
         trace_folder=trace_folder,
-        initial_chunk_request=initial_chunk_request,
         train=train,
         random_seed=random_seed,
     )
