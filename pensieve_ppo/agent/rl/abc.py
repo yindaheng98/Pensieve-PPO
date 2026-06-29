@@ -15,13 +15,36 @@ Reference:
 
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 
 
-from .. import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
+from ...core.video import VideoChunkRequest
+from ...quality_ladder import QualityLadderActionDecision, QualityLadderRequest
+from ..trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
 from .observer import RLState
+
+
+@dataclass(frozen=True)
+class RLActionDecision(QualityLadderActionDecision):
+    """Quality-ladder decision with index and probability metadata."""
+
+    action_index: int
+    action_prob: List[float]
+
+    @classmethod
+    def from_index(
+        cls,
+        action_index: int,
+        action_prob: List[float],
+    ) -> "RLActionDecision":
+        """Build a decision from a quality level index."""
+        return cls(
+            action=QualityLadderRequest(action_index),
+            action_index=action_index,
+            action_prob=action_prob,
+        )
 
 
 @dataclass
@@ -53,6 +76,13 @@ class AbstractRLAgent(AbstractTrainableAgent):
     Specific RL algorithms (e.g., PPO, A2C) should inherit from this class
     and implement the abstract methods.
     """
+
+    def reset(
+        self,
+        initial_chunk_request: Optional[VideoChunkRequest] = None,
+    ) -> VideoChunkRequest:
+        """Reset stateless RL agents and return the initial request."""
+        return super().reset(initial_chunk_request or QualityLadderRequest(0))
 
     @abstractmethod
     def train(
@@ -106,9 +136,9 @@ class AbstractRLAgent(AbstractTrainableAgent):
     ) -> RLTrainingBatch:
         """Produce a training batch from a trajectory.
 
-        Extracts observations, actions, rewards, and action probabilities from
-        the trajectory steps, computes value targets, and returns a training
-        batch ready for the training step.
+        Extracts observations and raw decisions from the trajectory steps,
+        converts quality-ladder decisions into RL action fields, computes value
+        targets, and returns a training batch ready for the training step.
 
         Args:
             trajectory: List of steps collected during environment rollout.
@@ -121,10 +151,19 @@ class AbstractRLAgent(AbstractTrainableAgent):
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L143
         # Note: step.state is State (Any), but for RL agents it should be RLState (np.ndarray)
         s_batch: List[RLState] = [step.state for step in trajectory]  # type: ignore[assignment]
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-158
-        a_batch = [step.action for step in trajectory]
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-L157
+        a_batch: List[List[int]] = []
+        p_batch: List[List[float]] = []
+        for step in trajectory:
+            action: RLActionDecision = step.action
+            assert isinstance(action, RLActionDecision), "step.action must be RLActionDecision"
+            # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L154-L155
+            action_vec = [0] * len(action.action_prob)
+            action_vec[action.action_index] = 1
+            a_batch.append(action_vec)
+            p_batch.append(action.action_prob)
+        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L158
         r_batch = [step.reward for step in trajectory]
-        p_batch = [step.action_prob for step in trajectory]
 
         # Compute value targets
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L161

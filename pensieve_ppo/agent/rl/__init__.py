@@ -3,7 +3,7 @@
 This module provides the base classes and implementations for RL agents.
 """
 
-from .abc import AbstractRLAgent, RLTrainingBatch
+from .abc import AbstractRLAgent, RLActionDecision, RLTrainingBatch
 from .env import create_rl_env_with_observer_cls, create_rl_env
 from .observer import RLABRStateObserver, RLState
 
@@ -14,6 +14,7 @@ from . import dqn  # noqa: F401
 
 __all__ = [
     'AbstractRLAgent',
+    'RLActionDecision',
     'RLTrainingBatch',
     'RLState',
     'RLABRStateObserver',
