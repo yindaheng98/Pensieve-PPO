@@ -9,12 +9,6 @@ from .trainer import Trainer, EpochEndCallback, SaveModelCallback
 from .imitate import ImitationTrainer
 from .registry import create_agent, register, get_available_agents, get_available_trainable_agents, create_env, create_imitation_env
 
-# Import agent implementations to trigger registration
-from . import rl  # noqa: F401
-from . import bba  # noqa: F401
-from . import mpc  # noqa: F401
-from . import netllm
-
 __all__ = [
     'AbstractAgent',
     'ActionDecision',
@@ -32,8 +26,4 @@ __all__ = [
     'get_available_trainable_agents',
     'create_env',
     'create_imitation_env',
-    'rl',
-    'bba',
-    'mpc',
-    'netllm',
 ]
