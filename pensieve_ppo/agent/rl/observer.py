@@ -14,6 +14,7 @@ import numpy as np
 from gymnasium import spaces
 
 from ...core.simulator import StepResult
+from ...quality_ladder import QualityLadderRequest
 from ...gym.env import AbstractABRStateObserver, ABREnv, State
 
 
@@ -69,11 +70,6 @@ class RLABRStateObserver(AbstractABRStateObserver):
         state: Internal state array (may differ from returned state).
         last_bit_rate: Last selected bitrate level.
     """
-
-    @classmethod
-    def get_constructor_args(cls) -> List[str]:
-        """Get the list of all constructor argument names."""
-        return ["levels_quality", "rebuf_penalty", "smooth_penalty", "state_history_len", "buffer_norm_factor"]
 
     def __init__(
         self,
@@ -165,13 +161,13 @@ class RLABRStateObserver(AbstractABRStateObserver):
     def reset(
         self,
         env: ABREnv,
-        initial_bit_rate: int = 0,
+        initial_chunk_request: QualityLadderRequest,
     ) -> Tuple[RLState, Dict[str, Any]]:
         """Reset observer state and return initial observation.
 
         Args:
             env: The ABREnv instance to observe.
-            initial_bit_rate: Initial bitrate level index.
+            initial_chunk_request: Initial video chunk request.
 
         Returns:
             Tuple of (state, info_dict).
@@ -183,6 +179,8 @@ class RLABRStateObserver(AbstractABRStateObserver):
                 f"env.simulator.video_player.bitrate_levels ({env.simulator.video_player.bitrate_levels})"
             )
 
+        # initial_bit_rate is the bitrate level index, not the actual bitrate value.
+        initial_bit_rate = initial_chunk_request.level
         self.last_bit_rate = initial_bit_rate
         state = self.build_and_set_initial_state(env, initial_bit_rate)
         info = self.build_initial_info_dict(env, initial_bit_rate)
@@ -296,7 +294,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
     def observe(
         self,
         env: ABREnv,
-        bit_rate: int,
+        chunk_request: QualityLadderRequest,
         result: StepResult,
     ) -> Tuple[RLState, float, Dict[str, Any]]:
         """Process simulator result: compute reward and update state.
@@ -308,13 +306,15 @@ class RLABRStateObserver(AbstractABRStateObserver):
 
         Args:
             env: The ABREnv instance to observe.
-            bit_rate: Current bitrate level selected.
+            chunk_request: Current video chunk request.
             result: Result from simulator.step().
 
         Returns:
             Tuple of (state_copy, reward, info_dict), where state_copy may
             differ from the internal self.state.
         """
+        # bit_rate is the bitrate level index, not the actual bitrate value.
+        bit_rate = chunk_request.level
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L83-L87
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L80-L84
