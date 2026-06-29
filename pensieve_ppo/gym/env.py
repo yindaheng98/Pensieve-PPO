@@ -9,7 +9,7 @@ Reference:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import gymnasium as gym
 import numpy as np
@@ -40,20 +40,9 @@ class AbstractABRStateObserver(ABC):
     state observers. Subclasses must implement state observation and
     reward calculation logic.
 
-    Subclasses must also implement the `get_constructor_args` class method,
-    which returns all constructor argument names accepted by the observer.
-    This enables automatic observer construction from keyword arguments.
+    Observer construction is handled by factory functions using explicit
+    observer kwargs.
     """
-
-    @classmethod
-    @abstractmethod
-    def get_constructor_args(cls) -> List[str]:
-        """Get the list of all constructor argument names.
-
-        Returns:
-            List of all argument names accepted by __init__ (excluding self).
-        """
-        pass
 
     @property
     @abstractmethod
