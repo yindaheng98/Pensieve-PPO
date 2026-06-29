@@ -103,7 +103,6 @@ class ImitationTrainer(Trainer):
                 # The trajectory contains:
                 # - state: student_state (for training the student neural network)
                 # - action: teacher's action (what we want to imitate)
-                # - action_prob: teacher's action probabilities
                 # - reward: reward from environment
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L161-L165
                 training_batch = actor.produce_training_batch(trajectory, done)
@@ -147,7 +146,10 @@ class ImitationTrainer(Trainer):
         signal_queue.get()
 
         for epoch in range(1, self.train_epochs + 1):
-            obs, _ = env.reset()
+            initial_chunk_request = actor.reset()
+            obs, _ = env.reset(options={
+                'initial_chunk_request': initial_chunk_request,
+            })
             # obs should be ImitationState
             assert isinstance(obs, ImitationState), (
                 f"Environment must output ImitationState, got {type(obs).__name__}. "
@@ -158,21 +160,17 @@ class ImitationTrainer(Trainer):
             for step in range(self.train_seq_len):
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
                 # Use teacher_state for teacher agent's decision making
-                action, action_prob = actor.select_action(obs.teacher_state)
+                action = actor.select_action(obs.teacher_state)
 
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L152
-                next_obs, rew, terminated, truncated, info = env.step(action)
+                next_obs, rew, terminated, truncated, info = env.step(action.action)
                 done = terminated or truncated
-
-                # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L154-L155
-                action_vec = [0] * len(action_prob)
-                action_vec[action] = 1
 
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L143
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-158
                 # Store step with student_state for training the student agent
                 # The action and action_prob are from the teacher, which the student will learn to imitate
-                trajectory.append(Step(state=obs.student_state, action=action_vec, action_prob=action_prob, reward=rew, step=step, done=done))
+                trajectory.append(Step(state=obs.student_state, action=action, reward=rew, step=step, done=done))
 
                 obs = next_obs
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L159-160

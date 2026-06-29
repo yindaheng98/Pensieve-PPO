@@ -174,24 +174,22 @@ class Trainer:
         actor.set_params(actor_net_params)
 
         for epoch in range(1, self.train_epochs + 1):
-            obs, _ = env.reset()
-            actor.reset()  # Reset agent's "internal state" (e.g., embedding caches) for new episode
+            initial_chunk_request = actor.reset()
+            obs, _ = env.reset(options={
+                'initial_chunk_request': initial_chunk_request,
+            })
             trajectory: List[Step] = []
             for step in range(self.train_seq_len):
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
-                action, action_prob = actor.select_action_for_training(obs)
+                action = actor.select_action_for_training(obs)
 
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L152
-                next_obs, rew, terminated, truncated, info = env.step(action)
+                next_obs, rew, terminated, truncated, info = env.step(action.action)
                 done = terminated or truncated
-
-                # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L154-L155
-                action_vec = [0] * len(action_prob)
-                action_vec[action] = 1
 
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L143
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-158
-                trajectory.append(Step(state=obs, action=action_vec, action_prob=action_prob, reward=rew, step=step, done=done))
+                trajectory.append(Step(state=obs, action=action, reward=rew, step=step, done=done))
 
                 obs = next_obs
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L159-160
