@@ -8,9 +8,17 @@ Reference:
 """
 
 from abc import ABC, abstractmethod
-from typing import Tuple, List
+from dataclasses import dataclass
+from typing import Optional
 
+from ..core.video import VideoChunkRequest
 from ..gym import State
+
+
+@dataclass(frozen=True)
+class Decision:
+    """Base agent decision containing the video chunk request action."""
+    action: VideoChunkRequest
 
 
 class AbstractAgent(ABC):
@@ -55,30 +63,40 @@ class AbstractAgent(ABC):
     """
 
     @abstractmethod
-    def select_action(self, state: State) -> Tuple[int, List[float]]:
+    def select_action(self, state: State) -> Decision:
         """Select an action for a given state.
 
         Args:
             state: Input state.
 
         Returns:
-            Tuple of (selected_action_index, action_probabilities).
+            Selected decision object.
         """
         pass
 
-    def reset(self) -> None:
-        """Reset the agent's "internal state" for a new episode.
+    @abstractmethod
+    def reset(
+        self,
+        initial_chunk_request: Optional[VideoChunkRequest] = None,
+    ) -> VideoChunkRequest:
+        """Reset the agent and return the initial chunk request for a new episode.
 
         This method should be called at the beginning of each episode to clear
-        any "internal state" (e.g., embedding caches) that the agent may maintain.
+        any "internal state" (e.g., embedding caches) that the agent may maintain
+        and to construct the first request consumed by ABREnv.reset().
 
-        For stateless agents (e.g., those in `pensieve_ppo/agent/rl/`,
-        `pensieve_ppo/agent/mpc/`, `pensieve_ppo/agent/bba/`), this method
-        is a no-op.
+        Subclasses may accept a pre-built initial request. If no request is
+        provided, subclasses decide whether and how to create a default request.
 
         For "stateful" agents (e.g., NetLLM in `pensieve_ppo/agent/netllm/`),
-        this method should clear embedding caches and other internal buffers.
+        this method should clear embedding caches and other internal buffers
+        before returning the initial request.
 
         See the class docstring for more details on agent "statefulness".
         """
-        pass
+        if initial_chunk_request is None:
+            raise ValueError(
+                f"{type(self).__name__}.reset() requires an initial_chunk_request "
+                "or a subclass-defined default request."
+            )
+        return initial_chunk_request
