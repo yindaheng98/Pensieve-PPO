@@ -29,8 +29,6 @@ Note on constants:
   Pensieve-PPO implementation.
 """
 
-from pensieve_ppo.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS, create_env_with_default, S_INFO, S_LEN
-import env as src_env
 import os
 import sys
 import unittest
@@ -42,8 +40,12 @@ SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
 sys.path.insert(0, SRC_DIR)
 
 # Import original implementation from src
+import env as src_env
 
 # Import our gymnasium implementation and constants.
+from pensieve_ppo.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS, create_env_with_default, S_INFO, S_LEN
+from pensieve_ppo.core.video.quality_ladder import QualityLadderRequest
+
 
 # Test-specific constants (must match src_env for equivalence verification)
 A_DIM = len(VIDEO_BIT_RATE)  # Number of bitrate levels
@@ -97,18 +99,20 @@ class TestABREnvEquivalenceBase(unittest.TestCase):
             trace_folder='./train/',
             video_size_file_prefix='./envivio/video_size_',
         )
-        env.reset(options={'initial_level': initial_action})
+        env.reset(options={'initial_chunk_request': QualityLadderRequest(initial_action)})
 
         # Execute first chunk with initial_action to get initial state
         # This matches src/env.py reset() which executes first chunk internally
-        initial_state, _, _, _, _ = env.step(initial_action)
+        initial_state, _, _, _, _ = env.step(QualityLadderRequest(initial_action))
 
         states = [initial_state]
         rewards = []
         dones = []
 
         for action in actions:
-            state, reward, terminated, truncated, info = env.step(action)
+            state, reward, terminated, truncated, info = env.step(
+                QualityLadderRequest(action)
+            )
             states.append(state)
             rewards.append(reward)
             dones.append(terminated)
@@ -392,7 +396,7 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
         self.assertEqual(len(src_result), 4)
 
         # gym returns (state, reward, terminated, truncated, info)
-        gym_result = gym_abr.step(2)
+        gym_result = gym_abr.step(QualityLadderRequest(2))
         self.assertEqual(len(gym_result), 5)
 
 

@@ -10,7 +10,11 @@ both implementations consume the same random values.
 
 import unittest
 import os
+import sys
 import numpy as np
+
+SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
+sys.path.insert(0, SRC_DIR)
 
 # Import original implementations from src
 import load_trace as src_load_trace
@@ -19,8 +23,7 @@ from core import Environment as CoreEnvironment
 
 # Import our implementations
 from pensieve_ppo.core.simulator.simulator import Simulator
-from pensieve_ppo.core.video.player import VideoPlayer
-from pensieve_ppo.core.video.loader import load_video_size
+from pensieve_ppo.core.video.quality_ladder.player import QualityLadderRequest, QualityLadderVideoPlayer
 from pensieve_ppo.core.trace.ext.random import RandomTraceSimulator
 from pensieve_ppo.core.trace.ext.noise import NoiseTraceSimulator
 from pensieve_ppo.core.trace.simulator import TraceSimulator
@@ -53,8 +56,7 @@ class TestSimulatorMatchesCoreEnv(unittest.TestCase):
     def setUpClass(cls):
         """Load test data."""
         cls.original_cwd = os.getcwd()
-        src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
-        os.chdir(src_dir)
+        os.chdir(SRC_DIR)
 
         # Load using src for original Environment (needs raw lists)
         cls.all_cooked_time, cls.all_cooked_bw, cls.all_file_names = \
@@ -62,7 +64,6 @@ class TestSimulatorMatchesCoreEnv(unittest.TestCase):
 
         # Load using our loaders
         cls.trace_data = load_trace(TEST_TRACES)
-        cls.video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS, TOTAL_VIDEO_CHUNKS)
 
     @classmethod
     def tearDownClass(cls):
@@ -98,7 +99,10 @@ class TestSimulatorMatchesCoreEnv(unittest.TestCase):
         the global np.random module (by passing random_seed=None), which matches
         how core.py uses np.random for all random operations.
         """
-        video_player = VideoPlayer(self.video_data)
+        video_player = QualityLadderVideoPlayer(
+            video_size_file_prefix=VIDEO_SIZE_FILE,
+            max_chunks=TOTAL_VIDEO_CHUNKS,
+        )
         base_trace_sim = TraceSimulator(self.trace_data)
 
         # Use None to make wrappers use global np.random
@@ -120,7 +124,7 @@ class TestSimulatorMatchesCoreEnv(unittest.TestCase):
         # Save random state, run simulator, restore, then run core_env
         # This ensures both consume the same random values
         state = np.random.get_state()
-        result = simulator.step(2)
+        result = simulator.step(QualityLadderRequest(2))
         np.random.set_state(state)
         env_result = core_env.get_video_chunk(2)
         self._compare_results(result, env_result)
@@ -140,7 +144,7 @@ class TestSimulatorMatchesCoreEnv(unittest.TestCase):
             with self.subTest(step=i, quality=quality):
                 # Save/restore random state so both use same random values
                 state = np.random.get_state()
-                result = simulator.step(quality)
+                result = simulator.step(QualityLadderRequest(quality))
                 np.random.set_state(state)
                 env_result = core_env.get_video_chunk(quality)
                 self._compare_results(result, env_result, f"Step {i}: ")
@@ -160,7 +164,7 @@ class TestSimulatorMatchesCoreEnv(unittest.TestCase):
             with self.subTest(chunk=i, quality=quality):
                 # Save/restore random state so both use same random values
                 state = np.random.get_state()
-                result = simulator.step(quality)
+                result = simulator.step(QualityLadderRequest(quality))
                 np.random.set_state(state)
                 env_result = core_env.get_video_chunk(quality)
                 self._compare_results(result, env_result, f"Chunk {i}: ")

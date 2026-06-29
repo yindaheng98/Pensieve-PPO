@@ -12,6 +12,11 @@ Data sources reference:
 
 import unittest
 import os
+import sys
+
+SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
+sys.path.insert(0, SRC_DIR)
+
 import load_trace as src_load_trace
 import fixed_env as src_fixed_env
 from pensieve_ppo.core.trace.loader import load_trace
@@ -49,8 +54,7 @@ class TestTraceLoaderMatchesOriginal(unittest.TestCase):
     def setUpClass(cls):
         """Load shared test data."""
         cls.original_cwd = os.getcwd()
-        src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
-        os.chdir(src_dir)
+        os.chdir(SRC_DIR)
 
     @classmethod
     def tearDownClass(cls):
@@ -170,8 +174,7 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
     def setUpClass(cls):
         """Load shared test data."""
         cls.original_cwd = os.getcwd()
-        src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
-        os.chdir(src_dir)
+        os.chdir(SRC_DIR)
 
         # Create a FixedEnvironment to get the original video_size data
         # This is how fixed_env.py loads video sizes in __init__
@@ -305,8 +308,7 @@ class TestLoadersWithEnvironment(unittest.TestCase):
     def setUpClass(cls):
         """Load shared test data."""
         cls.original_cwd = os.getcwd()
-        src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
-        os.chdir(src_dir)
+        os.chdir(SRC_DIR)
 
     @classmethod
     def tearDownClass(cls):
@@ -402,8 +404,7 @@ class TestLoaderEdgeCases(unittest.TestCase):
     def setUpClass(cls):
         """Load shared test data."""
         cls.original_cwd = os.getcwd()
-        src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
-        os.chdir(src_dir)
+        os.chdir(SRC_DIR)
 
     @classmethod
     def tearDownClass(cls):
@@ -452,8 +453,7 @@ class TestTraceSortingBehavior(unittest.TestCase):
     def setUpClass(cls):
         """Load shared test data."""
         cls.original_cwd = os.getcwd()
-        src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
-        os.chdir(src_dir)
+        os.chdir(SRC_DIR)
 
     @classmethod
     def tearDownClass(cls):

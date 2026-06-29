@@ -9,6 +9,10 @@ For tests involving random wrappers (core.py equivalence), see test_random_simul
 
 import unittest
 import os
+import sys
+
+SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
+sys.path.insert(0, SRC_DIR)
 
 # Import original implementations from src
 import load_trace as src_load_trace
@@ -16,8 +20,7 @@ import fixed_env as src_fixed_env
 
 # Import our implementations
 from pensieve_ppo.core.simulator.simulator import Simulator
-from pensieve_ppo.core.video.player import VideoPlayer
-from pensieve_ppo.core.video.loader import load_video_size
+from pensieve_ppo.core.video.quality_ladder.player import QualityLadderRequest, QualityLadderVideoPlayer
 from pensieve_ppo.core.trace.simulator import TraceSimulator
 from pensieve_ppo.core.trace.loader import load_trace
 
@@ -42,8 +45,7 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
     def setUpClass(cls):
         """Load shared test data."""
         cls.original_cwd = os.getcwd()
-        src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
-        os.chdir(src_dir)
+        os.chdir(SRC_DIR)
 
         # Load using src for original Environment (needs raw lists)
         cls.all_cooked_time, cls.all_cooked_bw, cls.all_file_names = \
@@ -51,7 +53,6 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
 
         # Load using our loaders for our implementation
         cls.trace_data = load_trace(TEST_TRACES)
-        cls.video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS, TOTAL_VIDEO_CHUNKS)
 
     @classmethod
     def tearDownClass(cls):
@@ -60,7 +61,10 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
 
     def setUp(self):
         """Create fresh instances for each test."""
-        video_player = VideoPlayer(self.video_data)
+        video_player = QualityLadderVideoPlayer(
+            video_size_file_prefix=VIDEO_SIZE_FILE,
+            max_chunks=TOTAL_VIDEO_CHUNKS,
+        )
         trace_simulator = TraceSimulator(self.trace_data)
         self.simulator = Simulator(video_player, trace_simulator)
 
@@ -94,13 +98,13 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
 
     def test_single_step_quality_0(self):
         """Test single step with quality 0."""
-        result = self.simulator.step(0)
+        result = self.simulator.step(QualityLadderRequest(0))
         env_result = self.fixed_env.get_video_chunk(0)
         self._compare_results(result, env_result)
 
     def test_single_step_quality_5(self):
         """Test single step with highest quality."""
-        result = self.simulator.step(5)
+        result = self.simulator.step(QualityLadderRequest(5))
         env_result = self.fixed_env.get_video_chunk(5)
         self._compare_results(result, env_result)
 
@@ -109,7 +113,7 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
         for quality in range(BITRATE_LEVELS):
             with self.subTest(quality=quality):
                 self.setUp()
-                result = self.simulator.step(quality)
+                result = self.simulator.step(QualityLadderRequest(quality))
                 env_result = self.fixed_env.get_video_chunk(quality)
                 self._compare_results(result, env_result, f"Quality {quality}: ")
 
@@ -119,7 +123,7 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
 
         for i, quality in enumerate(qualities):
             with self.subTest(step=i, quality=quality):
-                result = self.simulator.step(quality)
+                result = self.simulator.step(QualityLadderRequest(quality))
                 env_result = self.fixed_env.get_video_chunk(quality)
                 self._compare_results(result, env_result, f"Step {i}: ")
 
@@ -128,7 +132,7 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
         for i in range(TOTAL_VIDEO_CHUNKS):
             quality = i % BITRATE_LEVELS
             with self.subTest(chunk=i, quality=quality):
-                result = self.simulator.step(quality)
+                result = self.simulator.step(QualityLadderRequest(quality))
                 env_result = self.fixed_env.get_video_chunk(quality)
                 self._compare_results(result, env_result, f"Chunk {i}: ")
 
@@ -142,7 +146,7 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
             for chunk in range(TOTAL_VIDEO_CHUNKS):
                 quality = (session + chunk) % BITRATE_LEVELS
                 with self.subTest(session=session, chunk=chunk):
-                    result = self.simulator.step(quality)
+                    result = self.simulator.step(QualityLadderRequest(quality))
                     env_result = self.fixed_env.get_video_chunk(quality)
                     self._compare_results(result, env_result,
                                           f"Session {session}, Chunk {chunk}: ")
@@ -151,7 +155,7 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
         """Test buffer overflow scenario with low quality chunks."""
         for i in range(20):
             with self.subTest(step=i):
-                result = self.simulator.step(0)
+                result = self.simulator.step(QualityLadderRequest(0))
                 env_result = self.fixed_env.get_video_chunk(0)
                 self._compare_results(result, env_result, f"Step {i}: ")
 
@@ -159,7 +163,7 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
         """Test that internal states remain consistent with fixed_env."""
         for i in range(10):
             quality = i % BITRATE_LEVELS
-            self.simulator.step(quality)
+            self.simulator.step(QualityLadderRequest(quality))
             self.fixed_env.get_video_chunk(quality)
 
             with self.subTest(step=i):
@@ -179,7 +183,7 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
         """Test that mahimahi pointer states match fixed_env."""
         for i in range(15):
             quality = (i * 2) % BITRATE_LEVELS
-            self.simulator.step(quality)
+            self.simulator.step(QualityLadderRequest(quality))
             self.fixed_env.get_video_chunk(quality)
 
             trace_sim = self.simulator.trace_simulator
@@ -200,17 +204,17 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
         """Test behavior at video end boundary matches fixed_env."""
         # Play through video to last chunk
         for _ in range(TOTAL_VIDEO_CHUNKS - 1):
-            self.simulator.step(3)
+            self.simulator.step(QualityLadderRequest(3))
             self.fixed_env.get_video_chunk(3)
 
         # Last chunk
-        result = self.simulator.step(3)
+        result = self.simulator.step(QualityLadderRequest(3))
         env_result = self.fixed_env.get_video_chunk(3)
         self.assertTrue(result.end_of_video)
         self._compare_results(result, env_result, "Last chunk: ")
 
         # First chunk of next video
-        result = self.simulator.step(0)
+        result = self.simulator.step(QualityLadderRequest(0))
         env_result = self.fixed_env.get_video_chunk(0)
         self._compare_results(result, env_result, "Next video first chunk: ")
 
@@ -218,7 +222,7 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
         """Test downloading large chunks (highest quality) matches fixed_env."""
         for i in range(5):
             with self.subTest(step=i):
-                result = self.simulator.step(5)
+                result = self.simulator.step(QualityLadderRequest(5))
                 env_result = self.fixed_env.get_video_chunk(5)
                 self._compare_results(result, env_result, f"Step {i}: ")
 
@@ -227,7 +231,7 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
         qualities = [0, 5, 0, 5, 2, 4, 1, 3, 5, 0]
         for i, quality in enumerate(qualities):
             with self.subTest(step=i, quality=quality):
-                result = self.simulator.step(quality)
+                result = self.simulator.step(QualityLadderRequest(quality))
                 env_result = self.fixed_env.get_video_chunk(quality)
                 self._compare_results(result, env_result, f"Step {i}: ")
 
@@ -236,7 +240,7 @@ class TestSimulatorMatchesFixedEnv(unittest.TestCase):
         for i in range(100):
             quality = i % BITRATE_LEVELS
             with self.subTest(step=i):
-                result = self.simulator.step(quality)
+                result = self.simulator.step(QualityLadderRequest(quality))
                 env_result = self.fixed_env.get_video_chunk(quality)
                 self._compare_results(result, env_result, f"Step {i}: ")
 
@@ -252,8 +256,7 @@ class TestTraceSimulatorMatchesOriginal(unittest.TestCase):
     def setUpClass(cls):
         """Load trace data."""
         cls.original_cwd = os.getcwd()
-        src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
-        os.chdir(src_dir)
+        os.chdir(SRC_DIR)
 
         # Load using src for original Environment (needs raw lists)
         cls.all_cooked_time, cls.all_cooked_bw, cls.all_file_names = \
@@ -303,8 +306,7 @@ class TestDownloadSimulationMatchesFixedEnv(unittest.TestCase):
     def setUpClass(cls):
         """Load test data."""
         cls.original_cwd = os.getcwd()
-        src_dir = os.path.join(os.path.dirname(__file__), '..', 'src')
-        os.chdir(src_dir)
+        os.chdir(SRC_DIR)
 
         # Load using src for original Environment (needs raw lists)
         cls.all_cooked_time, cls.all_cooked_bw, cls.all_file_names = \
@@ -312,7 +314,7 @@ class TestDownloadSimulationMatchesFixedEnv(unittest.TestCase):
 
         # Load using our loaders
         cls.trace_data = load_trace(TEST_TRACES)
-        cls.video_data = load_video_size(VIDEO_SIZE_FILE, BITRATE_LEVELS, TOTAL_VIDEO_CHUNKS)
+        cls.video_size_file_prefix = VIDEO_SIZE_FILE
 
     @classmethod
     def tearDownClass(cls):
@@ -321,7 +323,10 @@ class TestDownloadSimulationMatchesFixedEnv(unittest.TestCase):
 
     def test_download_simulation_exact_match(self):
         """Test delay, buffer, and rebuffer exactly match fixed_env."""
-        video_player = VideoPlayer(self.video_data)
+        video_player = QualityLadderVideoPlayer(
+            video_size_file_prefix=self.video_size_file_prefix,
+            max_chunks=TOTAL_VIDEO_CHUNKS,
+        )
         trace_sim = TraceSimulator(self.trace_data)
         simulator = Simulator(video_player, trace_sim)
 
@@ -333,7 +338,7 @@ class TestDownloadSimulationMatchesFixedEnv(unittest.TestCase):
 
         for i in range(20):
             quality = i % BITRATE_LEVELS
-            result = simulator.step(quality)
+            result = simulator.step(QualityLadderRequest(quality))
             env_result = fixed_env.get_video_chunk(quality)
             delay, _, buffer_size, rebuf = env_result[:4]
 
