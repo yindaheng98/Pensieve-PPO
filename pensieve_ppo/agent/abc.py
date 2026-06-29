@@ -16,7 +16,7 @@ from ..gym import State
 
 
 @dataclass(frozen=True)
-class Decision:
+class ActionDecision:
     """Base agent decision containing the video chunk request action."""
     action: VideoChunkRequest
 
@@ -63,7 +63,7 @@ class AbstractAgent(ABC):
     """
 
     @abstractmethod
-    def select_action(self, state: State) -> Decision:
+    def select_action(self, state: State) -> ActionDecision:
         """Select an action for a given state.
 
         Args:

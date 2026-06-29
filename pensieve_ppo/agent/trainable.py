@@ -18,7 +18,7 @@ import torch
 if TYPE_CHECKING:
     from torch.utils.tensorboard import SummaryWriter
 
-from .abc import AbstractAgent, Decision
+from .abc import AbstractAgent, ActionDecision
 from ..gym import State
 
 
@@ -45,13 +45,13 @@ class Step:
 
     Attributes:
         state: State observation (type depends on observer, e.g., RLState for RL agents).
-        decision: Raw agent decision used to step the environment.
+        action: Raw agent action decision used to step the environment.
         reward: Reward received from the environment.
         step: Step index within the trajectory (0-indexed).
         done: Whether the episode terminated or was truncated.
     """
     state: State
-    decision: Decision
+    action: ActionDecision
     reward: float
     step: int
     done: bool
@@ -83,7 +83,7 @@ class AbstractTrainableAgent(AbstractAgent):
     """
 
     @abstractmethod
-    def select_action_for_training(self, state: State) -> Decision:
+    def select_action_for_training(self, state: State) -> ActionDecision:
         """Select an action using Gumbel-softmax sampling for exploration.
 
         This implements the action selection strategy used in the original
