@@ -1,22 +1,15 @@
 """Quality ladder video player implementation."""
 
-from dataclasses import dataclass
 from typing import List, Optional
 
-from ..player import VideoChunkRequest, VideoPlayer
-from .abc import QualityLadderLoader
+from ..core.video.player import VideoPlayer
+from .abc import QualityLadderLoader, QualityLadderRequest
 from .envivio import load_envivio_video_size
 
 
 LOAD_VIDEO_SIZE: dict[str, QualityLadderLoader] = {
     "envivio": load_envivio_video_size,
 }
-
-
-@dataclass(frozen=True)
-class QualityLadderRequest(VideoChunkRequest):
-    """Request for a video chunk at a quality ladder level."""
-    level: int
 
 
 class QualityLadderVideoPlayer(VideoPlayer):

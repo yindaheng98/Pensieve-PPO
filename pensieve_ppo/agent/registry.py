@@ -5,7 +5,6 @@ from typing import Optional, Type, Dict
 
 
 from ..core.video import VideoPlayer
-from ..core.video.quality_ladder import QualityLadderVideoPlayer
 from ..gym import ABREnv, AbstractABRStateObserver
 from ..gym.combinations import (
     create_env_with_class,
@@ -33,8 +32,8 @@ def register(
     name: str,
     agent_cls: Type[AbstractAgent],
     observer_cls: Type[AbstractABRStateObserver],
+    player_cls: Type[VideoPlayer],
     trainable_agent_cls: Optional[Type[AbstractTrainableAgent]] = None,
-    player_cls: Type[VideoPlayer] = QualityLadderVideoPlayer,
 ) -> None:
     """Register an agent with its associated trainable agent and observer classes.
 
