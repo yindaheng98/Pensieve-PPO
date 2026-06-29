@@ -45,15 +45,13 @@ class Step:
 
     Attributes:
         state: State observation (type depends on observer, e.g., RLState for RL agents).
-        action: Action (one-hot encoded as List[int]).
-        action_prob: Action probability distribution from the agent.
+        decision: Raw agent decision used to step the environment.
         reward: Reward received from the environment.
         step: Step index within the trajectory (0-indexed).
         done: Whether the episode terminated or was truncated.
     """
     state: State
-    action: List[int]
-    action_prob: List[float]
+    decision: Decision
     reward: float
     step: int
     done: bool
