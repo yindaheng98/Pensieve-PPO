@@ -3,7 +3,7 @@
 This module provides the base classes and implementations for RL agents.
 """
 
-from .abc import AbstractAgent
+from .abc import AbstractAgent, ActionDecision
 from .trainable import AbstractTrainableAgent, Step, TrainingBatch, TrainBatchInfo
 from .trainer import Trainer, EpochEndCallback, SaveModelCallback
 from .imitate import ImitationTrainer
@@ -17,6 +17,7 @@ from . import netllm
 
 __all__ = [
     'AbstractAgent',
+    'ActionDecision',
     'Step',
     'TrainingBatch',
     'TrainBatchInfo',
