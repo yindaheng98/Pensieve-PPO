@@ -11,14 +11,14 @@ Reference:
 
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Tuple, List, TYPE_CHECKING
+from typing import Any, Dict, List, TYPE_CHECKING
 
 import torch
 
 if TYPE_CHECKING:
     from torch.utils.tensorboard import SummaryWriter
 
-from .abc import AbstractAgent
+from .abc import AbstractAgent, Decision
 from ..gym import State
 
 
@@ -85,7 +85,7 @@ class AbstractTrainableAgent(AbstractAgent):
     """
 
     @abstractmethod
-    def select_action_for_training(self, state: State) -> Tuple[int, List[float]]:
+    def select_action_for_training(self, state: State) -> Decision:
         """Select an action using Gumbel-softmax sampling for exploration.
 
         This implements the action selection strategy used in the original
@@ -99,7 +99,7 @@ class AbstractTrainableAgent(AbstractAgent):
             state: Input state.
 
         Returns:
-            Tuple of (selected_action_index, action_probabilities).
+            Selected training decision object.
         """
         pass
 
