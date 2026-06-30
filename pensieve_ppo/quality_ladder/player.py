@@ -37,20 +37,20 @@ class QualityLadderVideoPlayer(VideoPlayer):
     def get_chunk_quality(
         self,
         chunk_request: QualityLadderRequest,
-        chunk_idx: Optional[int] = None,
+        chunk_idx: int,
     ) -> float:
         """Get the actual quality level for a chunk request."""
         return float(
             self.video_quality[
                 chunk_request.level,
-                chunk_idx or self.video_chunk_counter,
+                chunk_idx,
             ]
         )
 
     def get_chunk_size(
         self,
         chunk_request: QualityLadderRequest,
-        chunk_idx: Optional[int] = None,
+        chunk_idx: int,
     ) -> int:
         """Get the size of current chunk for a video chunk request.
 
@@ -59,7 +59,7 @@ class QualityLadderVideoPlayer(VideoPlayer):
         return int(
             self.video_size[
                 chunk_request.level,
-                chunk_idx or self.video_chunk_counter,
+                chunk_idx,
             ]
         )
 
@@ -68,11 +68,13 @@ class QualityLadderVideoPlayer(VideoPlayer):
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L152-L154
         """
-        return self.video_size[:, chunk_idx or self.video_chunk_counter].tolist()
+        chunk_idx = self.video_chunk_counter if chunk_idx is None else chunk_idx
+        return self.video_size[:, chunk_idx].tolist()
 
     def get_chunk_qualities(self, chunk_idx: Optional[int] = None) -> List[float]:
         """Get qualities of a chunk at all quality levels."""
-        return self.video_quality[:, chunk_idx or self.video_chunk_counter].tolist()
+        chunk_idx = self.video_chunk_counter if chunk_idx is None else chunk_idx
+        return self.video_quality[:, chunk_idx].tolist()
 
     @property
     def bitrate_levels(self) -> int:
