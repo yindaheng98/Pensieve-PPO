@@ -36,9 +36,9 @@ class StepResult:
     buffer_size: float                  # [sec] Current buffer size
     rebuffer: float                     # [sec] Rebuffering/stall time
     video_chunk_size: int               # [bytes] Size of downloaded chunk
+    video_chunk_quality: float          # Resolved quality value of downloaded chunk
     end_of_video: bool                  # Whether video has ended
     video_chunk_remain: int             # Number of remaining chunks
-    video_chunk_quality: float          # Resolved quality value of downloaded chunk
 
 
 class Simulator:
@@ -118,7 +118,7 @@ class Simulator:
             buffer_size=return_buffer_size / MILLISECONDS_IN_SECOND,  # [millisec] -> [sec]
             rebuffer=rebuf / MILLISECONDS_IN_SECOND,                  # [millisec] -> [sec]
             video_chunk_size=video_chunk_size,                      # [bytes]
+            video_chunk_quality=video_chunk_quality,
             end_of_video=end_of_video,
             video_chunk_remain=video_chunk_remain,
-            video_chunk_quality=video_chunk_quality,
         )
