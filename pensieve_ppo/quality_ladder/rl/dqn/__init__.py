@@ -17,7 +17,7 @@ Reference:
 from .agent import DQNAgent
 from .model import QNetwork
 from ....quality_ladder import QualityLadderVideoPlayer
-from ...registry import register
+from ....agent.registry import register
 from ..observer import RLABRStateObserver
 
 # Register DQN agent

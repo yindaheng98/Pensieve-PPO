@@ -100,8 +100,8 @@ class NetLLMAgent(AbstractNetLLMAgent):
         _rank: LoRA rank (-1 for full fine-tuning, >0 for LoRA).
 
     Example:
-        >>> from pensieve_ppo.agent.netllm import NetLLMAgent
-        >>> from pensieve_ppo.agent.netllm.models import GPT2Model
+        >>> from pensieve_ppo.quality_ladder.netllm import NetLLMAgent
+        >>> from pensieve_ppo.quality_ladder.netllm.models import GPT2Model
         >>>
         >>> # Create PLM backbone
         >>> plm = GPT2Model.from_pretrained('gpt2')

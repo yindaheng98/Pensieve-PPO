@@ -14,7 +14,7 @@ from .agent_oracle import OracleMPCAgent
 from .observer import MPCABRStateObserver, MPCState
 from .observer_oracle import OracleMPCABRStateObserver, OracleMPCState
 from ...quality_ladder import QualityLadderVideoPlayer
-from ..registry import register
+from ...agent.registry import register
 
 # Register MPC agents
 register("mpc", MPCAgent, MPCABRStateObserver, QualityLadderVideoPlayer)

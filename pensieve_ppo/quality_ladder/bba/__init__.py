@@ -9,7 +9,7 @@ Reference:
 from .agent import BBAAgent
 from .observer import BBAStateObserver, BBAState
 from ...quality_ladder import QualityLadderVideoPlayer
-from ..registry import register
+from ...agent.registry import register
 
 # Register BBA agent
 register("bba", BBAAgent, BBAStateObserver, QualityLadderVideoPlayer)

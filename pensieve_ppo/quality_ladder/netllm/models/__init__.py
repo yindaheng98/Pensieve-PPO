@@ -47,7 +47,7 @@ from .t5agent import T5NetLLMAgent, T5LoRANetLLMAgent
 
 # Register NetLLM agents
 from ....quality_ladder import QualityLadderVideoPlayer
-from ...registry import register
+from ....agent.registry import register
 from ..observer import NetLLMABRStateObserver
 
 register("netllm-gpt2", GPT2NetLLMAgent, NetLLMABRStateObserver, QualityLadderVideoPlayer)

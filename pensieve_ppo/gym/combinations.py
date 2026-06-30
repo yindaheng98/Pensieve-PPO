@@ -64,7 +64,7 @@ def create_env_with_class(
         Configured ABREnv instance.
 
     Example:
-        >>> from pensieve_ppo.agent.rl import RLABRStateObserver
+        >>> from pensieve_ppo.quality_ladder.rl import RLABRStateObserver
         >>> env = create_env_with_class(
         ...     QualityLadderVideoPlayer,
         ...     RLABRStateObserver,
@@ -168,8 +168,8 @@ def create_imitation_env_with_class(
         Configured ABREnv instance with ImitationObserver.
 
     Example:
-        >>> from pensieve_ppo.agent.rl import RLABRStateObserver
-        >>> from pensieve_ppo.agent.bba import BBAStateObserver
+        >>> from pensieve_ppo.quality_ladder.rl import RLABRStateObserver
+        >>> from pensieve_ppo.quality_ladder.bba import BBAStateObserver
         >>> env = create_imitation_env_with_class(
         ...     QualityLadderVideoPlayer,
         ...     RLABRStateObserver,

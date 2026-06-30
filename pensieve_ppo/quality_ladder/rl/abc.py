@@ -22,7 +22,7 @@ import numpy as np
 
 from ...core.video import VideoChunkRequest
 from ...quality_ladder import QualityLadderActionDecision, QualityLadderRequest
-from ..trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
+from ...agent.trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
 from .observer import RLState
 
 

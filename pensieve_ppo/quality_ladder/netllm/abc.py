@@ -26,7 +26,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from ..trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
+from ...agent.trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
 from ...core.video import VideoChunkRequest
 from ...quality_ladder import QualityLadderRequest
 from ..rl.abc import RLActionDecision

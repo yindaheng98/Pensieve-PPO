@@ -14,7 +14,7 @@ from typing import  Optional, Tuple
 
 from ...core.video import VideoChunkRequest
 from ...quality_ladder import QualityLadderRequest
-from ..abc import AbstractAgent
+from ...agent.abc import AbstractAgent
 from ..rl.abc import RLActionDecision
 from .observer_oracle import OracleMPCState
 

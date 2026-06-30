@@ -15,7 +15,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
-from ... import TrainBatchInfo
+from ....agent import TrainBatchInfo
 from .. import AbstractRLAgent
 from ..abc import RLActionDecision
 from ..observer import RLState

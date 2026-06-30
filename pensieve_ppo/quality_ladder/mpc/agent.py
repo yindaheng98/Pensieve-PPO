@@ -12,7 +12,7 @@ import logging
 from typing import List, Optional, Tuple
 
 
-from ..abc import AbstractAgent
+from ...agent.abc import AbstractAgent
 from ...core.video import VideoChunkRequest
 from ...quality_ladder import QualityLadderRequest
 from ..rl.abc import RLActionDecision

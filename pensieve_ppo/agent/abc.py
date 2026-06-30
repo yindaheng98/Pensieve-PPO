@@ -33,7 +33,7 @@ class AbstractAgent(ABC):
         State object. However, in some special cases, an Agent may need to maintain
         its own "internal state".
 
-        For example, in NetLLM (see `pensieve_ppo/agent/netllm`), the large language
+        For example, in NetLLM (see `pensieve_ppo/quality_ladder/netllm`), the large language
         model needs to cache embeddings of historical states to avoid redundant
         computation. Since the embedding model is a trainable part of the policy,
         it cannot be moved into the Observer. In such cases, the Agent must maintain
@@ -57,8 +57,8 @@ class AbstractAgent(ABC):
         - Cons: If the same state appears at distant timesteps, the embedding must be
           recomputed rather than retrieved from cache.
 
-        Note: The agents in `pensieve_ppo/agent/rl/`, `pensieve_ppo/agent/mpc/`, and
-        `pensieve_ppo/agent/bba/` are all stateless - they do not maintain any internal
+        Note: The agents in `pensieve_ppo/quality_ladder/rl/`, `pensieve_ppo/quality_ladder/mpc/`, and
+        `pensieve_ppo/quality_ladder/bba/` are all stateless - they do not maintain any internal
         "internal state" between `select_action` calls.
     """
 
@@ -88,7 +88,7 @@ class AbstractAgent(ABC):
         Subclasses may accept a pre-built initial request. If no request is
         provided, subclasses decide whether and how to create a default request.
 
-        For "stateful" agents (e.g., NetLLM in `pensieve_ppo/agent/netllm/`),
+        For "stateful" agents (e.g., NetLLM in `pensieve_ppo/quality_ladder/netllm/`),
         this method should clear embedding caches and other internal buffers
         before returning the initial request.
 
