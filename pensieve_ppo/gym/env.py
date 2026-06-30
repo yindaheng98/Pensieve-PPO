@@ -151,6 +151,8 @@ class ABREnv(gym.Env):
         reset_time_stamp = options.get('reset_time_stamp', True)
         initial_chunk_request = options['initial_chunk_request']
 
+        self.simulator.reset()
+
         if reset_time_stamp:
             self.time_stamp = 0
 
