@@ -114,8 +114,7 @@ def create_imitation_env(
 
     Args:
         video_player: Pre-configured video player instance.
-        student_observer: Observer for the student agent. Its observation_space
-                         will be used as the environment's observation space.
+        student_observer: Observer for the student agent.
         teacher_observer: Observer for the teacher agent. Used to generate
                          states for teacher's decision making.
         trace_folder: Path to folder containing network trace files.

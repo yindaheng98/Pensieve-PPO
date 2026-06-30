@@ -26,8 +26,6 @@ def create_rl_env_with_observer_cls(
     smooth_penalty: float = SMOOTH_PENALTY,
     state_history_len: int = S_LEN,
     buffer_norm_factor: float = BUFFER_NORM_FACTOR,
-    # Env parameters
-    initial_level: int = 0,
     **kwargs,
 ) -> ABREnv:
     """Create an ABREnv with a custom RLABRStateObserver subclass.
@@ -45,7 +43,6 @@ def create_rl_env_with_observer_cls(
         smooth_penalty: Penalty coefficient for quality changes (default: 1.0).
         state_history_len: Number of past observations in state (default: 8).
         buffer_norm_factor: Normalization factor for buffer size (default: 10.0).
-        initial_level: Initial quality level index on reset.
         **kwargs: Additional arguments passed to create_env/create_simulator.
 
     Returns:

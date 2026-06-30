@@ -34,8 +34,6 @@ Example:
 from dataclasses import dataclass
 from typing import Any, Dict, Tuple
 
-from gymnasium import spaces
-
 from .env import AbstractABRStateObserver, ABREnv, State
 from ..core.simulator import StepResult
 from ..core.video import VideoChunkRequest
@@ -67,9 +65,7 @@ class ImitationObserver(AbstractABRStateObserver):
     - student_observer: Provides state for training and computes rewards
     - teacher_observer: Provides state for teacher's decision making
 
-    The observation_space is taken from the student_observer since that's
-    what will be used for training. The reward is also computed by the
-    student_observer.
+    The reward is computed by the student_observer.
 
     This design allows any observer to be used as either student or teacher,
     without requiring observers to inherit from each other.
@@ -87,25 +83,12 @@ class ImitationObserver(AbstractABRStateObserver):
         """Initialize the imitation observer.
 
         Args:
-            student_observer: Observer for the student agent. Its observation_space
-                            will be used as the environment's observation space.
+            student_observer: Observer for the student agent.
             teacher_observer: Observer for the teacher agent. Used only to generate
                            states for teacher's decision making.
         """
         self.student_observer = student_observer
         self.teacher_observer = teacher_observer
-
-    @property
-    def observation_space(self) -> spaces.Box:
-        """Gymnasium observation space for the state.
-
-        Returns the student's observation space since that's what will be
-        used for training.
-
-        Returns:
-            Gymnasium Box space from the student observer.
-        """
-        return self.student_observer.observation_space
 
     def reset(
         self,

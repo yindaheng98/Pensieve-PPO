@@ -94,12 +94,6 @@ class VideoPlayer(ABC):
 
     @property
     @abstractmethod
-    def bitrate_levels(self) -> int:
-        """Number of available bitrate levels."""
-        ...
-
-    @property
-    @abstractmethod
     def total_chunks(self) -> int:
         """Total number of video chunks."""
         ...

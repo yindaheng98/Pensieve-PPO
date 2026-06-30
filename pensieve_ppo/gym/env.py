@@ -13,7 +13,6 @@ from typing import Any, Dict, Optional, Tuple
 
 import gymnasium as gym
 import numpy as np
-from gymnasium import spaces
 
 from ..core.simulator import Simulator, StepResult
 from ..core.video import VideoChunkRequest
@@ -43,16 +42,6 @@ class AbstractABRStateObserver(ABC):
     Observer construction is handled by factory functions using explicit
     observer kwargs.
     """
-
-    @property
-    @abstractmethod
-    def observation_space(self) -> spaces.Box:
-        """Gymnasium observation space for the state.
-
-        Returns:
-            Gymnasium Box space defining the observation shape and bounds.
-        """
-        pass
 
     @abstractmethod
     def reset(
@@ -98,18 +87,6 @@ class ABREnv(gym.Env):
     variable bandwidth. The agent must select bitrate levels to maximize
     video quality while minimizing rebuffering and bitrate oscillations.
 
-    Observation Space:
-        Box(S_INFO, state_history_len) containing:
-        - [0, :] Last quality normalized by max quality
-        - [1, :] Buffer size normalized by buffer_norm_factor
-        - [2, :] Throughput (chunk_size / delay) in Mbps
-        - [3, :] Delay normalized by buffer_norm_factor
-        - [4, :bitrate_levels] Next chunk sizes at each bitrate level (in MB)
-        - [5, :] Remaining chunks normalized by total_chunk_cap
-
-    Action Space:
-        Discrete(bitrate_levels) - select bitrate level
-
     Reward:
         quality - rebuf_penalty * rebuffer - smooth_penalty * |quality_change|
     """
@@ -140,10 +117,6 @@ class ABREnv(gym.Env):
 
         # timestamp in ms for logging purposes
         self.time_stamp = 0.0
-
-        # Define observation and action spaces
-        self.observation_space = observer.observation_space
-        self.action_space = spaces.Discrete(simulator.video_player.bitrate_levels)
 
     def reset(
         self,
