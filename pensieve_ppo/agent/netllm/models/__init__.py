@@ -46,22 +46,23 @@ from .optagent import OPTNetLLMAgent, OPTLoRANetLLMAgent
 from .t5agent import T5NetLLMAgent, T5LoRANetLLMAgent
 
 # Register NetLLM agents
+from ....quality_ladder import QualityLadderVideoPlayer
 from ...registry import register
 from ..observer import NetLLMABRStateObserver
 
-register("netllm-gpt2", GPT2NetLLMAgent, NetLLMABRStateObserver)
-register("netllm-llama", LlamaNetLLMAgent, NetLLMABRStateObserver)
-register("netllm-mistral", MistralNetLLMAgent, NetLLMABRStateObserver)
-register("netllm-opt", OPTNetLLMAgent, NetLLMABRStateObserver)
-register("netllm-t5", T5NetLLMAgent, NetLLMABRStateObserver)
+register("netllm-gpt2", GPT2NetLLMAgent, NetLLMABRStateObserver, QualityLadderVideoPlayer)
+register("netllm-llama", LlamaNetLLMAgent, NetLLMABRStateObserver, QualityLadderVideoPlayer)
+register("netllm-mistral", MistralNetLLMAgent, NetLLMABRStateObserver, QualityLadderVideoPlayer)
+register("netllm-opt", OPTNetLLMAgent, NetLLMABRStateObserver, QualityLadderVideoPlayer)
+register("netllm-t5", T5NetLLMAgent, NetLLMABRStateObserver, QualityLadderVideoPlayer)
 
 # Register LoRA NetLLM agents
 # Reference: https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/run_plm.py#L181-L182
-register("netllm-gpt2-lora", GPT2LoRANetLLMAgent, NetLLMABRStateObserver)
-register("netllm-llama-lora", LlamaLoRANetLLMAgent, NetLLMABRStateObserver)
-register("netllm-mistral-lora", MistralLoRANetLLMAgent, NetLLMABRStateObserver)
-register("netllm-opt-lora", OPTLoRANetLLMAgent, NetLLMABRStateObserver)
-register("netllm-t5-lora", T5LoRANetLLMAgent, NetLLMABRStateObserver)
+register("netllm-gpt2-lora", GPT2LoRANetLLMAgent, NetLLMABRStateObserver, QualityLadderVideoPlayer)
+register("netllm-llama-lora", LlamaLoRANetLLMAgent, NetLLMABRStateObserver, QualityLadderVideoPlayer)
+register("netllm-mistral-lora", MistralLoRANetLLMAgent, NetLLMABRStateObserver, QualityLadderVideoPlayer)
+register("netllm-opt-lora", OPTLoRANetLLMAgent, NetLLMABRStateObserver, QualityLadderVideoPlayer)
+register("netllm-t5-lora", T5LoRANetLLMAgent, NetLLMABRStateObserver, QualityLadderVideoPlayer)
 
 __all__ = [
     'GPT2Model',

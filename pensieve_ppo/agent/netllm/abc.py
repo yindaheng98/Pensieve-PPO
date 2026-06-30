@@ -27,6 +27,9 @@ import torch
 import torch.nn as nn
 
 from ..trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
+from ...core.video import VideoChunkRequest
+from ...quality_ladder import QualityLadderRequest
+from ..rl.abc import RLActionDecision
 from .observer import NetLLMState
 
 
@@ -231,17 +234,19 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
         """
         pass
 
-    @abstractmethod
-    def reset(self) -> None:
-        """Reset internal state for new episode.
+    def reset(
+        self,
+        initial_chunk_request: Optional[VideoChunkRequest] = None,
+    ) -> VideoChunkRequest:
+        """Reset internal state and return the initial request for new episode.
 
         This method should clear any internal buffers (e.g., embedding deques)
-        used for autoregressive inference.
+        used for autoregressive inference before returning the initial request.
 
         Reference:
             https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/models/rl_policy.py#L217-L224
         """
-        pass
+        return super().reset(initial_chunk_request or QualityLadderRequest(0))
 
     @abstractmethod
     def get_params(self) -> Any:
@@ -265,7 +270,7 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
     # AbstractTrainableAgent Interface Implementation
     # =========================================================================
 
-    def select_action(self, state: NetLLMState) -> Tuple[int, List[float]]:
+    def select_action(self, state: NetLLMState) -> RLActionDecision:
         """Select an action for inference using model.sample().
 
         This method implements the inference process from evaluate.py:
@@ -281,7 +286,7 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
             state: NetLLMState object containing raw data.
 
         Returns:
-            Tuple of (selected_action_index, action_probability_distribution).
+            Selected quality ladder action.
             Action probability is one-hot for NetLLM (argmax action selection).
         """
         # Convert numpy state to torch tensor with shape (1, 1, S_INFO, S_LEN)
@@ -306,9 +311,9 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
         action_prob = [0.0] * self.action_dim
         action_prob[action] = 1.0
 
-        return action, action_prob
+        return RLActionDecision.from_index(action, action_prob)
 
-    def select_action_for_training(self, state: NetLLMState) -> Tuple[int, List[float]]:
+    def select_action_for_training(self, state: NetLLMState) -> RLActionDecision:
         """Select an action for training.
 
         For NetLLM, training uses offline datasets with supervised learning,
@@ -318,7 +323,7 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
             state: NetLLMState object containing raw data.
 
         Returns:
-            Tuple of (selected_action_index, action_probability_distribution).
+            Selected quality ladder action.
             Action probability is one-hot for NetLLM (argmax action selection).
         """
         return self.select_action(state)

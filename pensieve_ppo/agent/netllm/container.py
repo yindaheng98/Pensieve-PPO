@@ -27,6 +27,7 @@ import torch
 import torch.nn as nn
 
 from .abc import AbstractNetLLMAgent
+from ...core.video import VideoChunkRequest
 from .models.rl_policy import OfflineRLPolicy
 from .models.state_encoder import EncoderNetwork
 from .models.low_rank import peft_model
@@ -325,8 +326,11 @@ class NetLLMAgent(AbstractNetLLMAgent):
         """
         return self._policy.sample(state, target_return, timestep)
 
-    def reset(self) -> None:
-        """Reset internal state for new episode.
+    def reset(
+        self,
+        initial_chunk_request: Optional[VideoChunkRequest] = None,
+    ) -> VideoChunkRequest:
+        """Reset internal state and return the initial request for new episode.
 
         Clears the embedding deques in OfflineRLPolicy for autoregressive inference.
 
@@ -335,6 +339,7 @@ class NetLLMAgent(AbstractNetLLMAgent):
             https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L68-L70
         """
         self._policy.clear_dq()
+        return super().reset(initial_chunk_request)
 
     def get_params(self) -> Any:
         """Get the current network parameters.

@@ -30,6 +30,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 from ..rl import RLABRStateObserver, RLState
 from ..rl.observer import S_LEN
 from ...core.simulator import StepResult
+from ...quality_ladder import QualityLadderRequest
 from ...gym import ABREnv
 
 
@@ -112,11 +113,6 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/test.py
     """
 
-    @classmethod
-    def get_constructor_args(cls) -> list[str]:
-        """Get constructor argument names accepted by the observer factory."""
-        return RLABRStateObserver.get_constructor_args() + ["target_return"]
-
     def __init__(
         self,
         *args,
@@ -196,7 +192,7 @@ class NetLLMABRStateObserver(RLABRStateObserver):
     def observe(
         self,
         env: ABREnv,
-        bit_rate: int,
+        chunk_request: QualityLadderRequest,
         result: StepResult,
         process_reward_fn: Optional[Callable[[float], float]] = None,
     ) -> Tuple[NetLLMState, float, Dict[str, Any]]:
@@ -219,7 +215,7 @@ class NetLLMABRStateObserver(RLABRStateObserver):
 
         Args:
             env: The ABREnv instance to observe.
-            bit_rate: Current bitrate level selected.
+            chunk_request: Current video chunk request.
             result: Result from simulator.step().
             process_reward_fn: Optional function to process reward before
                 updating return-to-go for inference.
@@ -228,6 +224,9 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         Returns:
             Tuple of (NetLLMState, reward, info_dict).
         """
+        # bit_rate is the bitrate level index, not the actual bitrate value.
+        bit_rate = chunk_request.level
+
         # Step 1: Compute raw reward
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L260-L262
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L39-L41
