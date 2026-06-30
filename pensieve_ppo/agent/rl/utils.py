@@ -49,14 +49,10 @@ def get_initial_chunk_quality(env: ABREnv, bitrate_level: int) -> float:
     )
 
 
-def get_chunk_quality(
-    env: ABREnv,
-    result: StepResult,
-    bitrate_level: int,
-) -> float:
-    """Get one bitrate level's quality from the video player."""
+def get_initial_chunk_qualities(env: ABREnv) -> list[float]:
+    """Get all bitrate levels' qualities for the current initial chunk."""
     video_player = get_video_player(env)
-    return video_player.get_chunk_quality(QualityLadderRequest(bitrate_level), get_chunk_idx(env, result))
+    return video_player.get_chunk_qualities(video_player.video_chunk_counter)
 
 
 def get_chunk_qualities(env: ABREnv, result: StepResult) -> list[float]:
@@ -69,6 +65,13 @@ def get_last_chunk_qualities(env: ABREnv, result: StepResult) -> list[float]:
     """Get all bitrate levels' qualities for the chunk before the downloaded one."""
     video_player = get_video_player(env)
     return video_player.get_chunk_qualities(get_last_chunk_idx(env, result))
+
+
+def get_next_chunk_qualities(env: ABREnv, result: StepResult) -> list[float]:
+    """Get all bitrate levels' qualities for the next chunk."""
+    video_player = get_video_player(env)
+    chunk_idx = get_next_chunk_idx(env, result)
+    return video_player.get_chunk_qualities(chunk_idx)
 
 
 def get_next_chunk_sizes(env: ABREnv, result: StepResult) -> list[int]:

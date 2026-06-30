@@ -9,10 +9,13 @@ Reference:
 
 import itertools
 import logging
-from typing import List, Tuple
+from typing import  Optional, Tuple
 
 
+from ...core.video import VideoChunkRequest
+from ...quality_ladder import QualityLadderRequest
 from ..abc import AbstractAgent
+from ..rl.abc import RLActionDecision
 from .observer_oracle import OracleMPCState
 
 
@@ -82,6 +85,13 @@ class OracleMPCAgent(AbstractAgent):
         if kwargs:
             logging.warning(f"kwargs are ignored in OracleMPCAgent: {kwargs}")
 
+    def reset(
+        self,
+        initial_chunk_request: Optional[VideoChunkRequest] = None,
+    ) -> VideoChunkRequest:
+        """Reset stateless oracle MPC agent and return the initial request."""
+        return super().reset(initial_chunk_request or QualityLadderRequest(0))
+
     def compute_combo_reward(
         self,
         state: OracleMPCState,
@@ -146,7 +156,7 @@ class OracleMPCAgent(AbstractAgent):
 
         return reward
 
-    def select_action(self, state: OracleMPCState) -> Tuple[int, List[float]]:
+    def select_action(self, state: OracleMPCState) -> RLActionDecision:
         """Select an action using MPC algorithm with future bandwidth.
 
         This method iterates through all possible combinations of bitrate
@@ -164,7 +174,7 @@ class OracleMPCAgent(AbstractAgent):
                    methods for future prediction.
 
         Returns:
-            Tuple of (selected_action_index, action_probabilities).
+            Selected quality ladder action.
             The action_prob is a one-hot encoding since MPC is deterministic.
         """
         # Check if state is OracleState
@@ -232,4 +242,4 @@ class OracleMPCAgent(AbstractAgent):
         action_prob = [0.0] * self.action_dim
         action_prob[bit_rate] = 1.0
 
-        return bit_rate, action_prob
+        return RLActionDecision.from_index(bit_rate, action_prob)

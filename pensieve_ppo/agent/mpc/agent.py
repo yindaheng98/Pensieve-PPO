@@ -9,10 +9,13 @@ Reference:
 
 import itertools
 import logging
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 
 from ..abc import AbstractAgent
+from ...core.video import VideoChunkRequest
+from ...quality_ladder import QualityLadderRequest
+from ..rl.abc import RLActionDecision
 from .observer import MPCState
 
 
@@ -98,13 +101,17 @@ class MPCAgent(AbstractAgent):
         if kwargs:
             logging.warning(f"kwargs are ignored in MPCAgent: {kwargs}")
 
-    def reset(self) -> None:
-        """Reset the agent state for a new episode.
+    def reset(
+        self,
+        initial_chunk_request: Optional[VideoChunkRequest] = None,
+    ) -> VideoChunkRequest:
+        """Reset the agent state and return the initial request.
 
         Clears the bandwidth prediction error history.
         """
         self.past_errors = []
         self.past_bandwidth_ests = []
+        return super().reset(initial_chunk_request or QualityLadderRequest(0))
 
     def compute_harmonic_mean_bandwidth(self, state: MPCState) -> float:
         """Compute harmonic mean of past bandwidths.
@@ -227,7 +234,7 @@ class MPCAgent(AbstractAgent):
 
         return reward
 
-    def select_action(self, state: MPCState) -> Tuple[int, List[float]]:
+    def select_action(self, state: MPCState) -> RLActionDecision:
         """Select an action using MPC algorithm with predicted bandwidth.
 
         This method iterates through all possible combinations of bitrate
@@ -242,7 +249,7 @@ class MPCAgent(AbstractAgent):
                    video chunk information.
 
         Returns:
-            Tuple of (selected_action_index, action_probabilities).
+            Selected quality ladder action.
             The action_prob is a one-hot encoding since MPC is deterministic.
         """
         # Check if state is MPCState
@@ -280,7 +287,7 @@ class MPCAgent(AbstractAgent):
             # Return default action (lowest bitrate)
             action_prob = [0.0] * self.action_dim
             action_prob[0] = 1.0
-            return 0, action_prob
+            return RLActionDecision.from_index(0, action_prob)
 
         # Iterate over all possible combinations and find the best
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L182-L189
@@ -321,4 +328,4 @@ class MPCAgent(AbstractAgent):
         action_prob = [0.0] * self.action_dim
         action_prob[bit_rate] = 1.0
 
-        return bit_rate, action_prob
+        return RLActionDecision.from_index(bit_rate, action_prob)

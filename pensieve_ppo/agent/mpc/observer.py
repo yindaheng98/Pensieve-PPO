@@ -20,7 +20,9 @@ from ...core.simulator import StepResult
 from ...gym import ABREnv, State
 
 from ...core.trace import TraceSimulator
+from ...quality_ladder import QualityLadderRequest
 from ...core.video import VideoPlayer
+from ..rl.utils import get_initial_chunk_qualities, get_next_chunk_qualities
 
 
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/fixed_env_future_bandwidth.py#L8-L10
@@ -77,7 +79,7 @@ class MPCState(State):
         """
         if chunk_idx < 0 or chunk_idx >= self.video_player.total_chunks:
             return 0
-        return self.video_player.get_chunk_size(quality, chunk_idx)
+        return self.video_player.get_chunk_size(QualityLadderRequest(quality), chunk_idx)
 
     @property
     def video_chunk_counter(self) -> int:
@@ -126,13 +128,13 @@ class MPCABRStateObserver(RLABRStateObserver):
     3. Flexible composition via ImitationObserver for imitation learning
 
     Example for standalone MPC:
-        >>> observer = MPCABRStateObserver(levels_quality=VIDEO_BIT_RATE)
+        >>> observer = MPCABRStateObserver()
         >>> env = ABREnv(simulator=simulator, observer=observer)
 
     Example for imitation learning:
         >>> from pensieve_ppo.gym.imitate import ImitationObserver
-        >>> rl_observer = RLABRStateObserver(levels_quality=VIDEO_BIT_RATE)
-        >>> mpc_observer = MPCABRStateObserver(levels_quality=VIDEO_BIT_RATE)
+        >>> rl_observer = RLABRStateObserver()
+        >>> mpc_observer = MPCABRStateObserver()
         >>> imitation_observer = ImitationObserver(rl_observer, mpc_observer)
         >>> env = ABREnv(simulator=simulator, observer=imitation_observer)
     """
@@ -165,7 +167,7 @@ class MPCABRStateObserver(RLABRStateObserver):
             trace_simulator=env.simulator.trace_simulator.unwrapped,
             video_player=env.simulator.video_player,
             bit_rate=initial_bit_rate,
-            levels_quality=self.levels_quality,
+            levels_quality=get_initial_chunk_qualities(env),
             rebuf_penalty=self.rebuf_penalty,
             smooth_penalty=self.smooth_penalty,
             past_bandwidths=list(self.past_bandwidths),
@@ -198,7 +200,7 @@ class MPCABRStateObserver(RLABRStateObserver):
             trace_simulator=env.simulator.trace_simulator.unwrapped,
             video_player=env.simulator.video_player,
             bit_rate=bit_rate,
-            levels_quality=self.levels_quality,
+            levels_quality=get_next_chunk_qualities(env, result),
             rebuf_penalty=self.rebuf_penalty,
             smooth_penalty=self.smooth_penalty,
             past_bandwidths=list(self.past_bandwidths),

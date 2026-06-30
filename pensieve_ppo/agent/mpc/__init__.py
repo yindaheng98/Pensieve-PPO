@@ -13,12 +13,12 @@ from .agent import MPCAgent
 from .agent_oracle import OracleMPCAgent
 from .observer import MPCABRStateObserver, MPCState
 from .observer_oracle import OracleMPCABRStateObserver, OracleMPCState
-from .env import create_mpc_env, create_oracle_mpc_env
+from ...quality_ladder import QualityLadderVideoPlayer
 from ..registry import register
 
 # Register MPC agents
-register("mpc", MPCAgent, MPCABRStateObserver)
-register("mpc-oracle", OracleMPCAgent, OracleMPCABRStateObserver)
+register("mpc", MPCAgent, MPCABRStateObserver, player_cls=QualityLadderVideoPlayer)
+register("mpc-oracle", OracleMPCAgent, OracleMPCABRStateObserver, player_cls=QualityLadderVideoPlayer)
 
 __all__ = [
     'MPCAgent',
@@ -27,6 +27,4 @@ __all__ = [
     'MPCState',
     'OracleMPCABRStateObserver',
     'OracleMPCState',
-    'create_mpc_env',
-    'create_oracle_mpc_env',
 ]

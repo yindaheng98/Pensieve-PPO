@@ -112,13 +112,13 @@ class OracleMPCABRStateObserver(MPCABRStateObserver):
     MPC algorithm to plan ahead using actual future bandwidth information.
 
     Example for standalone Oracle MPC:
-        >>> observer = OracleMPCABRStateObserver(levels_quality=VIDEO_BIT_RATE)
+        >>> observer = OracleMPCABRStateObserver()
         >>> env = ABREnv(simulator=simulator, observer=observer)
 
     Example for imitation learning:
         >>> from pensieve_ppo.gym.imitate import ImitationObserver
-        >>> rl_observer = RLABRStateObserver(levels_quality=VIDEO_BIT_RATE)
-        >>> oracle_observer = OracleMPCABRStateObserver(levels_quality=VIDEO_BIT_RATE)
+        >>> rl_observer = RLABRStateObserver()
+        >>> oracle_observer = OracleMPCABRStateObserver()
         >>> imitation_observer = ImitationObserver(rl_observer, oracle_observer)
         >>> env = ABREnv(simulator=simulator, observer=imitation_observer)
     """
