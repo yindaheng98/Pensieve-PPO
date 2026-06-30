@@ -20,6 +20,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from ... import Step, TrainBatchInfo
 from .. import AbstractRLAgent, RLTrainingBatch
+from ..abc import RLActionDecision
 from ..observer import RLState
 from .model import QNetwork
 
@@ -306,7 +307,7 @@ class DQNAgent(AbstractRLAgent):
             # return action[0]
             return q_values.cpu().numpy()
 
-    def select_action(self, state: RLState) -> Tuple[int, List[float]]:
+    def select_action(self, state: RLState) -> RLActionDecision:
         """Select an action using greedy policy (for testing).
 
         Reference:
@@ -316,7 +317,7 @@ class DQNAgent(AbstractRLAgent):
             state: RLState containing state_matrix with shape (s_dim[0], s_dim[1]).
 
         Returns:
-            Tuple of (selected_action_index, q_values_as_list).
+            Selected quality ladder action with q-values.
         """
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/test_dqn.py#L125
         # action_prob = actor.predict(np.reshape(state, (1, S_INFO, S_LEN)))
@@ -324,13 +325,13 @@ class DQNAgent(AbstractRLAgent):
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/test_dqn.py#L127
         # bit_rate = np.argmax(action_prob)
         action = int(np.argmax(q_values))
-        return action, q_values.tolist()
+        return RLActionDecision.from_index(action, q_values.tolist())
 
     def select_action_for_training(
         self,
         state: RLState,
         epsilon: float = 0.0,
-    ) -> Tuple[int, List[float]]:
+    ) -> RLActionDecision:
         """Select an action using epsilon-greedy policy (for training).
 
         Reference:
@@ -341,7 +342,7 @@ class DQNAgent(AbstractRLAgent):
             epsilon: Probability of selecting random action.
 
         Returns:
-            Tuple of (selected_action_index, q_values_as_list).
+            Selected quality ladder action with q-values.
         """
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/train_dqn.py#L164-L165
         # action_prob = actor.predict(np.reshape(obs, (1, S_DIM[0], S_DIM[1])))
@@ -357,7 +358,7 @@ class DQNAgent(AbstractRLAgent):
         else:
             action = int(np.argmax(q_values))
 
-        return action, q_values.tolist()
+        return RLActionDecision.from_index(action, q_values.tolist())
 
     def compute_v(
         self,

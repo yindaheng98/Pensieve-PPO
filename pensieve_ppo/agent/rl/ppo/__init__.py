@@ -8,11 +8,12 @@ Reference:
 
 from .agent import PPOAgent
 from .model import Actor, Critic
+from ....quality_ladder import QualityLadderVideoPlayer
 from ...registry import register
 from ..observer import RLABRStateObserver
 
 # Register PPO agent
-register("ppo", PPOAgent, RLABRStateObserver)
+register("ppo", PPOAgent, RLABRStateObserver, QualityLadderVideoPlayer)
 
 __all__ = [
     'PPOAgent',

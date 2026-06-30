@@ -16,11 +16,12 @@ Reference:
 
 from .agent import DQNAgent
 from .model import QNetwork
+from ....quality_ladder import QualityLadderVideoPlayer
 from ...registry import register
 from ..observer import RLABRStateObserver
 
 # Register DQN agent
-register("dqn", DQNAgent, RLABRStateObserver)
+register("dqn", DQNAgent, RLABRStateObserver, QualityLadderVideoPlayer)
 
 __all__ = [
     'DQNAgent',

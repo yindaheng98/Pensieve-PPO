@@ -10,11 +10,12 @@ Reference:
 
 from .agent import A3CAgent, compute_entropy, discount
 from .model import Actor, Critic
+from ....quality_ladder import QualityLadderVideoPlayer
 from ...registry import register
 from ..observer import RLABRStateObserver
 
 # Register A3C agent
-register("a3c", A3CAgent, RLABRStateObserver)
+register("a3c", A3CAgent, RLABRStateObserver, QualityLadderVideoPlayer)
 
 __all__ = [
     'A3CAgent',

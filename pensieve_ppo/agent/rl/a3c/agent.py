@@ -18,6 +18,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from ... import TrainBatchInfo
 from .. import AbstractRLAgent
+from ..abc import RLActionDecision
 from ..observer import RLState
 from .model import Actor, Critic
 
@@ -217,7 +218,7 @@ class A3CAgent(AbstractRLAgent):
             action_prob = self.actor(state)[0]
             return action_prob.cpu().tolist()
 
-    def select_action(self, state: RLState) -> Tuple[int, List[float]]:
+    def select_action(self, state: RLState) -> RLActionDecision:
         """Select an action using probability-based sampling.
 
         This method uses cumulative distribution function sampling as in the
@@ -230,7 +231,7 @@ class A3CAgent(AbstractRLAgent):
             state: RLState containing state_matrix with shape (s_dim[0], s_dim[1]).
 
         Returns:
-            Tuple of (selected_action_index, action_probabilities).
+            Selected quality ladder action.
         """
         action_prob = self.predict(state.state_matrix)
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/rl_test.py#L127-L128
@@ -239,9 +240,9 @@ class A3CAgent(AbstractRLAgent):
         # because there is an intrinsic discrepancy in passing single state and batch states
         action_cumsum = np.cumsum(action_prob)
         action = (action_cumsum > np.random.randint(1, RAND_RANGE) / float(RAND_RANGE)).argmax()
-        return int(action), action_prob
+        return RLActionDecision.from_index(int(action), action_prob)
 
-    def select_action_for_training(self, state: RLState) -> Tuple[int, List[float]]:
+    def select_action_for_training(self, state: RLState) -> RLActionDecision:
         """Select an action using probability-based sampling for training.
 
         Same as select_action for A3C (no separate exploration strategy like Gumbel noise).
@@ -253,7 +254,7 @@ class A3CAgent(AbstractRLAgent):
             state: Input state with shape (s_dim[0], s_dim[1]).
 
         Returns:
-            Tuple of (selected_action_index, action_probabilities).
+            Selected quality ladder action.
         """
         return self.select_action(state)
 

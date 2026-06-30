@@ -17,6 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from ... import TrainBatchInfo
 from .. import AbstractRLAgent
+from ..abc import RLActionDecision
 from ..observer import RLState
 from .model import Actor, Critic
 
@@ -194,7 +195,7 @@ class PPOAgent(AbstractRLAgent):
             pi = self.actor.forward(state)[0]
             return pi.cpu().tolist()
 
-    def select_action(self, state: RLState) -> Tuple[int, List[float]]:
+    def select_action(self, state: RLState) -> RLActionDecision:
         """Select an action using Gumbel-softmax sampling.
 
         This method uses Gumbel noise for action selection, which has been
@@ -207,15 +208,15 @@ class PPOAgent(AbstractRLAgent):
             state: RLState containing state_matrix with shape (s_dim[0], s_dim[1]).
 
         Returns:
-            Tuple of (selected_action_index, action_probabilities).
+            Selected quality ladder action.
         """
         action_prob = self.predict(state.state_matrix)
         # action = np.argmax(action_prob)  # test with gumbel noise has better performance. why?
         noise = np.random.gumbel(size=len(action_prob))
         action = np.argmax(np.log(action_prob) + noise)
-        return int(action), action_prob
+        return RLActionDecision.from_index(int(action), action_prob)
 
-    def select_action_for_training(self, state: RLState) -> Tuple[int, List[float]]:
+    def select_action_for_training(self, state: RLState) -> RLActionDecision:
         """Select an action using Gumbel-softmax sampling for exploration.
 
         This implements the action selection strategy used in the original
@@ -229,13 +230,13 @@ class PPOAgent(AbstractRLAgent):
             state: RLState containing state_matrix with shape (s_dim[0], s_dim[1]).
 
         Returns:
-            Tuple of (selected_action_index, action_probabilities).
+            Selected quality ladder action.
         """
         action_prob = self.predict(state.state_matrix)
         # gumbel noise for exploration
         noise = np.random.gumbel(size=len(action_prob))
         action = np.argmax(np.log(action_prob) + noise)
-        return int(action), action_prob
+        return RLActionDecision.from_index(int(action), action_prob)
 
     def compute_v(
         self,
