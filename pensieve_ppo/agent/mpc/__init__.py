@@ -17,8 +17,8 @@ from ...quality_ladder import QualityLadderVideoPlayer
 from ..registry import register
 
 # Register MPC agents
-register("mpc", MPCAgent, MPCABRStateObserver, player_cls=QualityLadderVideoPlayer)
-register("mpc-oracle", OracleMPCAgent, OracleMPCABRStateObserver, player_cls=QualityLadderVideoPlayer)
+register("mpc", MPCAgent, MPCABRStateObserver, QualityLadderVideoPlayer)
+register("mpc-oracle", OracleMPCAgent, OracleMPCABRStateObserver, QualityLadderVideoPlayer)
 
 __all__ = [
     'MPCAgent',
