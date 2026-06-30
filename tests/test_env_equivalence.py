@@ -43,7 +43,8 @@ sys.path.insert(0, SRC_DIR)
 import env as src_env
 
 # Import our gymnasium implementation and constants.
-from pensieve_ppo.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS, create_env_with_default, S_INFO, S_LEN
+from pensieve_ppo.agent import create_env
+from pensieve_ppo.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS, S_INFO, S_LEN
 from pensieve_ppo.quality_ladder import QualityLadderRequest
 
 
@@ -94,10 +95,11 @@ class TestABREnvEquivalenceBase(unittest.TestCase):
         """
         # Set global random seed to match src/env.py behavior
         np.random.seed(seed)
-        env = create_env_with_default(
+        env = create_env(
+            name='ppo',
             train=True,
             trace_folder='./train/',
-            video_size_file_prefix='./envivio/video_size_',
+            player_kwargs={'video_size_file_prefix': './envivio/video_size_'},
         )
         env.reset(options={'initial_chunk_request': QualityLadderRequest(initial_action)})
 
@@ -351,10 +353,11 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
     def _create_gym_env(self, seed: int):
         """Helper to create gym env with given seed."""
         np.random.seed(seed)
-        return create_env_with_default(
+        return create_env(
+            name='ppo',
             train=True,
             trace_folder='./train/',
-            video_size_file_prefix='./envivio/video_size_',
+            player_kwargs={'video_size_file_prefix': './envivio/video_size_'},
         )
 
     def test_reset_return_format(self):
