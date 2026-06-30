@@ -69,8 +69,10 @@ def create_env_with_class(
         ...     QualityLadderVideoPlayer,
         ...     RLABRStateObserver,
         ...     trace_folder=trace_folder,
-        ...     observer_kwargs={"levels_quality": [300, 750, 1200, 1850, 2850, 4300]},
-        ...     video_player_kwargs={"video_size_file_prefix": video_size_file_prefix},
+        ...     video_player_kwargs={
+        ...         "video_size_file_prefix": video_size_file_prefix,
+        ...         "quality": [300, 750, 1200, 1850, 2850, 4300],
+        ...     },
         ... )
     """
     observer = observer_class(**observer_kwargs)
@@ -100,8 +102,8 @@ def create_imitation_env(
     learns from a teacher agent's decisions.
 
     Example:
-        >>> rl_observer = RLABRStateObserver(levels_quality=VIDEO_BIT_RATE)
-        >>> bba_observer = BBAStateObserver(levels_quality=VIDEO_BIT_RATE)
+        >>> rl_observer = RLABRStateObserver()
+        >>> bba_observer = BBAStateObserver()
         >>> env = create_imitation_env(
         ...     student_observer=rl_observer,
         ...     teacher_observer=bba_observer,
@@ -173,9 +175,10 @@ def create_imitation_env_with_class(
         ...     RLABRStateObserver,
         ...     BBAStateObserver,
         ...     trace_folder=trace_folder,
-        ...     student_observer_kwargs={"levels_quality": [300, 750, 1200, 1850, 2850, 4300]},
-        ...     teacher_observer_kwargs={"levels_quality": [300, 750, 1200, 1850, 2850, 4300]},
-        ...     video_player_kwargs={"video_size_file_prefix": video_size_file_prefix},
+        ...     video_player_kwargs={
+        ...         "video_size_file_prefix": video_size_file_prefix,
+        ...         "quality": [300, 750, 1200, 1850, 2850, 4300],
+        ...     },
         ... )
     """
     student_observer = student_observer_class(**student_observer_kwargs)

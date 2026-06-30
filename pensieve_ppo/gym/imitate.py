@@ -15,8 +15,8 @@ By composing these observers, we can achieve any imitation combination:
 
 Example:
     >>> # Create individual observers
-    >>> rl_observer = RLABRStateObserver(levels_quality=VIDEO_BIT_RATE)
-    >>> bba_observer = BBAStateObserver(levels_quality=VIDEO_BIT_RATE)
+    >>> rl_observer = RLABRStateObserver()
+    >>> bba_observer = BBAStateObserver()
     >>>
     >>> # Combine for imitation learning
     >>> imitation_observer = ImitationObserver(

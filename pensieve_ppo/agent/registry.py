@@ -200,9 +200,12 @@ def create_env(
     Example:
         >>> env = create_env(
         ...     name="ppo",
-        ...     observer_kwargs={"levels_quality": VIDEO_BIT_RATE, "rebuf_penalty": 4.3},
+        ...     observer_kwargs={"rebuf_penalty": 4.3},
         ...     trace_folder=trace_folder,
-        ...     player_kwargs={"video_size_file_prefix": video_size_file_prefix},
+        ...     player_kwargs={
+        ...         "video_size_file_prefix": video_size_file_prefix,
+        ...         "quality": VIDEO_BIT_RATE,
+        ...     },
         ... )
     """
     if name not in REGISTRY:
@@ -262,10 +265,11 @@ def create_imitation_env(
         >>> env = create_imitation_env(
         ...     student_name="ppo",
         ...     teacher_name="bba",
-        ...     student_observer_kwargs={"levels_quality": VIDEO_BIT_RATE},
-        ...     teacher_observer_kwargs={"levels_quality": VIDEO_BIT_RATE},
         ...     trace_folder=trace_folder,
-        ...     player_kwargs={"video_size_file_prefix": video_size_file_prefix},
+        ...     player_kwargs={
+        ...         "video_size_file_prefix": video_size_file_prefix,
+        ...         "quality": VIDEO_BIT_RATE,
+        ...     },
         ... )
     """
     if student_name not in REGISTRY:
