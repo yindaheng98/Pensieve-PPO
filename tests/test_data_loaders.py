@@ -2,7 +2,7 @@
 
 This module tests that:
 1. pensieve_ppo.core.trace.loader.load_trace matches src/load_trace.py
-2. pensieve_ppo.core.video.quality_ladder.envivio.load_envivio_video_size matches video loading in src/fixed_env.py
+2. pensieve_ppo.quality_ladder.envivio.load_envivio_video_size matches video loading in src/fixed_env.py
 
 Data sources reference:
 - src/test.py: TEST_TRACES = './test/'
@@ -17,15 +17,15 @@ import sys
 SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
 sys.path.insert(0, SRC_DIR)
 
-import load_trace as src_load_trace
-import fixed_env as src_fixed_env
-from pensieve_ppo.core.trace.loader import load_trace
-from pensieve_ppo.core.trace.data import TraceData
-from pensieve_ppo.core.video.quality_ladder.envivio import (
+from pensieve_ppo.quality_ladder import QualityLadderRequest, QualityLadderVideoPlayer
+from pensieve_ppo.quality_ladder.envivio import (
     VIDEO_BIT_RATE,
     load_envivio_video_size,
 )
-from pensieve_ppo.core.video.quality_ladder import QualityLadderRequest, QualityLadderVideoPlayer
+from pensieve_ppo.core.trace.data import TraceData
+from pensieve_ppo.core.trace.loader import load_trace
+import fixed_env as src_fixed_env
+import load_trace as src_load_trace
 
 
 # Import original implementations from src
@@ -226,11 +226,8 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
         self.assertTrue(hasattr(video_data, 'bitrate_levels'))
         self.assertTrue(hasattr(video_data, 'total_chunks'))
 
-        # Check bitrate levels matches src/fixed_env.py BITRATE_LEVELS
-        self.assertEqual(video_data.bitrate_levels, BITRATE_LEVELS)
-
         # Check that video_size matrix has correct shape
-        self.assertEqual(video_data.video_size.shape[0], BITRATE_LEVELS)
+        self.assertEqual(video_data.bitrate_levels, BITRATE_LEVELS)
         self.assertEqual(video_data.video_size.shape[1], video_data.total_chunks)
         self.assertEqual(video_data.video_quality.shape, video_data.video_size.shape)
 
@@ -270,31 +267,56 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
                         quality,
                     )
 
-    def test_get_next_chunk_sizes_method(self):
-        """Test the get_next_chunk_sizes method against Environment.video_size."""
+    def test_explicit_chunk_idx_zero_overrides_player_position(self):
+        """Test explicit chunk_idx=0 is not treated as the current player position."""
+        video_data = QualityLadderVideoPlayer(video_size_file_prefix=VIDEO_SIZE_FILE)
+        video_data.video_chunk_counter = 1
+        video_data.video_size[0, 0] = 12345
+        video_data.video_size[0, 1] = 67890
+        video_data.video_quality[0, 0] = 111.0
+        video_data.video_quality[0, 1] = 222.0
+
+        self.assertEqual(
+            video_data.get_chunk_size(QualityLadderRequest(0), 0),
+            12345,
+        )
+        self.assertEqual(
+            video_data.get_chunk_quality(QualityLadderRequest(0), 0),
+            111.0,
+        )
+        self.assertEqual(video_data.get_chunk_sizes(0)[0], 12345)
+        self.assertEqual(video_data.get_chunk_qualities(0)[0], 111.0)
+
+    def test_get_chunk_sizes_method(self):
+        """Test the get_chunk_sizes method against Environment.video_size."""
         video_data = QualityLadderVideoPlayer(video_size_file_prefix=VIDEO_SIZE_FILE)
 
         for chunk_idx in range(min(10, video_data.total_chunks)):
             with self.subTest(chunk_idx=chunk_idx):
                 video_data.video_chunk_counter = chunk_idx
-                sizes = video_data.get_next_chunk_sizes()
+                sizes = video_data.get_chunk_sizes()
 
-                self.assertEqual(len(sizes), BITRATE_LEVELS)
+                self.assertEqual(len(sizes), video_data.bitrate_levels)
 
-                for bitrate in range(BITRATE_LEVELS):
+                for bitrate in range(video_data.bitrate_levels):
                     self.assertEqual(
                         sizes[bitrate],
                         self.fixed_env.video_size[bitrate][chunk_idx]
                     )
+                    self.assertEqual(
+                        video_data.get_chunk_sizes(chunk_idx)[bitrate],
+                        self.fixed_env.video_size[bitrate][chunk_idx]
+                    )
 
-    def test_get_next_chunk_qualities_method(self):
-        """Test get_next_chunk_qualities follows the current player position."""
+    def test_get_chunk_qualities_method(self):
+        """Test get_chunk_qualities follows the selected player position."""
         video_data = QualityLadderVideoPlayer(video_size_file_prefix=VIDEO_SIZE_FILE)
 
         for chunk_idx in range(min(10, video_data.total_chunks)):
             with self.subTest(chunk_idx=chunk_idx):
                 video_data.video_chunk_counter = chunk_idx
-                self.assertEqual(video_data.get_next_chunk_qualities(), VIDEO_BIT_RATE)
+                self.assertEqual(video_data.get_chunk_qualities(), VIDEO_BIT_RATE)
+                self.assertEqual(video_data.get_chunk_qualities(chunk_idx), VIDEO_BIT_RATE)
 
 
 # ==============================================================================

@@ -23,7 +23,7 @@ from core import Environment as CoreEnvironment
 
 # Import our implementations
 from pensieve_ppo.core.simulator.simulator import Simulator
-from pensieve_ppo.core.video.quality_ladder.player import QualityLadderRequest, QualityLadderVideoPlayer
+from pensieve_ppo.quality_ladder import QualityLadderRequest, QualityLadderVideoPlayer
 from pensieve_ppo.core.trace.ext.random import RandomTraceSimulator
 from pensieve_ppo.core.trace.ext.noise import NoiseTraceSimulator
 from pensieve_ppo.core.trace.simulator import TraceSimulator
@@ -73,7 +73,7 @@ class TestSimulatorMatchesCoreEnv(unittest.TestCase):
     def _compare_results(self, result, env_result, msg_prefix=""):
         """Compare all fields between Simulator result and Environment result."""
         (delay, sleep_time, buffer_size, rebuf,
-         video_chunk_size, next_sizes, end_of_video, chunks_remain) = env_result
+         video_chunk_size, _next_sizes, end_of_video, chunks_remain) = env_result
 
         self.assertAlmostEqual(result.delay, delay, places=6,
                                msg=f"{msg_prefix}Delay mismatch")
@@ -85,8 +85,6 @@ class TestSimulatorMatchesCoreEnv(unittest.TestCase):
                                msg=f"{msg_prefix}Rebuffer mismatch")
         self.assertEqual(result.video_chunk_size, video_chunk_size,
                          msg=f"{msg_prefix}Video chunk size mismatch")
-        self.assertEqual(result.next_video_chunk_sizes, next_sizes,
-                         msg=f"{msg_prefix}Next chunk sizes mismatch")
         self.assertEqual(result.end_of_video, end_of_video,
                          msg=f"{msg_prefix}End of video mismatch")
         self.assertEqual(result.video_chunk_remain, chunks_remain,

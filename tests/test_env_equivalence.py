@@ -44,7 +44,7 @@ import env as src_env
 
 # Import our gymnasium implementation and constants.
 from pensieve_ppo.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS, create_env_with_default, S_INFO, S_LEN
-from pensieve_ppo.core.video.quality_ladder import QualityLadderRequest
+from pensieve_ppo.quality_ladder import QualityLadderRequest
 
 
 # Test-specific constants (must match src_env for equivalence verification)
