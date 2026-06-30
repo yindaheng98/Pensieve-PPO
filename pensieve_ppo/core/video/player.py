@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Tuple
 
 
 @dataclass(frozen=True)
@@ -33,13 +33,13 @@ class VideoPlayer(ABC):
     def get_chunk_quality(
         self,
         chunk_request: VideoChunkRequest,
-        chunk_idx: Optional[int] = None,
+        chunk_idx: int,
     ) -> float:
         """Get the actual quality level for a chunk request.
 
         Args:
             chunk_request: Request used to resolve the chunk quality.
-            chunk_idx: Video chunk index. Defaults to the current position.
+            chunk_idx: Video chunk index.
 
         Returns:
             Quality value for the selected bitrate level.
@@ -50,13 +50,13 @@ class VideoPlayer(ABC):
     def get_chunk_size(
         self,
         chunk_request: VideoChunkRequest,
-        chunk_idx: Optional[int] = None,
+        chunk_idx: int,
     ) -> int:
         """Get the size of current chunk for a video chunk request.
 
         Args:
             chunk_request: Request used to resolve the chunk quality.
-            chunk_idx: Video chunk index. Defaults to the current position.
+            chunk_idx: Video chunk index.
 
         Returns:
             Chunk size in bytes
