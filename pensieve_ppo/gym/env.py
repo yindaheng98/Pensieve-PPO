@@ -104,8 +104,7 @@ class ABREnv(gym.Env):
             simulator: Pre-configured Simulator instance (use create_simulator
                       from pensieve_ppo.core to create one)
             observer: ABRStateObserver instance for state observation and reward
-                     calculation. Its levels_quality length must match
-                     simulator.video_player.bitrate_levels.
+                     calculation.
         """
         super().__init__()
 
@@ -201,7 +200,6 @@ class ABREnv(gym.Env):
             "rebuffer": result.rebuffer,
             "video_chunk_size": result.video_chunk_size,
             "video_chunk_quality": result.video_chunk_quality,
-            "next_video_chunk_sizes": result.next_video_chunk_sizes,
             "video_chunk_remain": result.video_chunk_remain,
             "end_of_video": result.end_of_video,
             **observer_info

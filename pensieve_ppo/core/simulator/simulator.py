@@ -10,7 +10,6 @@ in the StepResult, while keeping delay and sleep_time in milliseconds for compat
 """
 
 from dataclasses import dataclass
-from typing import List
 
 from ..video import VideoChunkRequest, VideoPlayer
 from ..trace.abc import AbstractTraceSimulator
@@ -37,7 +36,6 @@ class StepResult:
     buffer_size: float                  # [sec] Current buffer size
     rebuffer: float                     # [sec] Rebuffering/stall time
     video_chunk_size: int               # [bytes] Size of downloaded chunk
-    next_video_chunk_sizes: List[int]   # [bytes] Sizes of next chunk at each bitrate
     end_of_video: bool                  # Whether video has ended
     video_chunk_remain: int             # Number of remaining chunks
     video_chunk_quality: float          # Resolved quality value of downloaded chunk
@@ -53,7 +51,6 @@ class Simulator:
         2. trace_simulator.step - Simulate network download, update buffer, handle overflow
         3. video_player.advance - Move to next chunk
         4. trace_simulator.on_video_finished - Handle video end (if needed)
-        5. video_player.get_next_chunk_sizes - Get sizes for next chunk
     """
 
     def __init__(
@@ -115,16 +112,12 @@ class Simulator:
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L137-L150
             self.trace_simulator.on_video_finished()
 
-        # 5. Get next chunk sizes
-        next_video_chunk_sizes = self.video_player.get_next_chunk_sizes()  # [bytes]
-
         return StepResult(
             delay=delay,                                            # [millisec] - keep as is
             sleep_time=sleep_time,                                  # [millisec] - keep as is
             buffer_size=return_buffer_size / MILLISECONDS_IN_SECOND,  # [millisec] -> [sec]
             rebuffer=rebuf / MILLISECONDS_IN_SECOND,                  # [millisec] -> [sec]
             video_chunk_size=video_chunk_size,                      # [bytes]
-            next_video_chunk_sizes=next_video_chunk_sizes,          # [bytes]
             end_of_video=end_of_video,
             video_chunk_remain=video_chunk_remain,
             video_chunk_quality=video_chunk_quality,
