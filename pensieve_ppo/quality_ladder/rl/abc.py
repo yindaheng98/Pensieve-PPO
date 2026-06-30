@@ -21,7 +21,7 @@ import numpy as np
 
 
 from ...core.video import VideoChunkRequest
-from ...quality_ladder import QualityLadderActionDecision, QualityLadderRequest
+from ...quality_ladder import DEFAULT_QUALITY, QualityLadderActionDecision, QualityLadderRequest
 from ...agent.trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
 from .observer import RLState
 
@@ -77,12 +77,17 @@ class AbstractRLAgent(AbstractTrainableAgent):
     and implement the abstract methods.
     """
 
+    def __init__(self, initial_level: int = DEFAULT_QUALITY):
+        """Initialize common quality-ladder RL agent defaults."""
+        super().__init__()
+        self.initial_level = initial_level
+
     def reset(
         self,
         initial_chunk_request: Optional[VideoChunkRequest] = None,
     ) -> VideoChunkRequest:
         """Reset stateless RL agents and return the initial request."""
-        return super().reset(initial_chunk_request or QualityLadderRequest(0))
+        return super().reset(initial_chunk_request or QualityLadderRequest(self.initial_level))
 
     @abstractmethod
     def train(

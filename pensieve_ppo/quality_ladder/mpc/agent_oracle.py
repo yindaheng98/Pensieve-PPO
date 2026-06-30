@@ -13,7 +13,7 @@ from typing import  Optional, Tuple
 
 
 from ...core.video import VideoChunkRequest
-from ...quality_ladder import QualityLadderRequest
+from ...quality_ladder import DEFAULT_QUALITY, QualityLadderRequest
 from ...agent.abc import AbstractAgent
 from ..rl.abc import RLActionDecision
 from .observer_oracle import OracleMPCState
@@ -63,6 +63,7 @@ class OracleMPCAgent(AbstractAgent):
         action_dim: int,
         future_chunk_count: int = MPC_FUTURE_CHUNK_COUNT,
         video_chunk_len: float = VIDEO_CHUNK_LEN,
+        initial_level: int = DEFAULT_QUALITY,
         **kwargs,
     ):
         """Initialize the MPC agent.
@@ -71,11 +72,13 @@ class OracleMPCAgent(AbstractAgent):
             action_dim: Number of discrete actions (bitrate levels).
             future_chunk_count: Number of future chunks to consider in MPC.
             video_chunk_len: Video chunk length in seconds.
+            initial_level: Initial quality level used when reset() gets no request.
             **kwargs: Additional arguments (ignored for compatibility).
         """
         self.action_dim = action_dim
         self.future_chunk_count = future_chunk_count
         self.video_chunk_len = video_chunk_len
+        self.initial_level = initial_level
 
         # Pre-compute all possible combinations of chunk bitrates
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py#L82-L83
@@ -90,7 +93,7 @@ class OracleMPCAgent(AbstractAgent):
         initial_chunk_request: Optional[VideoChunkRequest] = None,
     ) -> VideoChunkRequest:
         """Reset stateless oracle MPC agent and return the initial request."""
-        return super().reset(initial_chunk_request or QualityLadderRequest(0))
+        return super().reset(initial_chunk_request or QualityLadderRequest(self.initial_level))
 
     def compute_combo_reward(
         self,

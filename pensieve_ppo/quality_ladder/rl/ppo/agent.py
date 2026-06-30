@@ -16,6 +16,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 from ....agent import TrainBatchInfo
+from ....quality_ladder import DEFAULT_QUALITY
 from .. import AbstractRLAgent
 from ..abc import RLActionDecision
 from ..observer import RLState
@@ -53,6 +54,7 @@ class PPOAgent(AbstractRLAgent):
         ppo_training_epo: int = 5,
         h_target: float = 0.1,
         device: Optional[torch.device] = None,
+        initial_level: int = DEFAULT_QUALITY,
     ):
         """Initialize the PPO agent.
 
@@ -68,7 +70,9 @@ class PPOAgent(AbstractRLAgent):
             ppo_training_epo: Number of PPO update epochs per batch.
             h_target: Target entropy for adaptive entropy weight.
             device: PyTorch device for computations.
+            initial_level: Initial quality level used when reset() gets no request.
         """
+        super().__init__(initial_level=initial_level)
         self.s_dim = state_dim
         self.device = device if device is not None else torch.device('cpu')
 

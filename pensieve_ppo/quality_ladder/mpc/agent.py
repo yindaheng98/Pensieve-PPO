@@ -14,7 +14,7 @@ from typing import List, Optional, Tuple
 
 from ...agent.abc import AbstractAgent
 from ...core.video import VideoChunkRequest
-from ...quality_ladder import QualityLadderRequest
+from ...quality_ladder import DEFAULT_QUALITY, QualityLadderRequest
 from ..rl.abc import RLActionDecision
 from .observer import MPCState
 
@@ -71,6 +71,7 @@ class MPCAgent(AbstractAgent):
         future_chunk_count: int = MPC_FUTURE_CHUNK_COUNT,
         bandwidth_history_len: int = BANDWIDTH_HISTORY_LEN,
         video_chunk_len: float = VIDEO_CHUNK_LEN,
+        initial_level: int = DEFAULT_QUALITY,
         **kwargs,
     ):
         """Initialize the MPC agent.
@@ -80,12 +81,14 @@ class MPCAgent(AbstractAgent):
             future_chunk_count: Number of future chunks to consider in MPC.
             bandwidth_history_len: Number of past bandwidths for harmonic mean calculation.
             video_chunk_len: Video chunk length in seconds.
+            initial_level: Initial quality level used when reset() gets no request.
             **kwargs: Additional arguments (ignored for compatibility).
         """
         self.action_dim = action_dim
         self.future_chunk_count = future_chunk_count
         self.bandwidth_history_len = bandwidth_history_len
         self.video_chunk_len = video_chunk_len
+        self.initial_level = initial_level
 
         # Pre-compute all possible combinations of chunk bitrates
         # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L82-L83
@@ -111,7 +114,7 @@ class MPCAgent(AbstractAgent):
         """
         self.past_errors = []
         self.past_bandwidth_ests = []
-        return super().reset(initial_chunk_request or QualityLadderRequest(0))
+        return super().reset(initial_chunk_request or QualityLadderRequest(self.initial_level))
 
     def compute_harmonic_mean_bandwidth(self, state: MPCState) -> float:
         """Compute harmonic mean of past bandwidths.

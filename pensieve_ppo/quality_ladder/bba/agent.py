@@ -12,7 +12,7 @@ import logging
 from typing import Optional
 
 from ...core.video import VideoChunkRequest
-from ...quality_ladder import QualityLadderRequest
+from ...quality_ladder import DEFAULT_QUALITY, QualityLadderRequest
 from ...agent.abc import AbstractAgent
 from ..rl.abc import RLActionDecision
 from .observer import BBAState
@@ -46,6 +46,7 @@ class BBAAgent(AbstractAgent):
         action_dim: int,
         reservoir: float = RESERVOIR,
         cushion: float = CUSHION,
+        initial_level: int = DEFAULT_QUALITY,
         **kwargs,
     ):
         """Initialize the BBA agent.
@@ -54,11 +55,13 @@ class BBAAgent(AbstractAgent):
             action_dim: Number of discrete actions (bitrate levels).
             reservoir: Minimum buffer threshold in seconds (default: 5).
             cushion: Buffer range for linear interpolation in seconds (default: 10).
+            initial_level: Initial quality level used when reset() gets no request.
             **kwargs: Additional arguments (ignored for compatibility).
         """
         self.action_dim = action_dim
         self.reservoir = reservoir
         self.cushion = cushion
+        self.initial_level = initial_level
         if kwargs:
             logging.warning(f"kwargs are ignored in BBAAgent: {kwargs}")
 
@@ -67,7 +70,7 @@ class BBAAgent(AbstractAgent):
         initial_chunk_request: Optional[VideoChunkRequest] = None,
     ) -> VideoChunkRequest:
         """Reset stateless BBA agent and return the initial request."""
-        return super().reset(initial_chunk_request or QualityLadderRequest(0))
+        return super().reset(initial_chunk_request or QualityLadderRequest(self.initial_level))
 
     def get_bitrate_from_buffer(self, buffer_size: float) -> int:
         """Compute bitrate level from buffer size using BBA algorithm.

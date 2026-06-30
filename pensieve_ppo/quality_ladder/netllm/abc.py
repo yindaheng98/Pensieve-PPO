@@ -28,7 +28,7 @@ import torch.nn as nn
 
 from ...agent.trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
 from ...core.video import VideoChunkRequest
-from ...quality_ladder import QualityLadderRequest
+from ...quality_ladder import DEFAULT_QUALITY, QualityLadderRequest
 from ..rl.abc import RLActionDecision
 from .observer import NetLLMState
 
@@ -133,6 +133,7 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
         loss_fn: nn.Module = nn.CrossEntropyLoss(),
         grad_clip: float = 0.25,
         grad_accum_steps: int = 1,
+        initial_level: int = DEFAULT_QUALITY,
     ):
         """Initialize the NetLLM agent.
 
@@ -154,8 +155,10 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
                 Reference: trainer.py#L41 (clip_grad_norm_ 0.25)
             grad_accum_steps: Number of steps to accumulate gradients before updating.
                 Reference: trainer.py#L20 (grad_accum_steps=1)
+            initial_level: Initial quality level used when reset() gets no request.
         """
         self.action_dim = action_dim
+        self.initial_level = initial_level
         self.device = device
 
         # Global reward normalization parameters
@@ -246,7 +249,7 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
         Reference:
             https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/models/rl_policy.py#L217-L224
         """
-        return super().reset(initial_chunk_request or QualityLadderRequest(0))
+        return super().reset(initial_chunk_request or QualityLadderRequest(self.initial_level))
 
     @abstractmethod
     def get_params(self) -> Any:

@@ -19,6 +19,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 from ....agent import Step, TrainBatchInfo
+from ....quality_ladder import DEFAULT_QUALITY
 from .. import AbstractRLAgent, RLTrainingBatch
 from ..abc import RLActionDecision
 from ..observer import RLState
@@ -86,6 +87,7 @@ class DQNAgent(AbstractRLAgent):
         min_pool_size: int = MIN_POOL_SIZE,
         batch_size: int = BATCH_SIZE,
         device: Optional[torch.device] = None,
+        initial_level: int = DEFAULT_QUALITY,
     ):
         """Initialize the DQN agent.
 
@@ -102,7 +104,9 @@ class DQNAgent(AbstractRLAgent):
             min_pool_size: Minimum pool size before training starts.
             batch_size: Batch size for training.
             device: PyTorch device for computations.
+            initial_level: Initial quality level used when reset() gets no request.
         """
+        super().__init__(initial_level=initial_level)
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L71
         self.s_dim = state_dim
         # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L72
