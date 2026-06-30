@@ -6,7 +6,7 @@ for creating ABREnv and Agent instances with Pensieve-PPO defaults.
 The key compatibility parameters between env and agent are:
 - state_dim[0] (S_INFO=6): Fixed in ABREnv, number of state features
 - state_dim[1] (state_history_len): Must match env.state_history_len
-- action_dim: Must equal len(levels_quality), which determines env.bitrate_levels
+- action_dim: Must equal len(levels_quality)
 """
 
 from typing import Callable, Optional, Tuple, Union
@@ -25,77 +25,43 @@ from .agent.rl.observer import S_INFO, S_LEN
 from .gym import ABREnv
 
 
-# Default constants from original Pensieve-PPO implementation
-# Source: https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/
-
-# From src/core.py
-TOTAL_VIDEO_CHUNKS = 48  # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L9
-
-# From src/env.py
-DEFAULT_QUALITY = 1  # default video quality without agent, https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L19
-
 # From src/load_trace.py and src/test.py
 TRAIN_TRACES = './src/train/'  # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/load_trace.py#L4
 TEST_TRACES = './src/test/'  # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L26
 
 
-def create_env_with_default(
-    trace_folder: Optional[str] = None,
-    train: bool = True,
-    # Observer name parameter
-    name: str = 'ppo',
-    # Compatibility parameters (shared between env and agent)
-    levels_quality: list = VIDEO_BIT_RATE,
-    # Env/Simulator parameters
-    video_size_file_prefix: str = VIDEO_SIZE_FILE_PREFIX,
-    max_chunks: int = TOTAL_VIDEO_CHUNKS,
-    initial_level: int = DEFAULT_QUALITY,
-    **kwargs,
-) -> ABREnv:
-    """Create an ABREnv with default Pensieve parameters.
-
-    Wraps `create_env` with default values matching the original
-    Pensieve implementation. If trace_folder is None, auto-selects TRAIN_TRACES
-    or TEST_TRACES based on train flag.
-
-    Args:
-        trace_folder: Folder containing network bandwidth trace files.
-        train: Whether in training mode (affects trace iteration).
-        name: Observer name (e.g., 'ppo', 'mpc').
-        levels_quality: Quality metric list for each bitrate level.
-        video_size_file_prefix: Prefix path for video size files.
-        max_chunks: Maximum number of video chunks.
-        initial_level: Initial quality level index on reset.
-
-    Returns:
-        Configured ABREnv instance.
-    """
-    if trace_folder is None:
-        trace_folder = TRAIN_TRACES if train else TEST_TRACES
-
-    return create_env(
-        name=name,
-        levels_quality=levels_quality,
-        trace_folder=trace_folder,
-        video_size_file_prefix=video_size_file_prefix,
-        max_chunks=max_chunks,
-        train=train,
-        initial_level=initial_level,
-        **kwargs,
-    )
-
-
 class PicklableEnvFactory:
     """Callable factory for creating ABREnv instances."""
 
-    def __init__(self, *args, random_seed=None, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
+    def __init__(
+        self,
+        name: str,
+        trace_folder: Optional[str] = None,
+        train: bool = True,
+        random_seed: Optional[int] = None,
+        observer_kwargs: dict = {},
+        player_kwargs: dict = {},
+    ):
+        if trace_folder is None:
+            trace_folder = TRAIN_TRACES if train else TEST_TRACES
+
+        self.name = name
+        self.trace_folder = trace_folder
+        self.train = train
         self.random_seed = random_seed
+        self.observer_kwargs = dict(observer_kwargs)
+        self.player_kwargs = dict(player_kwargs)
 
     def __call__(self, pid: int) -> ABREnv:
         random_seed = (self.random_seed + pid) if self.random_seed is not None else None
-        return create_env_with_default(*self.args, random_seed=random_seed, **self.kwargs)
+        return create_env(
+            name=self.name,
+            trace_folder=self.trace_folder,
+            train=self.train,
+            random_seed=random_seed,
+            observer_kwargs=self.observer_kwargs,
+            player_kwargs=self.player_kwargs,
+        )
 
 
 class PicklableAgentFactory:
