@@ -18,7 +18,7 @@ from ...gym.env import AbstractABRStateObserver, ABREnv, State
 from .utils import (
     get_bitrate_levels,
     get_chunk_qualities,
-    get_chunk_quality,
+    get_initial_chunk_quality,
     get_last_chunk_qualities,
     get_next_chunk_sizes,
 )
@@ -138,7 +138,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         """
         # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
         info = {
-            'quality': get_chunk_quality(env, initial_bit_rate),
+            'quality': get_initial_chunk_quality(env, initial_bit_rate),
         }
         return info
 
