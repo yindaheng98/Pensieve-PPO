@@ -49,13 +49,13 @@ class BBAStateObserver(RLABRStateObserver):
     3. Flexible composition via ImitationObserver for imitation learning
 
     Example for standalone BBA:
-        >>> observer = BBAStateObserver(levels_quality=VIDEO_BIT_RATE)
+        >>> observer = BBAStateObserver()
         >>> env = ABREnv(simulator=simulator, observer=observer)
 
     Example for imitation learning:
         >>> from pensieve_ppo.gym.imitate import ImitationObserver
-        >>> rl_observer = RLABRStateObserver(levels_quality=VIDEO_BIT_RATE)
-        >>> bba_observer = BBAStateObserver(levels_quality=VIDEO_BIT_RATE)
+        >>> rl_observer = RLABRStateObserver()
+        >>> bba_observer = BBAStateObserver()
         >>> imitation_observer = ImitationObserver(rl_observer, bba_observer)
         >>> env = ABREnv(simulator=simulator, observer=imitation_observer)
     """

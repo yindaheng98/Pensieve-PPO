@@ -9,9 +9,12 @@ Reference:
 """
 
 import logging
-from typing import List, Tuple
+from typing import Optional
 
+from ...core.video import VideoChunkRequest
+from ...quality_ladder import QualityLadderRequest
 from ..abc import AbstractAgent
+from ..rl.abc import RLActionDecision
 from .observer import BBAState
 
 
@@ -59,6 +62,13 @@ class BBAAgent(AbstractAgent):
         if kwargs:
             logging.warning(f"kwargs are ignored in BBAAgent: {kwargs}")
 
+    def reset(
+        self,
+        initial_chunk_request: Optional[VideoChunkRequest] = None,
+    ) -> VideoChunkRequest:
+        """Reset stateless BBA agent and return the initial request."""
+        return super().reset(initial_chunk_request or QualityLadderRequest(0))
+
     def get_bitrate_from_buffer(self, buffer_size: float) -> int:
         """Compute bitrate level from buffer size using BBA algorithm.
 
@@ -80,7 +90,7 @@ class BBAAgent(AbstractAgent):
             bit_rate = (self.action_dim - 1) * (buffer_size - self.reservoir) / float(self.cushion)
         return int(bit_rate)
 
-    def select_action(self, state: BBAState) -> Tuple[int, List[float]]:
+    def select_action(self, state: BBAState) -> RLActionDecision:
         """Select an action for a given state.
 
         BBA uses the buffer size from the state to determine the action.
@@ -91,7 +101,7 @@ class BBAAgent(AbstractAgent):
             state: BBAState from BBAStateObserver, containing buffer_size in seconds.
 
         Returns:
-            Tuple of (selected_action_index, action_probability_distribution).
+            Selected quality ladder action.
             Action probability is one-hot for BBA (deterministic algorithm).
         """
         # Extract buffer size from BBAState (already in seconds, not normalized)
@@ -105,4 +115,4 @@ class BBAAgent(AbstractAgent):
         action_prob = [0.0] * self.action_dim
         action_prob[bit_rate] = 1.0
 
-        return bit_rate, action_prob
+        return RLActionDecision.from_index(bit_rate, action_prob)

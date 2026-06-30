@@ -8,15 +8,14 @@ Reference:
 
 from .agent import BBAAgent
 from .observer import BBAStateObserver, BBAState
-from .env import create_bba_env
+from ...quality_ladder import QualityLadderVideoPlayer
 from ..registry import register
 
 # Register BBA agent
-register("bba", BBAAgent, BBAStateObserver)
+register("bba", BBAAgent, BBAStateObserver, QualityLadderVideoPlayer)
 
 __all__ = [
     'BBAAgent',
     'BBAStateObserver',
     'BBAState',
-    'create_bba_env',
 ]
