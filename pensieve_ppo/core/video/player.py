@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -61,20 +61,6 @@ class VideoPlayer(ABC):
         Returns:
             Chunk size in bytes
         """
-        ...
-
-    @abstractmethod
-    def get_next_chunk_sizes(self) -> List[int]:
-        """Get sizes of next chunk at all quality levels.
-
-        Returns:
-            List of chunk sizes in bytes for each bitrate level
-        """
-        ...
-
-    @abstractmethod
-    def get_next_chunk_qualities(self) -> List[float]:
-        """Get qualities of next chunk at all quality levels."""
         ...
 
     def advance(self) -> Tuple[bool, int]:
