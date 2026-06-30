@@ -6,7 +6,7 @@ from .abc import (
     QualityLadderLoader,
     QualityLadderRequest,
 )
-from .envivio import DEFAULT_QUALITY, TOTAL_VIDEO_CHUNKS, VIDEO_BIT_RATE, VIDEO_SIZE_FILE_PREFIX
+from .envivio import A_DIM, DEFAULT_QUALITY, TOTAL_VIDEO_CHUNKS, VIDEO_BIT_RATE, VIDEO_SIZE_FILE_PREFIX
 from .player import QualityLadderVideoPlayer
 
 __all__ = [
@@ -16,6 +16,7 @@ __all__ = [
     'QualityLadderRequest',
     'QualityLadderVideoPlayer',
     'DEFAULT_QUALITY',
+    'A_DIM',
     'TOTAL_VIDEO_CHUNKS',
     'VIDEO_BIT_RATE',
     'VIDEO_SIZE_FILE_PREFIX',

@@ -11,10 +11,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from ...envivio import A_DIM
+from ..observer import S_INFO, S_LEN
 
-# https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/a3c.py#L7
-# https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/multi_agent.py#L14
-A_DIM = 6
 
 # Feature number for hidden layers (from original TF implementation)
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/sim/a3c.py#L65-L70
@@ -42,8 +41,8 @@ class Actor(nn.Module):
 
     def __init__(
         self,
-        state_dim: tuple[int, int],
-        action_dim: int,
+        state_dim: tuple[int, int] = (S_INFO, S_LEN),
+        action_dim: int = A_DIM,
         feature_num: int = FEATURE_NUM,
         kernel_size: int = KERNEL_SIZE,
     ):
@@ -173,8 +172,8 @@ class Critic(nn.Module):
 
     def __init__(
         self,
-        state_dim: tuple[int, int],
-        action_dim: int,
+        state_dim: tuple[int, int] = (S_INFO, S_LEN),
+        action_dim: int = A_DIM,
         feature_num: int = FEATURE_NUM,
         kernel_size: int = KERNEL_SIZE,
     ):

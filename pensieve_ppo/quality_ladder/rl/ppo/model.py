@@ -12,6 +12,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from ...envivio import A_DIM
+from ..observer import S_INFO, S_LEN
+
 
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/ppo2.py#L7-L8
 FEATURE_NUM = 128
@@ -31,8 +34,8 @@ class Actor(nn.Module):
 
     def __init__(
         self,
-        state_dim: tuple[int, int],
-        action_dim: int,
+        state_dim: tuple[int, int] = (S_INFO, S_LEN),
+        action_dim: int = A_DIM,
         feature_num: int = FEATURE_NUM,
         action_eps: float = ACTION_EPS,
     ):
@@ -103,8 +106,8 @@ class Critic(nn.Module):
 
     def __init__(
         self,
-        state_dim: tuple[int, int],
-        action_dim: int,
+        state_dim: tuple[int, int] = (S_INFO, S_LEN),
+        action_dim: int = A_DIM,
         feature_num: int = FEATURE_NUM,
     ):
         """Initialize the Critic network.

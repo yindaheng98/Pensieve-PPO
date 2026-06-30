@@ -11,6 +11,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from ...envivio import A_DIM
+from ..observer import S_INFO, S_LEN
+
 
 # https://github.com/godka/Pensieve-PPO/blob/ed429e475a179bc346c76f66dc0cf6d3f2f0914d/src/dqn.py#L9
 FEATURE_NUM = 128
@@ -35,8 +38,8 @@ class QNetwork(nn.Module):
 
     def __init__(
         self,
-        state_dim: tuple[int, int],
-        action_dim: int,
+        state_dim: tuple[int, int] = (S_INFO, S_LEN),
+        action_dim: int = A_DIM,
         feature_num: int = FEATURE_NUM,
     ):
         """Initialize the Q-Network.

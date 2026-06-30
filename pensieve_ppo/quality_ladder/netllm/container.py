@@ -28,13 +28,13 @@ import torch.nn as nn
 
 from .abc import AbstractNetLLMAgent
 from ...core.video import VideoChunkRequest
+from ..envivio import A_DIM
 from .models.rl_policy import OfflineRLPolicy
 from .models.state_encoder import EncoderNetwork
 from .models.low_rank import peft_model
 
 # Reference: NetLLM/adaptive_bitrate_streaming/baseline_special/utils/constants.py#L15
 S_LEN = 6
-A_DIM = 6  # Number of bitrate levels
 S_INFO = 6  # Number of state information types
 
 

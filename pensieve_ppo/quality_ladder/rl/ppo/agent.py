@@ -17,9 +17,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from ....agent import TrainBatchInfo
 from ....quality_ladder import DEFAULT_QUALITY
+from ...envivio import A_DIM
 from .. import AbstractRLAgent
 from ..abc import RLActionDecision
-from ..observer import RLState
+from ..observer import RLState, S_INFO, S_LEN
 from .model import Actor, Critic
 
 
@@ -46,8 +47,8 @@ class PPOAgent(AbstractRLAgent):
 
     def __init__(
         self,
-        state_dim: tuple[int, int],
-        action_dim: int,
+        state_dim: tuple[int, int] = (S_INFO, S_LEN),
+        action_dim: int = A_DIM,
         learning_rate: float = ACTOR_LR_RATE,
         gamma: float = GAMMA,
         eps: float = EPS,
