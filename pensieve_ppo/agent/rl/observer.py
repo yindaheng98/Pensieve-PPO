@@ -8,14 +8,20 @@ Reference:
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
-from gymnasium import spaces
 
 from ...core.simulator import StepResult
 from ...quality_ladder import QualityLadderRequest
 from ...gym.env import AbstractABRStateObserver, ABREnv, State
+from .utils import (
+    get_bitrate_levels,
+    get_chunk_qualities,
+    get_chunk_quality,
+    get_last_chunk_qualities,
+    get_next_chunk_sizes,
+)
 
 
 @dataclass
@@ -62,7 +68,6 @@ class RLABRStateObserver(AbstractABRStateObserver):
         that may be modified or transformed before being returned.
 
     Attributes:
-        levels_quality: Quality metric list for each bitrate level.
         rebuf_penalty: Penalty coefficient for rebuffering.
         smooth_penalty: Penalty coefficient for quality changes.
         state_history_len: Number of past observations in state.
@@ -73,7 +78,6 @@ class RLABRStateObserver(AbstractABRStateObserver):
 
     def __init__(
         self,
-        levels_quality: List[float],
         rebuf_penalty: float = REBUF_PENALTY,
         smooth_penalty: float = SMOOTH_PENALTY,
         state_history_len: int = S_LEN,
@@ -82,10 +86,6 @@ class RLABRStateObserver(AbstractABRStateObserver):
         """Initialize the ABR state observer.
 
         Args:
-            levels_quality: Quality metric list for each bitrate level, used for
-                           state representation and reward calculation.
-                           For example, bitrate values in Kbps: [300, 750, 1200, ...]
-                           or other quality indicators like VMAF/PSNR scores.
             rebuf_penalty: Penalty coefficient for rebuffering (default: 4.3)
             smooth_penalty: Penalty coefficient for quality changes (default: 1.0)
             state_history_len: Number of past observations to keep in state (default: 8)
@@ -95,7 +95,6 @@ class RLABRStateObserver(AbstractABRStateObserver):
         # Store reward parameters
         self.rebuf_penalty = rebuf_penalty
         self.smooth_penalty = smooth_penalty
-        self.levels_quality = levels_quality
 
         # Store normalization parameters
         self.state_history_len = state_history_len
@@ -106,21 +105,6 @@ class RLABRStateObserver(AbstractABRStateObserver):
         # while methods return RLState objects wrapping this array.
         self.state_matrix: Optional[np.ndarray] = None
         self.last_bit_rate: int = 0
-
-    @property
-    def observation_space(self) -> spaces.Box:
-        """Gymnasium observation space for the state."""
-        return spaces.Box(
-            low=-np.inf,
-            high=np.inf,
-            shape=(S_INFO, self.state_history_len),
-            dtype=np.float32
-        )
-
-    @property
-    def bitrate_levels(self) -> int:
-        """Number of available bitrate levels."""
-        return len(self.levels_quality)
 
     def build_and_set_initial_state(
         self,
@@ -154,7 +138,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         """
         # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
         info = {
-            'quality': self.levels_quality[initial_bit_rate],
+            'quality': get_chunk_quality(env, initial_bit_rate),
         }
         return info
 
@@ -173,10 +157,11 @@ class RLABRStateObserver(AbstractABRStateObserver):
             Tuple of (state, info_dict).
         """
         # Validate levels_quality length matches env's bitrate_levels
-        if self.bitrate_levels != env.simulator.video_player.bitrate_levels:
+        video_bitrate_levels = get_bitrate_levels(env)
+        if initial_chunk_request.level < 0 or initial_chunk_request.level >= video_bitrate_levels:
             raise ValueError(
-                f"levels_quality length ({self.bitrate_levels}) must match "
-                f"env.simulator.video_player.bitrate_levels ({env.simulator.video_player.bitrate_levels})"
+                f"initial bitrate level ({initial_chunk_request.level}) must be in "
+                f"[0, {video_bitrate_levels})"
             )
 
         # initial_bit_rate is the bitrate level index, not the actual bitrate value.
@@ -207,10 +192,11 @@ class RLABRStateObserver(AbstractABRStateObserver):
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L83-L87
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L80-L84
         # reward is video quality - rebuffer penalty - smooth penalty
-        reward = self.levels_quality[bit_rate] / M_IN_K \
+        last_quality = get_last_chunk_qualities(env, result)[self.last_bit_rate]
+        reward = result.video_chunk_quality / M_IN_K \
             - self.rebuf_penalty * rebuf \
-            - self.smooth_penalty * np.abs(self.levels_quality[bit_rate] -
-                                           self.levels_quality[self.last_bit_rate]) / M_IN_K
+            - self.smooth_penalty * np.abs(result.video_chunk_quality -
+                                           last_quality) / M_IN_K
 
         return reward
 
@@ -239,27 +225,27 @@ class RLABRStateObserver(AbstractABRStateObserver):
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L75-L78
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L48-L51
         delay, buffer_size, \
-            video_chunk_size, next_video_chunk_sizes, \
+            video_chunk_size, \
             video_chunk_remain = (
                 result.delay,
                 result.buffer_size,
                 result.video_chunk_size,
-                result.next_video_chunk_sizes,
                 result.video_chunk_remain,
             )
+        next_video_chunk_sizes = get_next_chunk_sizes(env, result)
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L90-L104
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L52-L66
         state = np.roll(self.state_matrix, -1, axis=1)
 
         # this should be S_INFO number of terms
-        state[0, -1] = self.levels_quality[bit_rate] / \
-            float(np.max(self.levels_quality))  # last quality
+        state[0, -1] = float(result.video_chunk_quality) / \
+            float(np.max(get_chunk_qualities(env, result)))  # last quality
         state[1, -1] = buffer_size / self.buffer_norm_factor  # 10 sec
         state[2, -1] = float(video_chunk_size) / \
             float(delay) / M_IN_K  # kilo byte / ms
         state[3, -1] = float(delay) / M_IN_K / self.buffer_norm_factor  # 10 sec
-        state[4, :self.bitrate_levels] = np.array(
+        state[4, :len(next_video_chunk_sizes)] = np.array(
             next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
         state[5, -1] = np.minimum(video_chunk_remain,
                                   chunk_til_video_end_cap) / float(chunk_til_video_end_cap)
@@ -287,7 +273,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         """
         # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
         info = {
-            'quality': self.levels_quality[bit_rate],
+            'quality': float(result.video_chunk_quality),
         }
         return info
 
