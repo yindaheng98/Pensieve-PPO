@@ -11,12 +11,12 @@ import argparse
 import copy
 import os
 import shutil
-from typing import Callable
+from typing import Callable, Optional
 
 from torch.utils.tensorboard import SummaryWriter
 
 from .agent import AbstractTrainableAgent, Trainer, SaveModelCallback, EpochEndCallback, get_available_trainable_agents
-from .defaults import create_env_agent_factory_with_default, TRAIN_TRACES
+from .defaults import create_env_agent_factory, TRAIN_TRACES
 from .args import add_env_agent_arguments, parse_env_agent_args
 from .test import main as test_main, calculate_test_statistics, add_testing_arguments
 
@@ -80,8 +80,6 @@ class TestingCallback(SaveModelCallback):
         rewards_median = stats['rewards_median']
         rewards_95per = stats['rewards_95per']
         rewards_max = stats['rewards_max']
-        avg_entropy = stats['avg_entropy']
-
         with open(log_file_path, 'a') as log_file:
             log_file.write(str(epoch) + '\t' +
                            str(rewards_min) + '\t' +
@@ -95,14 +93,19 @@ class TestingCallback(SaveModelCallback):
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L124-L127
         agent.tensorboard_logging(writer, epoch)
         writer.add_scalar('Reward', rewards_mean, epoch)
-        writer.add_scalar('Entropy', avg_entropy, epoch)
         writer.flush()
 
-        print(f'Epoch {epoch}: avg_reward={rewards_mean:.4f}, avg_entropy={avg_entropy:.4f}')
+        print(f'Epoch {epoch}: avg_reward={rewards_mean:.4f}')
 
 
 def prepare_training(
-    *args,
+    name: str = 'ppo',
+    trace_folder: Optional[str] = None,
+    random_seed: Optional[int] = None,
+    observer_kwargs: dict = {},
+    player_kwargs: dict = {},
+    model_path: Optional[str] = None,
+    agent_kwargs: dict = {},
     output_dir: str = SUMMARY_DIR,
     parallel_workers: int = NUM_AGENTS,
     max_steps_per_epoch: int = TRAIN_SEQ_LEN,
@@ -110,18 +113,24 @@ def prepare_training(
     model_save_interval: int = MODEL_SAVE_INTERVAL,
     on_epoch_end: Callable[[int, AbstractTrainableAgent, dict], None] = EpochEndCallback(),
     on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = SaveModelCallback(),
-    **kwargs,
 ) -> Trainer:
     """Prepare trainer for distributed training.
 
-    Wrapper for create_env_agent_factory_with_default with train=True.
-    See create_env_agent_factory_with_default for available parameters.
+    Wrapper for create_env_agent_factory with train=True. Environment and
+    agent parameters are listed in the same order as create_env_agent,
+    excluding train.
 
     Reference:
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L77-L127
 
     Args:
-        *args: Positional arguments passed to create_env_agent_factory_with_default.
+        name: Agent name.
+        trace_folder: Folder containing training traces.
+        random_seed: Random seed.
+        observer_kwargs: Keyword arguments for the observer.
+        player_kwargs: Keyword arguments for the video player.
+        model_path: Optional path to load a model from.
+        agent_kwargs: Keyword arguments for the agent.
         output_dir: Directory for saving logs and model checkpoints.
         parallel_workers: Number of parallel worker agents.
         max_steps_per_epoch: Maximum number of environment steps per epoch per worker.
@@ -132,7 +141,6 @@ def prepare_training(
                      Signature: (epoch: int, agent: AbstractTrainableAgent, info: dict) -> None
         on_save_model: Callback function invoked when model is saved.
                      Signature: (epoch: int, model_path: str, agent: AbstractTrainableAgent) -> None
-        **kwargs: Keyword arguments passed to create_env_agent_factory_with_default.
 
     Returns:
         Configured Trainer instance ready for training.
@@ -143,8 +151,15 @@ def prepare_training(
     # Create environment and agent factories
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L83-L85
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L131-L133
-    env_factory, agent_factory = create_env_agent_factory_with_default(
-        *args, train=True, **kwargs,
+    env_factory, agent_factory = create_env_agent_factory(
+        name=name,
+        trace_folder=trace_folder,
+        train=True,
+        random_seed=random_seed,
+        observer_kwargs=observer_kwargs,
+        player_kwargs=player_kwargs,
+        model_path=model_path,
+        agent_kwargs=agent_kwargs,
     )
 
     # Create trainer
@@ -200,18 +215,13 @@ if __name__ == '__main__':
 
     # Prepare trainer
     trainer = prepare_training(
-        trace_folder=args.train_trace_folder,
-        # Agent parameters
         name=args.agent_name,
+        trace_folder=args.train_trace_folder,
+        random_seed=args.random_seed,
+        observer_kwargs=args.observer_options,
+        player_kwargs=args.player_options,
         model_path=args.model_path,
-        device=args.device,
-        agent_options=args.agent_options,
-        # Shared parameters
-        levels_quality=args.levels_quality,
-        state_history_len=args.state_history_len,
-        initial_level=args.initial_level,
-        env_options=args.env_options,
-        # Training parameters
+        agent_kwargs=args.agent_options,
         output_dir=args.output_dir,
         parallel_workers=args.parallel_workers,
         max_steps_per_epoch=args.max_steps_per_epoch,
