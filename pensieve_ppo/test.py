@@ -16,7 +16,7 @@ import numpy as np
 from tqdm import tqdm
 
 from .agent import AbstractAgent, get_available_agents
-from .defaults import create_env_agent_with_default
+from .defaults import create_env_agent
 from .gym.env import ABREnv
 from .args import add_env_agent_arguments, parse_env_agent_args
 
@@ -34,17 +34,16 @@ LOG_FILE_PREFIX = os.path.join(TEST_LOG_FOLDER, 'log_sim_')
 def prepare_testing(*args, **kwargs) -> Tuple[ABREnv, AbstractAgent]:
     """Prepare env and agent for testing.
 
-    Wrapper for create_env_agent_with_default with train=False.
-    See create_env_agent_with_default for available parameters.
+    Wrapper for create_env_agent with train=False.
+    See create_env_agent for available parameters.
     """
-    return create_env_agent_with_default(*args, train=False, **kwargs)
+    return create_env_agent(*args, train=False, **kwargs)
 
 
 def testing(
     env: ABREnv,
     agent: AbstractAgent,
     log_file_prefix: str,
-    initial_level: int,
 ) -> None:
     """Run testing on all test traces.
 
@@ -54,15 +53,14 @@ def testing(
     The loop structure matches src/test.py exactly:
         while True:
             1. step(action) - download chunk
-            2. write log (using previous entropy)
-            3. predict (update entropy for next log)
+            2. write log
+            3. predict next chunk request
             4. if end_of_video: reset and open new log
 
     Args:
         env: The ABR environment.
         agent: The trained agent.
         log_file_prefix: Prefix for log file paths.
-        initial_level: Initial quality level index on reset.
     """
     # Create log directory if needed
     log_dir = os.path.dirname(log_file_prefix)
@@ -82,12 +80,12 @@ def testing(
         pass
 
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L53
-    env.reset(options={'initial_level': initial_level})
-    agent.reset()  # Reset agent's "internal state" (e.g., embedding caches) for new episode
+    initial_chunk_request = agent.reset()  # Reset agent's "internal state" (e.g., embedding caches) for new episode
+    env.reset(options={'initial_chunk_request': initial_chunk_request})
 
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L55-L66
     # last_bit_rate = initial_level # no where to use last_bit_rate
-    bit_rate = initial_level
+    chunk_request = initial_chunk_request
 
     # action_vec = np.zeros(a_dim) # no where to use action_vec
     # action_vec[bit_rate] = 1
@@ -95,8 +93,6 @@ def testing(
     # s_batch = [np.zeros((s_info, s_len))] # no where to use s_batch
     # a_batch = [action_vec] # no where to use a_batch
     # r_batch = [] # no where to use r_batch
-    entropy_record = []
-    entropy_ = 0.5
     video_count = 0
 
     # Progress bar for testing
@@ -109,7 +105,7 @@ def testing(
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L100-L115
         # the action is from the last decision
         # this is to make the framework similar to the real
-        state, reward, end_of_video, truncated, info = env.step(bit_rate)
+        state, reward, end_of_video, truncated, info = env.step(chunk_request)
         pbar_step.update(1)
 
         # r_batch.append(reward)
@@ -126,15 +122,13 @@ def testing(
                            str(info['rebuffer']) + '\t' +
                            str(info['video_chunk_size']) + '\t' +
                            str(info['delay']) + '\t' +
-                           str(entropy_) + '\t' +
                            str(reward) + '\n')
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L117-L123
-        bit_rate, action_prob = agent.select_action(state)
+        decision = agent.select_action(state)
+        chunk_request = decision.action
 
         # s_batch.append(state)
-        entropy_ = -np.dot(action_prob, np.log(action_prob))
-        entropy_record.append(entropy_)
 
         if end_of_video:
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L126-L147
@@ -143,7 +137,6 @@ def testing(
                 log_file.write('\n')
 
             # last_bit_rate = initial_level
-            bit_rate = initial_level  # use the default action here
 
             # del s_batch[:]
             # del a_batch[:]
@@ -154,8 +147,6 @@ def testing(
 
             # s_batch.append(np.zeros((s_info, s_len)))
             # a_batch.append(action_vec)
-            # print(np.mean(entropy_record))
-            entropy_record = []
 
             video_count += 1
             pbar.update(1)
@@ -167,8 +158,12 @@ def testing(
                 break
 
             # Reset for next trace - only initializes state
-            env.reset(options={'reset_time_stamp': False, 'initial_level': initial_level})
-            agent.reset()  # Reset agent's "internal state" (e.g., embedding caches) for new trace
+            initial_chunk_request = agent.reset()
+            chunk_request = initial_chunk_request
+            env.reset(options={
+                'reset_time_stamp': False,
+                'initial_chunk_request': initial_chunk_request,
+            })
 
             # Open new log file
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L149-L150
@@ -188,23 +183,21 @@ def calculate_test_statistics(log_file_prefix: str) -> Dict[str, float]:
         log_file_prefix: Prefix for log file paths (same as used in testing()).
 
     Returns:
-        Dictionary with statistics: min, 5th percentile, mean, median, 
-        95th percentile, max rewards, and avg entropy.
+        Dictionary with statistics: min, 5th percentile, mean, median,
+        95th percentile, and max rewards.
     """
-    rewards, entropies = [], []
+    rewards = []
     test_log_files = glob.glob(log_file_prefix + "*")
     for test_log_file in test_log_files:
-        reward, entropy = [], []
+        reward = []
         with open(test_log_file, 'rb') as f:
             for line in f:
                 parse = line.split()
                 try:
-                    entropy.append(float(parse[-2]))
                     reward.append(float(parse[-1]))
                 except IndexError:
                     break
         rewards.append(np.mean(reward[1:]))
-        entropies.append(np.mean(entropy[1:]))
 
     rewards = np.array(rewards)
 
@@ -215,7 +208,6 @@ def calculate_test_statistics(log_file_prefix: str) -> Dict[str, float]:
         'rewards_median': np.percentile(rewards, 50),
         'rewards_95per': np.percentile(rewards, 95),
         'rewards_max': np.max(rewards),
-        'avg_entropy': np.mean(entropies),
     }
 
 
@@ -241,11 +233,10 @@ def main(args):
         trace_folder=args.test_trace_folder,
         model_path=args.model_path,
         name=args.agent_name,
-        device=args.device,
-        levels_quality=args.levels_quality,
-        state_history_len=args.state_history_len,
-        agent_options=args.agent_options,
-        env_options=args.env_options,
+        agent_kwargs=args.agent_options,
+        observer_kwargs=args.observer_options,
+        player_kwargs=args.player_options,
+        random_seed=args.random_seed,
     )
 
     # Run testing
@@ -253,7 +244,6 @@ def main(args):
         env=env,
         agent=agent,
         log_file_prefix=log_file_prefix,
-        initial_level=args.initial_level,
     )
 
     return log_file_prefix
@@ -282,5 +272,4 @@ if __name__ == '__main__':
     print(f"Reward Median:  {stats['rewards_median']:.4f}")
     print(f"Reward 95%:     {stats['rewards_95per']:.4f}")
     print(f"Reward Max:     {stats['rewards_max']:.4f}")
-    print(f"Avg Entropy:    {stats['avg_entropy']:.4f}")
     print("=" * 50)
