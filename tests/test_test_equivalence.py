@@ -23,7 +23,6 @@ import numpy as np
 
 # Import our implementation
 from pensieve_ppo.test import prepare_testing, testing as run_testing
-from pensieve_ppo.defaults import VIDEO_BIT_RATE
 
 # Paths
 SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
@@ -127,8 +126,7 @@ class TestTestEquivalence(unittest.TestCase):
             trace_folder='./test/',
             model_path=PRETRAINED_MODEL,
             name='ppo',
-            levels_quality=VIDEO_BIT_RATE,
-            env_options={'video_size_file_prefix': './envivio/video_size_'},
+            player_kwargs={'video_size_file_prefix': './envivio/video_size_'},
         )
 
         # Run testing
@@ -137,7 +135,6 @@ class TestTestEquivalence(unittest.TestCase):
             env=env,
             agent=agent,
             log_file_prefix=log_file_prefix,
-            initial_level=1,  # DEFAULT_QUALITY in src/test.py
         )
 
     def _parse_log_line(self, line: str) -> dict:
@@ -325,11 +322,11 @@ class TestLogFormat(unittest.TestCase):
             trace_folder='./test/',
             model_path=PRETRAINED_MODEL,
             name='ppo',
-            env_options={'video_size_file_prefix': './envivio/video_size_'},
+            player_kwargs={'video_size_file_prefix': './envivio/video_size_'},
         )
 
         log_prefix = os.path.join(log_dir, 'log_sim_ppo')
-        run_testing(env=env, agent=agent, log_file_prefix=log_prefix, initial_level=1)
+        run_testing(env=env, agent=agent, log_file_prefix=log_prefix)
 
         # Check log files exist
         log_files = os.listdir(log_dir)
@@ -354,11 +351,11 @@ class TestLogFormat(unittest.TestCase):
             trace_folder='./test/',
             model_path=PRETRAINED_MODEL,
             name='ppo',
-            env_options={'video_size_file_prefix': './envivio/video_size_'},
+            player_kwargs={'video_size_file_prefix': './envivio/video_size_'},
         )
 
         log_prefix = os.path.join(log_dir, 'log_sim_ppo')
-        run_testing(env=env, agent=agent, log_file_prefix=log_prefix, initial_level=1)
+        run_testing(env=env, agent=agent, log_file_prefix=log_prefix)
 
         # Read first log file
         log_files = sorted(os.listdir(log_dir))
@@ -397,11 +394,11 @@ class TestLogFormat(unittest.TestCase):
             trace_folder='./test/',
             model_path=PRETRAINED_MODEL,
             name='ppo',
-            env_options={'video_size_file_prefix': './envivio/video_size_'},
+            player_kwargs={'video_size_file_prefix': './envivio/video_size_'},
         )
 
         log_prefix = os.path.join(log_dir, 'log_sim_ppo')
-        run_testing(env=env, agent=agent, log_file_prefix=log_prefix, initial_level=1)
+        run_testing(env=env, agent=agent, log_file_prefix=log_prefix)
 
         # Check each log file
         log_files = os.listdir(log_dir)
@@ -448,9 +445,9 @@ class TestReproducibility(unittest.TestCase):
             trace_folder='./test/',
             model_path=PRETRAINED_MODEL,
             name='ppo',
-            env_options={'video_size_file_prefix': './envivio/video_size_'},
+            player_kwargs={'video_size_file_prefix': './envivio/video_size_'},
         )
-        run_testing(env=env1, agent=agent1, log_file_prefix=os.path.join(log_dir1, 'log'), initial_level=1)
+        run_testing(env=env1, agent=agent1, log_file_prefix=os.path.join(log_dir1, 'log'))
 
         # Run 2
         np.random.seed(RANDOM_SEED)
@@ -458,9 +455,9 @@ class TestReproducibility(unittest.TestCase):
             trace_folder='./test/',
             model_path=PRETRAINED_MODEL,
             name='ppo',
-            env_options={'video_size_file_prefix': './envivio/video_size_'},
+            player_kwargs={'video_size_file_prefix': './envivio/video_size_'},
         )
-        run_testing(env=env2, agent=agent2, log_file_prefix=os.path.join(log_dir2, 'log'), initial_level=1)
+        run_testing(env=env2, agent=agent2, log_file_prefix=os.path.join(log_dir2, 'log'))
 
         # Compare outputs
         logs1 = sorted(os.listdir(log_dir1))

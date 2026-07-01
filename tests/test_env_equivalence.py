@@ -44,8 +44,9 @@ import env as src_env
 
 # Import our gymnasium implementation and constants.
 from pensieve_ppo.agent import create_env
-from pensieve_ppo.defaults import VIDEO_BIT_RATE, TOTAL_VIDEO_CHUNKS, S_INFO, S_LEN
 from pensieve_ppo.quality_ladder import QualityLadderRequest
+from pensieve_ppo.quality_ladder.envivio import TOTAL_VIDEO_CHUNKS, VIDEO_BIT_RATE
+from pensieve_ppo.quality_ladder.rl.observer import S_INFO, S_LEN
 
 
 # Test-specific constants (must match src_env for equivalence verification)
