@@ -285,6 +285,12 @@ def create_imitation_env(
 
     student_entry = REGISTRY[student_name]
     teacher_entry = REGISTRY[teacher_name]
+    assert teacher_entry.player_cls is student_entry.player_cls, ValueError(
+        f"Student agent '{student_name}' uses player class "
+        f"{student_entry.player_cls.__name__}, but teacher agent "
+        f"'{teacher_name}' uses {teacher_entry.player_cls.__name__}. "
+        "Imitation learning requires matching player classes."
+    )
 
     return create_imitation_env_with_class(
         student_entry.player_cls,

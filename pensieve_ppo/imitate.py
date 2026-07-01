@@ -17,18 +17,28 @@ Reference:
 
 import argparse
 import os
-from typing import Callable
+from typing import Callable, Optional
 
 
 from .agent import AbstractTrainableAgent, ImitationTrainer, EpochEndCallback, SaveModelCallback, get_available_agents
-from .defaults import create_imitation_env_agent_factory_with_default
+from .defaults import create_imitation_env_agent_factory
 from .args import add_env_agent_arguments, parse_env_agent_args, parse_options
 from .test import add_testing_arguments
 from .train import TestingCallback, add_training_arguments, NUM_AGENTS, TRAIN_SEQ_LEN, TRAIN_EPOCH, MODEL_SAVE_INTERVAL, SUMMARY_DIR
 
 
 def prepare_imitation(
-    *args,
+    student_name: str = 'ppo',
+    teacher_name: str = 'bba',
+    trace_folder: Optional[str] = None,
+    random_seed: Optional[int] = None,
+    student_observer_kwargs: dict = {},
+    teacher_observer_kwargs: dict = {},
+    player_kwargs: dict = {},
+    student_model_path: Optional[str] = None,
+    teacher_model_path: Optional[str] = None,
+    student_agent_kwargs: dict = {},
+    teacher_agent_kwargs: dict = {},
     output_dir: str = SUMMARY_DIR,
     parallel_workers: int = NUM_AGENTS,
     max_steps_per_epoch: int = TRAIN_SEQ_LEN,
@@ -36,12 +46,12 @@ def prepare_imitation(
     model_save_interval: int = MODEL_SAVE_INTERVAL,
     on_epoch_end: Callable[[int, AbstractTrainableAgent, dict], None] = EpochEndCallback(),
     on_save_model: Callable[[int, str, AbstractTrainableAgent], None] = SaveModelCallback(),
-    **kwargs,
 ) -> ImitationTrainer:
     """Prepare trainer for distributed imitation learning.
 
-    Wrapper for create_imitation_env_agent_factory_with_default with train=True.
-    See create_imitation_env_agent_factory_with_default for available parameters.
+    Wrapper for create_imitation_env_agent_factory with train=True. Imitation
+    env and agent parameters are listed in the same order as
+    create_imitation_env_agent_factory, excluding train.
 
     This function creates an ImitationTrainer configured for imitation learning, where:
     - Worker agents use a teacher agent (e.g., BBA, MPC, LLM-based) to collect trajectories
@@ -50,7 +60,17 @@ def prepare_imitation(
     - No parameter synchronization occurs between central and worker agents
 
     Args:
-        *args: Positional arguments passed to create_imitation_env_agent_factory_with_default.
+        student_name: Agent name for student.
+        teacher_name: Agent name for teacher.
+        trace_folder: Folder containing training traces.
+        random_seed: Random seed.
+        student_observer_kwargs: Keyword arguments for the student observer.
+        teacher_observer_kwargs: Keyword arguments for the teacher observer.
+        player_kwargs: Keyword arguments for the video player.
+        student_model_path: Optional path to load the student model from.
+        teacher_model_path: Optional path to load the teacher model from.
+        student_agent_kwargs: Keyword arguments for the student agent.
+        teacher_agent_kwargs: Keyword arguments for the teacher agent.
         output_dir: Directory for saving logs and model checkpoints.
         parallel_workers: Number of parallel worker agents.
         max_steps_per_epoch: Maximum number of environment steps per epoch per worker.
@@ -61,7 +81,6 @@ def prepare_imitation(
                      Signature: (epoch: int, agent: AbstractTrainableAgent, info: dict) -> None
         on_save_model: Callback function invoked when model is saved.
                      Signature: (epoch: int, model_path: str, agent: AbstractTrainableAgent) -> None
-        **kwargs: Keyword arguments passed to create_imitation_env_agent_factory_with_default.
 
     Returns:
         Configured ImitationTrainer instance ready for imitation learning.
@@ -70,8 +89,19 @@ def prepare_imitation(
     os.makedirs(output_dir, exist_ok=True)
 
     # Create factories for imitation learning
-    env_factory, student_agent_factory, teacher_agent_factory = create_imitation_env_agent_factory_with_default(
-        *args, train=True, **kwargs,
+    env_factory, student_agent_factory, teacher_agent_factory = create_imitation_env_agent_factory(
+        student_name=student_name,
+        teacher_name=teacher_name,
+        trace_folder=trace_folder,
+        train=True,
+        random_seed=random_seed,
+        student_observer_kwargs=student_observer_kwargs,
+        teacher_observer_kwargs=teacher_observer_kwargs,
+        player_kwargs=player_kwargs,
+        student_model_path=student_model_path,
+        teacher_model_path=teacher_model_path,
+        student_agent_kwargs=student_agent_kwargs,
+        teacher_agent_kwargs=teacher_agent_kwargs,
     )
 
     # Create ImitationTrainer
@@ -106,11 +136,12 @@ def add_teacher_arguments(parser: argparse.ArgumentParser, available_agents: lis
                         help=f"Algorithm to use for teacher agent (default: 'bba')")
     parser.add_argument('--teacher-model-path', type=str, default=None, dest='teacher_model_path',
                         help="Path to load pre-trained model weights for teacher agent (default: None)")
-    parser.add_argument('--teacher-device', type=str, default=None, dest='teacher_device',
-                        help="PyTorch device for teacher agent, e.g. 'cuda', 'cpu' (default: None, auto-select)")
     parser.add_argument('--teacher-agent-options', type=str, nargs='*', default=[],
                         metavar='KEY=VALUE', dest='teacher_agent_options',
-                        help="Extra teacher agent kwargs, e.g. learning_rate=1e-4 gamma=0.99")
+                        help="Extra teacher agent kwargs, e.g. learning_rate=1e-4 gamma=0.99 device='cuda'")
+    parser.add_argument('--teacher-observer-options', type=str, nargs='*', default=[],
+                        metavar='KEY=VALUE', dest='teacher_observer_options',
+                        help="Extra teacher observer kwargs, e.g. state_history_len=6")
 
 
 if __name__ == '__main__':
@@ -124,29 +155,24 @@ if __name__ == '__main__':
     # Post-process arguments (parse options, set seed)
     parse_env_agent_args(args)
     args.teacher_agent_options = parse_options(args.teacher_agent_options)
+    args.teacher_observer_options = parse_options(args.teacher_observer_options)
 
     # Create on_save_model callback (reuse from train.py)
     on_save_model = TestingCallback(args=args, output_dir=args.output_dir)
 
     # Prepare trainer for imitation learning
     trainer = prepare_imitation(
-        trace_folder=args.train_trace_folder,
-        # Student agent parameters
         student_name=args.agent_name,
-        student_model_path=args.model_path,
-        student_device=args.device,
-        student_agent_options=args.agent_options,
-        # Teacher agent parameters
         teacher_name=args.teacher_agent_name,
+        trace_folder=args.train_trace_folder,
+        random_seed=args.random_seed,
+        student_observer_kwargs=args.observer_options,
+        teacher_observer_kwargs=args.teacher_observer_options,
+        player_kwargs=args.player_options,
+        student_model_path=args.model_path,
         teacher_model_path=args.teacher_model_path,
-        teacher_device=args.teacher_device,
-        teacher_agent_options=args.teacher_agent_options,
-        # Shared parameters
-        levels_quality=args.levels_quality,
-        state_history_len=args.state_history_len,
-        initial_level=args.initial_level,
-        env_options=args.env_options,
-        # Training parameters
+        student_agent_kwargs=args.agent_options,
+        teacher_agent_kwargs=args.teacher_agent_options,
         output_dir=args.output_dir,
         parallel_workers=args.parallel_workers,
         max_steps_per_epoch=args.max_steps_per_epoch,
