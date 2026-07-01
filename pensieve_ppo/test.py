@@ -10,7 +10,7 @@ Reference:
 import argparse
 import glob
 import os
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 from tqdm import tqdm
@@ -31,13 +31,30 @@ TEST_LOG_FOLDER = './test_results/'
 LOG_FILE_PREFIX = os.path.join(TEST_LOG_FOLDER, 'log_sim_')
 
 
-def prepare_testing(*args, **kwargs) -> Tuple[ABREnv, AbstractAgent]:
+def prepare_testing(
+    name: str = 'ppo',
+    trace_folder: Optional[str] = None,
+    random_seed: Optional[int] = None,
+    observer_kwargs: dict = {},
+    player_kwargs: dict = {},
+    model_path: Optional[str] = None,
+    agent_kwargs: dict = {},
+) -> Tuple[ABREnv, AbstractAgent]:
     """Prepare env and agent for testing.
 
-    Wrapper for create_env_agent with train=False.
-    See create_env_agent for available parameters.
+    Wrapper for create_env_agent with train=False. Parameters are listed in
+    the same order as create_env_agent, excluding train.
     """
-    return create_env_agent(*args, train=False, **kwargs)
+    return create_env_agent(
+        name=name,
+        trace_folder=trace_folder,
+        train=False,
+        random_seed=random_seed,
+        observer_kwargs=observer_kwargs,
+        player_kwargs=player_kwargs,
+        model_path=model_path,
+        agent_kwargs=agent_kwargs,
+    )
 
 
 def testing(
@@ -230,13 +247,13 @@ def main(args):
 
     # Prepare env and agent
     env, agent = prepare_testing(
-        trace_folder=args.test_trace_folder,
-        model_path=args.model_path,
         name=args.agent_name,
-        agent_kwargs=args.agent_options,
+        trace_folder=args.test_trace_folder,
+        random_seed=args.random_seed,
         observer_kwargs=args.observer_options,
         player_kwargs=args.player_options,
-        random_seed=args.random_seed,
+        model_path=args.model_path,
+        agent_kwargs=args.agent_options,
     )
 
     # Run testing
