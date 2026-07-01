@@ -50,6 +50,9 @@ class ExpPoolWriterAgent(AbstractTrainableAgent):
     def select_action_for_training(self, state):
         raise NotImplementedError("ExpPoolWriterAgent.select_action_for_training should not be called")
 
+    def reset(self, initial_chunk_request=None):
+        raise NotImplementedError("ExpPoolWriterAgent.reset should not be called")
+
     def produce_training_batch(
         self,
         trajectory: List[Step],
