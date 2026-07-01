@@ -14,7 +14,8 @@ from typing import List, Optional, Tuple
 
 from ...agent.abc import AbstractAgent
 from ...core.video import VideoChunkRequest
-from ...quality_ladder import DEFAULT_QUALITY, QualityLadderRequest
+from ..abc import QualityLadderRequest
+from ..envivio import A_DIM, DEFAULT_QUALITY
 from ..rl.abc import RLActionDecision
 from .observer import MPCState
 
@@ -67,7 +68,7 @@ class MPCAgent(AbstractAgent):
 
     def __init__(
         self,
-        action_dim: int,
+        action_dim: int = A_DIM,
         future_chunk_count: int = MPC_FUTURE_CHUNK_COUNT,
         bandwidth_history_len: int = BANDWIDTH_HISTORY_LEN,
         video_chunk_len: float = VIDEO_CHUNK_LEN,

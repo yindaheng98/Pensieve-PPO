@@ -2,7 +2,8 @@
 
 from ...core.simulator import StepResult
 from ...gym.env import ABREnv
-from ...quality_ladder import QualityLadderRequest, QualityLadderVideoPlayer
+from ..abc import QualityLadderRequest
+from ..player import QualityLadderVideoPlayer
 
 
 def get_video_player(env: ABREnv) -> QualityLadderVideoPlayer:

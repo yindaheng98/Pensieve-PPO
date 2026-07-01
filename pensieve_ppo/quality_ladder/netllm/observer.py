@@ -30,8 +30,8 @@ from typing import Any, Callable, Dict, Optional, Tuple
 from ..rl import RLABRStateObserver, RLState
 from ..rl.observer import S_LEN
 from ...core.simulator import StepResult
-from ...quality_ladder import QualityLadderRequest
 from ...gym import ABREnv
+from ..abc import QualityLadderRequest
 
 
 @dataclass

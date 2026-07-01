@@ -21,8 +21,9 @@ import numpy as np
 
 
 from ...core.video import VideoChunkRequest
-from ...quality_ladder import DEFAULT_QUALITY, QualityLadderActionDecision, QualityLadderRequest
 from ...agent.trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
+from ..abc import QualityLadderActionDecision, QualityLadderRequest
+from ..envivio import DEFAULT_QUALITY
 from .observer import RLState
 
 

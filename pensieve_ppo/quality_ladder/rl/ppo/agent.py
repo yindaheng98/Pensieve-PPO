@@ -16,8 +16,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 from ....agent import TrainBatchInfo
-from ....quality_ladder import DEFAULT_QUALITY
-from ...envivio import A_DIM
+from ...envivio import A_DIM, DEFAULT_QUALITY
 from .. import AbstractRLAgent
 from ..abc import RLActionDecision
 from ..observer import RLState, S_INFO, S_LEN

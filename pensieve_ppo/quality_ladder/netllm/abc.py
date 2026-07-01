@@ -28,7 +28,8 @@ import torch.nn as nn
 
 from ...agent.trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
 from ...core.video import VideoChunkRequest
-from ...quality_ladder import DEFAULT_QUALITY, QualityLadderRequest
+from ..abc import QualityLadderRequest
+from ..envivio import DEFAULT_QUALITY
 from ..rl.abc import RLActionDecision
 from .observer import NetLLMState
 

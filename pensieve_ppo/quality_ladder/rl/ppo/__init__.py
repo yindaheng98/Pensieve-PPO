@@ -8,7 +8,7 @@ Reference:
 
 from .agent import PPOAgent
 from .model import Actor, Critic
-from ....quality_ladder import QualityLadderVideoPlayer
+from ...player import QualityLadderVideoPlayer
 from ....agent.registry import register
 from ..observer import RLABRStateObserver
 

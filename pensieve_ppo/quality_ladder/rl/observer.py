@@ -13,8 +13,8 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 
 from ...core.simulator import StepResult
-from ...quality_ladder import QualityLadderRequest
 from ...gym.env import AbstractABRStateObserver, ABREnv, State
+from ..abc import QualityLadderRequest
 from .utils import (
     get_bitrate_levels,
     get_chunk_qualities,

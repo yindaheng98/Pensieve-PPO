@@ -20,8 +20,8 @@ from ...core.simulator import StepResult
 from ...gym import ABREnv, State
 
 from ...core.trace import TraceSimulator
-from ...quality_ladder import QualityLadderRequest
 from ...core.video import VideoPlayer
+from ..abc import QualityLadderRequest
 from ..rl.utils import get_initial_chunk_qualities, get_next_chunk_qualities
 
 

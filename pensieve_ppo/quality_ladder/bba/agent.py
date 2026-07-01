@@ -12,7 +12,8 @@ import logging
 from typing import Optional
 
 from ...core.video import VideoChunkRequest
-from ...quality_ladder import DEFAULT_QUALITY, QualityLadderRequest
+from ..abc import QualityLadderRequest
+from ..envivio import A_DIM, DEFAULT_QUALITY
 from ...agent.abc import AbstractAgent
 from ..rl.abc import RLActionDecision
 from .observer import BBAState
@@ -43,7 +44,7 @@ class BBAAgent(AbstractAgent):
 
     def __init__(
         self,
-        action_dim: int,
+        action_dim: int = A_DIM,
         reservoir: float = RESERVOIR,
         cushion: float = CUSHION,
         initial_level: int = DEFAULT_QUALITY,

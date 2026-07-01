@@ -13,7 +13,8 @@ from typing import  Optional, Tuple
 
 
 from ...core.video import VideoChunkRequest
-from ...quality_ladder import DEFAULT_QUALITY, QualityLadderRequest
+from ..abc import QualityLadderRequest
+from ..envivio import A_DIM, DEFAULT_QUALITY
 from ...agent.abc import AbstractAgent
 from ..rl.abc import RLActionDecision
 from .observer_oracle import OracleMPCState
@@ -60,7 +61,7 @@ class OracleMPCAgent(AbstractAgent):
 
     def __init__(
         self,
-        action_dim: int,
+        action_dim: int = A_DIM,
         future_chunk_count: int = MPC_FUTURE_CHUNK_COUNT,
         video_chunk_len: float = VIDEO_CHUNK_LEN,
         initial_level: int = DEFAULT_QUALITY,

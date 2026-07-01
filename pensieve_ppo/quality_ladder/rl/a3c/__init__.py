@@ -10,7 +10,7 @@ Reference:
 
 from .agent import A3CAgent, compute_entropy, discount
 from .model import Actor, Critic
-from ....quality_ladder import QualityLadderVideoPlayer
+from ...player import QualityLadderVideoPlayer
 from ....agent.registry import register
 from ..observer import RLABRStateObserver
 

@@ -8,7 +8,7 @@ Reference:
 
 from .agent import BBAAgent
 from .observer import BBAStateObserver, BBAState
-from ...quality_ladder import QualityLadderVideoPlayer
+from ..player import QualityLadderVideoPlayer
 from ...agent.registry import register
 
 # Register BBA agent
