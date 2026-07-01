@@ -197,12 +197,13 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
                 orig_sizes = self.fixed_env.video_size[bitrate]
                 our_sizes = video_data.video_size[bitrate]
 
-                # Compare lengths
-                self.assertEqual(len(our_sizes), len(orig_sizes),
+                # Our loader exposes the 48 playable chunks used by the simulator;
+                # the raw Envivio size files include one extra trailing entry.
+                self.assertEqual(len(our_sizes), TOTAL_VIDEO_CHUNKS,
                                  f"Bitrate {bitrate}: size array length mismatch")
 
                 # Compare each chunk size
-                for chunk_idx in range(len(orig_sizes)):
+                for chunk_idx in range(TOTAL_VIDEO_CHUNKS):
                     self.assertEqual(
                         our_sizes[chunk_idx], orig_sizes[chunk_idx],
                         f"Bitrate {bitrate}, Chunk {chunk_idx}: size mismatch"
@@ -237,8 +238,8 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
 
         # total_chunks should match the second dimension of the matrix
         self.assertEqual(video_data.total_chunks, video_data.video_size.shape[1])
-        # And should match the original Environment's video_size length
-        self.assertEqual(video_data.total_chunks, len(self.fixed_env.video_size[0]))
+        # And should match the number of playable chunks used by the simulator.
+        self.assertEqual(video_data.total_chunks, TOTAL_VIDEO_CHUNKS)
 
     def test_get_chunk_size_method(self):
         """Test the get_chunk_size method against Environment.video_size."""
