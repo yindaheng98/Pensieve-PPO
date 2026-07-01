@@ -109,23 +109,21 @@ def get_available_trainable_agents() -> list[str]:
 
 def create_agent(
     name: str,
-    *args,
     model_path: Optional[str] = None,
-    **kwargs,
+    agent_kwargs: dict = {},
 ) -> AbstractAgent:
     """Create an agent by name.
 
     This factory function creates an agent instance based on the given name.
-    Since different agents may have different constructor signatures, all
-    positional and keyword arguments are passed directly to the agent class.
+    Since different agents may have different constructor signatures, agent
+    constructor keyword arguments are passed through ``agent_kwargs``.
 
     Args:
         name: Name of the agent to create (case-insensitive).
             Available agents: "ppo".
-        *args: Positional arguments passed to the agent constructor.
         model_path: Path to a saved model file. If provided, loads the model
             parameters after creating the agent. Only supported for trainable agents.
-        **kwargs: Keyword arguments passed to the agent constructor.
+        agent_kwargs: Keyword arguments passed to the agent constructor.
 
     Returns:
         An instance of the requested agent.
@@ -137,12 +135,14 @@ def create_agent(
     Example:
         >>> agent = create_agent(
         ...     name="ppo",
-        ...     state_dim=(6, 8),
-        ...     action_dim=6,
-        ...     device=torch.device("cuda"),
         ...     model_path="models/ppo_model.pt",
-        ...     learning_rate=1e-4,
-        ...     gamma=0.99,
+        ...     agent_kwargs={
+        ...         "state_dim": (6, 8),
+        ...         "action_dim": 6,
+        ...         "device": torch.device("cuda"),
+        ...         "learning_rate": 1e-4,
+        ...         "gamma": 0.99,
+        ...     },
         ... )
     """
     if name not in REGISTRY:
@@ -160,7 +160,7 @@ def create_agent(
             f"Agent '{name}' is not a trainable agent and does not support loading models. "
             f"Available trainable agents: {', '.join(get_available_trainable_agents())}"
         )
-    agent = agent_class(*args, **kwargs)
+    agent = agent_class(**dict(agent_kwargs))
 
     if model_path is not None:
         agent.load(model_path)
