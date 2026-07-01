@@ -20,7 +20,7 @@ import os
 from typing import Callable
 
 from .agent import AbstractTrainableAgent, EpochEndCallback, SaveModelCallback, get_available_trainable_agents
-from .defaults import create_agent_factory_with_default, VIDEO_BIT_RATE, S_LEN
+from .defaults import PicklableAgentFactory
 from .args import add_env_agent_arguments, parse_env_agent_args
 from .test import add_testing_arguments
 from .train import TestingCallback, MODEL_SAVE_INTERVAL, SUMMARY_DIR
@@ -37,11 +37,7 @@ def prepare_exp_pool_training(
     # Agent parameters
     name: str = 'ppo',
     model_path: str = None,
-    device: str = None,
     agent_options: dict = {},
-    # Compatibility parameters (shared between env and agent)
-    levels_quality: list = VIDEO_BIT_RATE,
-    state_history_len: int = S_LEN,
     # Training parameters
     output_dir: str = SUMMARY_DIR,
     batch_size: int = EXP_POOL_BATCH_SIZE,
@@ -66,10 +62,7 @@ def prepare_exp_pool_training(
         exp_pool_path: Path to the experience pool file (.pkl).
         name: Agent algorithm name (e.g., 'ppo').
         model_path: Path to load pre-trained model weights.
-        device: PyTorch device for computation.
         agent_options: Additional kwargs for agent.
-        levels_quality: Quality metric list for each bitrate level.
-        state_history_len: Number of past observations in state.
         output_dir: Directory for saving logs and model checkpoints.
         batch_size: Number of trajectories per training batch.
         train_epochs: Total number of training epochs.
@@ -92,13 +85,10 @@ def prepare_exp_pool_training(
     print(f"Loaded experience pool: {exp_pool}")
 
     # Create agent factory
-    agent_factory = create_agent_factory_with_default(
-        model_path=model_path,
+    agent_factory = PicklableAgentFactory(
         name=name,
-        device=device,
-        levels_quality=levels_quality,
-        state_history_len=state_history_len,
-        agent_options=agent_options,
+        model_path=model_path,
+        agent_kwargs=agent_options,
     )
 
     # Create ExpPoolTrainer
@@ -163,11 +153,7 @@ if __name__ == '__main__':
         # Agent parameters
         name=args.agent_name,
         model_path=args.model_path,
-        device=args.device,
         agent_options=args.agent_options,
-        # Compatibility parameters
-        levels_quality=args.levels_quality,
-        state_history_len=args.state_history_len,
         # Training parameters
         output_dir=args.output_dir,
         batch_size=args.batch_size,

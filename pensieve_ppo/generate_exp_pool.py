@@ -155,19 +155,16 @@ if __name__ == '__main__':
         # This uses the main agent name for the underlying trainable agent interface
         student_name=args.agent_name,
         student_model_path=args.model_path,
-        student_device=args.device,
-        student_agent_options=args.agent_options,
         # Actor agent parameters (the agent that makes decisions)
         # Uses --teacher-* arguments (equivalent to teacher in imitation learning)
         teacher_name=args.teacher_agent_name,
         teacher_model_path=args.teacher_model_path,
-        teacher_device=args.teacher_device,
-        teacher_agent_options=args.teacher_agent_options,
-        # Shared parameters
-        levels_quality=args.levels_quality,
-        state_history_len=args.state_history_len,
-        initial_level=args.initial_level,
-        env_options=args.env_options,
+        student_agent_kwargs=args.agent_options,
+        teacher_agent_kwargs=args.teacher_agent_options,
+        student_observer_kwargs=args.observer_options,
+        teacher_observer_kwargs=args.observer_options,
+        player_kwargs=args.player_options,
+        random_seed=args.random_seed,
         # Training parameters (control how much data to collect)
         output_dir=args.output_dir,
         parallel_workers=args.parallel_workers,
