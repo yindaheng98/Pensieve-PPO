@@ -4,7 +4,7 @@ Time Unit Convention:
 =====================
 - Trace data (cooked_time, last_mahimahi_time): SECONDS
 - Buffer and delay values (buffer_size, delay, rebuf, sleep_time): MILLISECONDS
-- All parameters (video_chunk_len, buffer_thresh, drain_buffer_sleep_time, link_rtt): MILLISECONDS
+- Chunk length input and parameters (buffer_thresh, drain_buffer_sleep_time, link_rtt): MILLISECONDS
 
 The trace files store timestamps in seconds, but all internal buffer/delay
 calculations use milliseconds for consistency with the original Pensieve implementation.
@@ -20,7 +20,6 @@ from .abc import AbstractTraceSimulator, TraceProgress
 MILLISECONDS_IN_SECOND = 1000.0
 B_IN_MB = 1000000.0
 BITS_IN_BYTE = 8.0
-VIDEO_CHUNK_LEN = 4000.0  # millisec, every time add this amount to buffer
 BUFFER_THRESH = 60.0 * MILLISECONDS_IN_SECOND  # millisec, max buffer limit
 DRAIN_BUFFER_SLEEP_TIME = 500.0  # millisec
 PACKET_PAYLOAD_PORTION = 0.95
@@ -38,7 +37,6 @@ class TraceSimulator(AbstractTraceSimulator):
     def __init__(
         self,
         trace_data: TraceData,
-        video_chunk_len: float = VIDEO_CHUNK_LEN,
         buffer_thresh: float = BUFFER_THRESH,
         drain_buffer_sleep_time: float = DRAIN_BUFFER_SLEEP_TIME,
         packet_payload_portion: float = PACKET_PAYLOAD_PORTION,
@@ -48,7 +46,6 @@ class TraceSimulator(AbstractTraceSimulator):
 
         Args:
             trace_data: Loaded network trace data
-            video_chunk_len: Video chunk length in milliseconds (default: 4000.0)
             buffer_thresh: Maximum buffer limit in milliseconds (default: 60000.0)
             drain_buffer_sleep_time: Sleep time when draining buffer in milliseconds (default: 500.0)
             packet_payload_portion: Portion of packet that is payload (default: 0.95)
@@ -61,7 +58,6 @@ class TraceSimulator(AbstractTraceSimulator):
         self.all_file_names = trace_data.all_file_names
 
         # Store simulation parameters
-        self.video_chunk_len = video_chunk_len
         self.buffer_thresh = buffer_thresh
         self.drain_buffer_sleep_time = drain_buffer_sleep_time
         self.packet_payload_portion = packet_payload_portion
@@ -182,13 +178,14 @@ class TraceSimulator(AbstractTraceSimulator):
 
         return delay
 
-    def update_buffer(self, delay: float) -> float:
+    def update_buffer(self, delay: float, video_chunk_len: float) -> float:
         """Update playback buffer after chunk download.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L89-L96
 
         Args:
             delay: Download delay in milliseconds
+            video_chunk_len: Playback duration of downloaded chunk in milliseconds
 
         Returns:
             Rebuffer (stall) time in milliseconds
@@ -199,8 +196,8 @@ class TraceSimulator(AbstractTraceSimulator):
         # update the buffer
         self.buffer_size = max(self.buffer_size - delay, 0.0)
 
-        # add in the new chunk
-        self.buffer_size += self.video_chunk_len
+        # add in the downloaded chunk's playback duration
+        self.buffer_size += video_chunk_len
 
         return rebuf
 

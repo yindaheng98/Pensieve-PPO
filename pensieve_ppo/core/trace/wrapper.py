@@ -58,9 +58,9 @@ class TraceSimulatorWrapper(AbstractTraceSimulator):
         """Simulate downloading a video chunk. Returns delay in ms."""
         return self.__base.download_chunk(video_chunk_size)
 
-    def update_buffer(self, delay: float) -> float:
+    def update_buffer(self, delay: float, video_chunk_len: float) -> float:
         """Update playback buffer. Returns rebuffer time in ms."""
-        return self.__base.update_buffer(delay)
+        return self.__base.update_buffer(delay, video_chunk_len)
 
     def drain_buffer_overflow(self) -> float:
         """Drain excess buffer. Returns sleep time in ms."""

@@ -80,11 +80,12 @@ class AbstractTraceSimulator(ABC):
         ...
 
     @abstractmethod
-    def update_buffer(self, delay: float) -> float:
+    def update_buffer(self, delay: float, video_chunk_len: float) -> float:
         """Update playback buffer after chunk download.
 
         Args:
             delay: Download delay in milliseconds
+            video_chunk_len: Playback duration of downloaded chunk in milliseconds
 
         Returns:
             Rebuffer (stall) time in milliseconds
@@ -125,7 +126,7 @@ class AbstractTraceSimulator(ABC):
 
     # ==================== Step method ====================
 
-    def step(self, video_chunk_size: int) -> TraceSimulateResult:
+    def step(self, video_chunk_size: int, video_chunk_len: float) -> TraceSimulateResult:
         """Execute one simulation step: download chunk and update buffer.
 
         This method orchestrates the simulation by calling the abstract methods
@@ -137,6 +138,7 @@ class AbstractTraceSimulator(ABC):
 
         Args:
             video_chunk_size: Size of the video chunk to download in bytes
+            video_chunk_len: Playback duration of the video chunk in milliseconds
 
         Returns:
             TraceSimulateResult containing delay, rebuf, and sleep_time
@@ -147,7 +149,7 @@ class AbstractTraceSimulator(ABC):
 
         # 2. Update playback buffer (compute rebuffer and add new chunk)
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L89-L96
-        rebuf = self.update_buffer(delay)
+        rebuf = self.update_buffer(delay, video_chunk_len)
 
         # 3. Handle buffer overflow (sleep if buffer exceeds threshold)
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L99-L123

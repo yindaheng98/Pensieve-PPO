@@ -93,10 +93,11 @@ class Simulator:
 
         # 1. Get chunk size for requested chunk
         video_chunk_size = self.video_player.get_chunk_size(chunk_request, chunk_idx)
+        video_chunk_len = self.video_player.get_chunk_length(chunk_request, chunk_idx)
 
         # 2. Simulate network download, update buffer, handle overflow
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L55-L129
-        result = self.trace_simulator.step(video_chunk_size)
+        result = self.trace_simulator.step(video_chunk_size, video_chunk_len)
         delay = result.delay
         rebuf = result.rebuf
         sleep_time = result.sleep_time
