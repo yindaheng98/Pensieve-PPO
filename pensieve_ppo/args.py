@@ -1,17 +1,31 @@
 """Argument parsing utilities for Pensieve PPO."""
 
 import argparse
-import importlib
+import keyword
+import os
 import sys
 from typing import Any, Dict, List
 
 import numpy as np
 
-from .defaults import TEST_TRACES
+from .defaults import (
+    DEFAULT_REGISTRY_PACKAGES,
+    REGISTRY_PACKAGES_ENV,
+    TEST_TRACES,
+    import_registry_packages,
+)
 
 # Default random seed
 RANDOM_SEED = 42
-DEFAULT_REGISTRY_PACKAGES = ('quality_ladder',)
+
+
+def is_valid_import_name(name: str) -> bool:
+    """Return whether name is a valid absolute or relative Python module path."""
+    module_path = name.lstrip('.')
+    return bool(module_path) and all(
+        part.isidentifier() and not keyword.iskeyword(part)
+        for part in module_path.split('.')
+    )
 
 
 def prepare_registry_package(parser: argparse.ArgumentParser) -> None:
@@ -25,24 +39,18 @@ def prepare_registry_package(parser: argparse.ArgumentParser) -> None:
         metavar='PACKAGE',
         help=(
             'Package to import before building command arguments. '
-            'Unqualified names are resolved under pensieve_ppo. '
-            'Can be repeated. Defaults to quality_ladder.'
+            'Can be repeated. Defaults to .quality_ladder.'
         ),
     )
     preparse_args = [arg for arg in sys.argv[1:] if arg not in ('-h', '--help')]
     args, _ = parser.parse_known_args(preparse_args)
 
-    package_root = __package__ or 'pensieve_ppo'
-    registry_packages = getattr(args, 'registry_packages', None) or DEFAULT_REGISTRY_PACKAGES
-    for package in registry_packages:
-        if not package:
-            continue
-        if package.startswith('.'):
-            importlib.import_module(package, package=package_root)
-        elif '.' in package:
-            importlib.import_module(package)
-        else:
-            importlib.import_module(f'{package_root}.{package}')
+    registry_packages = getattr(args, 'registry_packages', DEFAULT_REGISTRY_PACKAGES)
+    assert all(is_valid_import_name(package) for package in registry_packages), (
+        f"Invalid registry package name(s): {registry_packages}"
+    )
+    os.environ[REGISTRY_PACKAGES_ENV] = os.pathsep.join(registry_packages)
+    import_registry_packages(registry_packages)
 
 
 def add_env_agent_arguments(parser: argparse.ArgumentParser, available_agents: List[str]) -> None:
