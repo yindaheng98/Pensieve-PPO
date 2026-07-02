@@ -134,15 +134,20 @@ def add_exp_pool_arguments(parser: argparse.ArgumentParser) -> None:
                         help=f"Path to the experience pool file (default: {EXP_POOL_PATH})")
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generate experience pool using actor agent rollouts')
+DESCRIPTION = 'Generate experience pool using actor agent rollouts'
+
+
+def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add command-line arguments for experience pool generation."""
     add_env_agent_arguments(parser, available_agents=get_available_agents())
     add_training_arguments(parser)
     # Actor arguments use --teacher-* prefix (equivalent to teacher in imitation learning)
     add_teacher_arguments(parser, available_agents=get_available_agents())
     add_exp_pool_arguments(parser)
-    args = parser.parse_args()
 
+
+def main(args: argparse.Namespace) -> None:
+    """Run experience pool generation from parsed command-line arguments."""
     # Post-process arguments (parse options, set seed)
     parse_env_agent_args(args)
     args.teacher_agent_options = parse_options(args.teacher_agent_options)
@@ -199,3 +204,9 @@ if __name__ == '__main__':
     else:
         print(f"\nWarning: Experience pool file not found at {args.exp_pool_path}")
         print("This may happen if no epochs were saved. Check model_save_interval setting.")
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    add_arguments(parser)
+    main(parser.parse_args())

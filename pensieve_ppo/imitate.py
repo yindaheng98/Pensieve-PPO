@@ -144,14 +144,19 @@ def add_teacher_arguments(parser: argparse.ArgumentParser, available_agents: lis
                         help="Extra teacher observer kwargs, e.g. state_history_len=6")
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Train Pensieve agent via imitation learning')
+DESCRIPTION = 'Train Pensieve agent via imitation learning'
+
+
+def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add command-line arguments for imitation learning."""
     add_env_agent_arguments(parser, available_agents=get_available_agents())
     add_testing_arguments(parser)
     add_training_arguments(parser)
     add_teacher_arguments(parser, available_agents=get_available_agents())
-    args = parser.parse_args()
 
+
+def main(args: argparse.Namespace) -> None:
+    """Run imitation learning from parsed command-line arguments."""
     # Post-process arguments (parse options, set seed)
     parse_env_agent_args(args)
     args.teacher_agent_options = parse_options(args.teacher_agent_options)
@@ -187,3 +192,9 @@ if __name__ == '__main__':
     print(f"Teacher agent: {args.teacher_agent_name}")
     print(f"Output directory: {args.output_dir}")
     trainer.train()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    add_arguments(parser)
+    main(parser.parse_args())

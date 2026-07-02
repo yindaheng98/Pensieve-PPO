@@ -133,14 +133,19 @@ def add_exp_pool_training_arguments(parser: argparse.ArgumentParser) -> None:
                         help="Number of DataLoader workers, 0 for main process only (default: 0)")
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Train Pensieve agent from experience pool')
+DESCRIPTION = 'Train Pensieve agent from experience pool'
+
+
+def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add command-line arguments for experience pool training."""
     add_env_agent_arguments(parser, available_agents=get_available_trainable_agents())
     add_testing_arguments(parser)
     add_exp_pool_arguments(parser)
     add_exp_pool_training_arguments(parser)
-    args = parser.parse_args()
 
+
+def main(args: argparse.Namespace) -> None:
+    """Run experience pool training from parsed command-line arguments."""
     # Post-process arguments (parse options, set seed)
     parse_env_agent_args(args)
 
@@ -174,3 +179,9 @@ if __name__ == '__main__':
     trainer.train()
 
     print("\nTraining completed!")
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    add_arguments(parser)
+    main(parser.parse_args())

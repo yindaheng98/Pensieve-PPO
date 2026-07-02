@@ -241,7 +241,8 @@ def add_testing_arguments(parser: argparse.ArgumentParser) -> None:
                              f"Actual log path: <prefix><agent_name>_<trace_name>")
 
 
-def main(args):
+def run_evaluation(args: argparse.Namespace) -> str:
+    """Run evaluation from parsed arguments and return the test log prefix."""
     # Append agent name to log file prefix
     log_file_prefix = args.test_log_file_prefix + args.agent_name
 
@@ -266,17 +267,22 @@ def main(args):
     return log_file_prefix
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Test Pensieve agent')
+DESCRIPTION = 'Test Pensieve agent'
+
+
+def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add command-line arguments for testing."""
     add_env_agent_arguments(parser, available_agents=get_available_agents())
     add_testing_arguments(parser)
-    args = parser.parse_args()
 
+
+def main(args: argparse.Namespace) -> None:
+    """Run testing from parsed command-line arguments and print statistics."""
     # Post-process arguments (parse options, set seed)
     parse_env_agent_args(args)
 
     # Run testing
-    log_file_prefix = main(args)
+    log_file_prefix = run_evaluation(args)
 
     # Calculate and print test statistics
     stats = calculate_test_statistics(log_file_prefix)
@@ -290,3 +296,9 @@ if __name__ == '__main__':
     print(f"Reward 95%:     {stats['rewards_95per']:.4f}")
     print(f"Reward Max:     {stats['rewards_max']:.4f}")
     print("=" * 50)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    add_arguments(parser)
+    main(parser.parse_args())

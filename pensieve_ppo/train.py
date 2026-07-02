@@ -18,7 +18,7 @@ from torch.utils.tensorboard import SummaryWriter
 from .agent import AbstractTrainableAgent, Trainer, SaveModelCallback, EpochEndCallback, get_available_trainable_agents
 from .defaults import create_env_agent_factory, TRAIN_TRACES
 from .args import add_env_agent_arguments, parse_env_agent_args
-from .test import main as test_main, calculate_test_statistics, add_testing_arguments
+from .test import run_evaluation, calculate_test_statistics, add_testing_arguments
 
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L14-L23
 NUM_AGENTS = 16
@@ -45,7 +45,7 @@ class TestingCallback(SaveModelCallback):
     def __call__(self, epoch: int, model_path: str, agent: AbstractTrainableAgent) -> None:
         """Callback invoked when model is saved.
 
-        This function runs testing using test.py's main function and logs the results
+        This function runs test.py's evaluation helper and logs the results
         to both the test log file and TensorBoard.
 
         Reference:
@@ -68,8 +68,8 @@ class TestingCallback(SaveModelCallback):
         test_args = copy.deepcopy(args)
         test_args.model_path = model_path
 
-        # Run testing using test.py's main function
-        log_file_prefix = test_main(test_args)
+        # Run testing using test.py's evaluation helper
+        log_file_prefix = run_evaluation(test_args)
 
         # Calculate statistics from test results
         stats = calculate_test_statistics(log_file_prefix)
@@ -200,13 +200,18 @@ def add_training_arguments(parser: argparse.ArgumentParser) -> None:
                         help=f"Interval for saving model checkpoints (default: {MODEL_SAVE_INTERVAL})")
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Train Pensieve agent')
+DESCRIPTION = 'Train Pensieve agent'
+
+
+def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add command-line arguments for training."""
     add_env_agent_arguments(parser, available_agents=get_available_trainable_agents())
     add_testing_arguments(parser)
     add_training_arguments(parser)
-    args = parser.parse_args()
 
+
+def main(args: argparse.Namespace) -> None:
+    """Run distributed training from parsed command-line arguments."""
     # Post-process arguments (parse options, set seed)
     parse_env_agent_args(args)
 
@@ -235,3 +240,9 @@ if __name__ == '__main__':
     print(f"Starting training with {args.parallel_workers} parallel workers...")
     print(f"Output directory: {args.output_dir}")
     trainer.train()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    add_arguments(parser)
+    main(parser.parse_args())
