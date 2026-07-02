@@ -37,16 +37,17 @@ pip install torch numpy gymnasium tensorboard tqdm transformers peft
 ### Using the Gymnasium Environment
 
 ```python
-from pensieve_ppo.gym import ABREnv
-from pensieve_ppo.defaults import create_env_with_default
+from pensieve_ppo.agent import create_env
+from pensieve_ppo.quality_ladder import QualityLadderRequest
+import pensieve_ppo.quality_ladder.rl  # registers built-in RL agents
 
 # Create environment with default Pensieve parameters
-env = create_env_with_default(train=True)
+env = create_env(name='ppo', trace_folder='./src/train/', train=True)
 
 # Standard Gymnasium API
-obs, info = env.reset()
+obs, info = env.reset(options={"initial_chunk_request": QualityLadderRequest(1)})
 while True:
-    action = env.action_space.sample()  # or use your agent
+    action = QualityLadderRequest(1)  # or use your agent
     obs, reward, terminated, truncated, info = env.step(action)
     if terminated or truncated:
         break
@@ -56,10 +57,10 @@ while True:
 
 ```bash
 # Train with default settings
-python -m pensieve_ppo.train
+python -m pensieve_ppo train
 
 # Train with custom parameters
-python -m pensieve_ppo.train \
+python -m pensieve_ppo train \
     --parallel-workers 16 \
     --train-epochs 500000 \
     --model-save-interval 300 \
@@ -70,10 +71,10 @@ python -m pensieve_ppo.train \
 
 ```bash
 # Test with a trained model
-python -m pensieve_ppo.test --model-path ./ppo/nn_model_ep_300.pth
+python -m pensieve_ppo test --model-path ./ppo/nn_model_ep_300.pth
 
 # Test with custom trace folder
-python -m pensieve_ppo.test \
+python -m pensieve_ppo test \
     --model-path ./ppo/nn_model_ep_300.pth \
     --test-trace-folder ./src/test/
 ```
@@ -83,7 +84,7 @@ python -m pensieve_ppo.test \
 > `./src/train/`, `./src/test/`, and `./src/envivio/video_size_`.
 > Keep those folders present when using the default configuration, or pass
 > explicit `--train-trace-folder`, `--test-trace-folder`, and
-> `video_size_file_prefix` values.
+> `video_size_file_prefix` through `--player-options`.
 
 ## Package Structure
 
@@ -100,6 +101,8 @@ pensieve_ppo/
 │   ├── abc.py             # Abstract base classes
 │   ├── registry.py        # Agent factory and registration
 │   ├── trainer.py         # Distributed training framework
+│   └── imitate.py         # Imitation trainer
+├── quality_ladder/        # Quality-ladder request, player, and agents
 │   ├── bba/               # Buffer-based baseline
 │   ├── mpc/               # MPC and oracle MPC baselines
 │   ├── netllm/            # NetLLM-style Decision Transformer agents
@@ -118,10 +121,10 @@ The agent system follows a hierarchical inheritance structure:
 
 ```
 AbstractAgent
-    ├── select_action(state) -> (action, action_prob)
+    ├── select_action(state) -> ActionDecision
     │
     └── AbstractTrainableAgent
-        ├── select_action_for_training(state) -> (action, action_prob)
+        ├── select_action_for_training(state) -> ActionDecision
         ├── produce_training_batch(trajectory, done) -> TrainingBatch
         ├── train_batch(training_batches, epoch) -> metrics
         ├── get_params() -> params
@@ -150,7 +153,7 @@ AbstractAgent
   - Model persistence (`save`, `load`, `get_params`, `set_params`)
 - Abstract methods must be implemented by subclasses
 
-**AbstractRLAgent** (`pensieve_ppo.agent.rl.abc.AbstractRLAgent`):
+**AbstractRLAgent** (`pensieve_ppo.quality_ladder.rl.abc.AbstractRLAgent`):
 - Extends `AbstractTrainableAgent` with RL-specific functionality
 - Implements `produce_training_batch` and `train_batch` using RL methods
 - Requires subclasses to implement:
@@ -158,7 +161,7 @@ AbstractAgent
   - `compute_v()`: Value target computation (returns/advantages)
 - Concrete implementations: `PPOAgent`, `A3CAgent`, `DQNAgent`, etc.
 
-> **Note on RL Agent Implementations**: The agents in `pensieve_ppo/agent/rl/` (PPO, A3C, DQN) are **reinforcement learning algorithms**, not imitation learning algorithms. While the framework technically allows running them with `pensieve_ppo.imitate`, this is not recommended as these algorithms are designed to learn from rewards through environment interaction, not from teacher demonstrations.
+> **Note on RL Agent Implementations**: The agents in `pensieve_ppo/quality_ladder/rl/` (PPO, A3C, DQN) are **reinforcement learning algorithms**, not imitation learning algorithms. While the framework technically allows running them with `python -m pensieve_ppo imitate`, this is not recommended as these algorithms are designed to learn from rewards through environment interaction, not from teacher demonstrations.
 >
 > **Note on A3C Implementation**: The `A3CAgent` implementation is based on the A3C (Asynchronous Advantage Actor-Critic) algorithm, but the actual `Trainer` performs **synchronous updates** rather than asynchronous updates. This means all workers synchronize before each parameter update, which differs from the original A3C paper's asynchronous design.
 
@@ -166,9 +169,9 @@ AbstractAgent
 
 **Design Principle**: Logically, an Agent should be **stateless**. All historical information needed by the Agent should be collected by the Observer and passed through the State object. However, in some special cases, an Agent may need to maintain its own "internal state".
 
-**Stateless Agents**: The agents in `pensieve_ppo/agent/rl/` (PPO, A3C, DQN), `pensieve_ppo/agent/mpc/`, and `pensieve_ppo/agent/bba/` are all **stateless** - they do not maintain any "internal state" between `select_action` calls. Each action is computed purely from the current input state.
+**Stateless Agents**: The agents in `pensieve_ppo/quality_ladder/rl/` (PPO, A3C, DQN), `pensieve_ppo/quality_ladder/mpc/`, and `pensieve_ppo/quality_ladder/bba/` are all **stateless** - they do not maintain any "internal state" between `select_action` calls. Each action is computed purely from the current input state.
 
-**"Stateful" Agents**: In certain cases, agents need to maintain "internal state". For example, in **NetLLM** (`pensieve_ppo/agent/netllm/`), the large language model needs to cache embeddings of historical states to avoid redundant computation. Since the embedding model is a trainable part of the policy, it cannot be moved into the Observer. In such cases, the Agent must maintain its own "internal state" (again, not the actual environment state), i.e., some special internal data structures that accelerate computation.
+**"Stateful" Agents**: In certain cases, agents need to maintain "internal state". For example, in **NetLLM** (`pensieve_ppo/quality_ladder/netllm/`), the large language model needs to cache embeddings of historical states to avoid redundant computation. Since the embedding model is a trainable part of the policy, it cannot be moved into the Observer. In such cases, the Agent must maintain its own "internal state" (again, not the actual environment state), i.e., some special internal data structures that accelerate computation.
 
 > **Reference**: The NetLLM implementation follows the architecture from [NetLLM's OfflineRLPolicy](https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/models/rl_policy.py), which uses deques (`states_dq`, `returns_dq`, `actions_dq`) to cache embeddings for autoregressive inference.
 
@@ -186,10 +189,10 @@ AbstractAgent
 - Abstract interface for state observation and reward calculation
 - Decouples state representation from environment dynamics
 - Methods:
-  - `reset(env, initial_bit_rate) -> (state, info)`: Initialize state
-  - `observe(env, bit_rate, result) -> (state, reward, info)`: Update state and compute reward
+  - `reset(env, initial_chunk_request) -> (state, info)`: Initialize state
+  - `observe(env, chunk_request, result) -> (state, reward, info)`: Update state and compute reward
 - Implementations:
-  - `RLABRStateObserver`: For RL agents (returns `np.ndarray` states)
+  - `RLABRStateObserver`: For RL agents (returns `RLState` wrapping an `np.ndarray`)
   - `MPCABRStateObserver`: For MPC-based agents (returns `MPCState` dataclass)
   - `NetLLMABRStateObserver`: For NetLLM agents (returns `NetLLMState`)
 
@@ -224,10 +227,9 @@ Trainer
 ### State, Step, and TrainingBatch
 
 **State** (`pensieve_ppo.gym.env.State`):
-- Type alias: `State = Any`
-- Represents environment observations
+- Base dataclass for environment observations
 - Concrete type depends on the observer:
-  - `RLState` (`np.ndarray`) for RL agents: shape `(S_INFO, S_LEN)` = `(6, 8)`
+  - `RLState` for RL agents wraps `state_matrix` with shape `(S_INFO, S_LEN)` = `(6, 8)`
   - `MPCState` (dataclass) for MPC agents
   - `NetLLMState` (dataclass) for NetLLM agents
 - Used in:
@@ -239,25 +241,24 @@ Trainer
 - Dataclass representing a single environment step
 - Fields:
   - `state: State`: Observation at this step
-  - `action: List[int]`: One-hot encoded action (e.g., `[0, 0, 1, 0, 0, 0]`)
-  - `action_prob: List[float]`: Action probability distribution from agent
+  - `action: ActionDecision`: Agent decision used to step the environment
   - `reward: float`: Reward received
   - `step: int`: Step index within trajectory
   - `done: bool`: Whether episode terminated/truncated
 - Usage:
-  - Collected during environment rollout in `Trainer._agent_worker()`
+  - Collected during environment rollout in `Trainer.agent_worker()`
   - Stored in `trajectory: List[Step]`
   - Converted to `TrainingBatch` via `produce_training_batch()`
 
 **TrainingBatch** (`pensieve_ppo.agent.trainable.TrainingBatch`):
 - Abstract base class for training data containers
 - Subclasses define algorithm-specific fields:
-  - **RLTrainingBatch** (`pensieve_ppo.agent.rl.abc.RLTrainingBatch`):
+  - **RLTrainingBatch** (`pensieve_ppo.quality_ladder.rl.abc.RLTrainingBatch`):
     - `s_batch: List[RLState]`: States
     - `a_batch: List[List[int]]`: One-hot actions
     - `p_batch: List[List[float]]`: Action probabilities
     - `v_batch: List[float]`: Computed value targets (returns)
-  - **NetLLMTrainingBatch** (`pensieve_ppo.agent.netllm.abc.NetLLMTrainingBatch`):
+  - **NetLLMTrainingBatch** (`pensieve_ppo.quality_ladder.netllm.abc.NetLLMTrainingBatch`):
     - `states: List[torch.Tensor]`: State tensors
     - `actions: List[int]`: Action indices
     - `returns: List[float]`: Return-to-go values
@@ -271,7 +272,7 @@ Trainer
 **Data Flow**:
 ```
 Environment Step
-  → Step(state, action, action_prob, reward, step, done)
+  → Step(state, action_decision, reward, step, done)
   → Collected in trajectory: List[Step]
   → produce_training_batch(trajectory)
   → TrainingBatch (e.g., RLTrainingBatch)
@@ -315,12 +316,12 @@ Environment Step
 **Example Usage**:
 ```python
 from pensieve_ppo.gym.imitate import ImitationObserver
-from pensieve_ppo.agent.rl.observer import RLABRStateObserver
-from pensieve_ppo.agent.bba.observer import BBAStateObserver
+from pensieve_ppo.quality_ladder.rl.observer import RLABRStateObserver
+from pensieve_ppo.quality_ladder.bba.observer import BBAStateObserver
 
 # Create observers
-student_observer = RLABRStateObserver(levels_quality=VIDEO_BIT_RATE)
-teacher_observer = BBAStateObserver(levels_quality=VIDEO_BIT_RATE)
+student_observer = RLABRStateObserver()
+teacher_observer = BBAStateObserver()
 
 # Combine for imitation learning
 imitation_observer = ImitationObserver(
@@ -329,8 +330,10 @@ imitation_observer = ImitationObserver(
 )
 
 # Use in environment
+from pensieve_ppo.quality_ladder import QualityLadderRequest
+
 env = ABREnv(simulator=simulator, observer=imitation_observer)
-state, info = env.reset()
+state, info = env.reset(options={"initial_chunk_request": QualityLadderRequest(1)})
 # state.student_state: RLState for training RL agent
 # state.teacher_state: BBAState for BBA agent's decision
 ```
@@ -338,42 +341,47 @@ state, info = env.reset()
 **Training with Imitation Learning**:
 ```bash
 # Train student agent (PPO) to imitate teacher agent (BBA)
-python -m pensieve_ppo.imitate \
+python -m pensieve_ppo imitate \
     --agent-name ppo \
     --teacher-agent-name bba \
     --parallel-workers 16 \
     --train-epochs 500000
 ```
 
-> **Warning**: The RL agents (`ppo`, `a3c`, `dqn` in `pensieve_ppo/agent/rl/`) are **reinforcement learning algorithms** designed to learn from reward signals, not from teacher demonstrations. Although the framework allows running them with `pensieve_ppo.imitate`, this is **not recommended** for production use. For proper imitation learning, consider using agents specifically designed for behavioral cloning or other imitation learning methods (e.g., `netllm`).
+> **Warning**: The RL agents (`ppo`, `a3c`, `dqn` in `pensieve_ppo/quality_ladder/rl/`) are **reinforcement learning algorithms** designed to learn from reward signals, not from teacher demonstrations. Although the framework allows running them with `python -m pensieve_ppo imitate`, this is **not recommended** for production use. For proper imitation learning, consider using agents specifically designed for behavioral cloning or other imitation learning methods (e.g., `netllm`).
 
 ## API Reference
 
 ### Creating Environment and Agent
 
 ```python
+from pensieve_ppo.agent import create_env
 from pensieve_ppo.defaults import (
-    create_env_with_default,
-    create_env_agent_with_default,
-    create_env_agent_factory_with_default,
+    create_env_agent,
+    create_env_agent_factory,
 )
+import pensieve_ppo.quality_ladder.rl  # registers built-in RL agents
 
 # Create just the environment
-env = create_env_with_default(
-    levels_quality=[300., 750., 1200., 1850., 2850., 4300.],  # Kbps
+env = create_env(
+    name='ppo',
     trace_folder='./src/train/',
     train=True,
+    player_kwargs={
+        'video_size_file_prefix': './src/envivio/video_size_',
+        'quality': [300., 750., 1200., 1850., 2850., 4300.],  # Kbps
+    },
 )
 
 # Create compatible env and agent pair
-env, agent = create_env_agent_with_default(
+env, agent = create_env_agent(
     name='ppo',
     model_path='./ppo/nn_model_ep_300.pth',  # Optional: load pretrained weights
-    device='cuda',
+    agent_kwargs={'device': 'cuda'},
 )
 
 # Create factories for distributed training
-env_factory, agent_factory = create_env_agent_factory_with_default(
+env_factory, agent_factory = create_env_agent_factory(
     name='ppo',
     train=True,
 )
@@ -383,116 +391,222 @@ env_factory, agent_factory = create_env_agent_factory_with_default(
 
 ```python
 from pensieve_ppo.agent import create_agent
+import pensieve_ppo.quality_ladder.rl  # registers "ppo"
+from pensieve_ppo.quality_ladder import QualityLadderRequest
 
 # Create agent directly
 agent = create_agent(
     name='ppo',
-    state_dim=(6, 8),  # (S_INFO, S_LEN)
-    action_dim=6,       # Number of bitrate levels
-    device='cuda',
-    learning_rate=1e-4,
-    gamma=0.99,
+    agent_kwargs={
+        'state_dim': (6, 8),  # (S_INFO, S_LEN)
+        'action_dim': 6,      # Number of bitrate levels
+        'device': 'cuda',
+        'learning_rate': 1e-4,
+        'gamma': 0.99,
+    },
 )
 
 # Predict action
-state = env.reset()[0]
-action, action_prob = agent.select_action(state)
+initial_request = agent.reset(QualityLadderRequest(1))
+state, _ = env.reset(options={"initial_chunk_request": initial_request})
+decision = agent.select_action(state)
+action = decision.action_index
+action_prob = decision.action_prob
 
 # Train on batch
 metrics = agent.train(s_batch, a_batch, p_batch, v_batch, epoch)
 ```
 
-### Registering Custom Agents
+### Extending Without Editing Package Code
 
-The `register` function allows you to register custom agent implementations with the Pensieve-PPO framework. Once registered, your custom agent can be used with all factory functions (`create_agent`, `create_env`, etc.) and command-line tools.
+Pensieve-PPO discovers algorithms through a runtime registry. A registry entry
+binds three compatible classes together:
 
-**Function Signature**:
+- `agent_cls`: an `AbstractAgent` that chooses the next `VideoChunkRequest`
+- `observer_cls`: an `AbstractABRStateObserver` that converts simulator results
+  into the state type expected by the agent and computes rewards
+- `player_cls`: a `VideoPlayer` that resolves requests into chunk sizes and
+  quality values
+
+Put your extension in an importable Python package, call `register()` at import
+time, and load that package with `--registry-package` / `--import-package`.
+No files under `pensieve_ppo/` need to be modified.
+
+**Registration API**:
 ```python
+from typing import Optional, Type
+
 from pensieve_ppo.agent import register
 from pensieve_ppo.agent.abc import AbstractAgent
+from pensieve_ppo.agent.trainable import AbstractTrainableAgent
+from pensieve_ppo.core.video import VideoPlayer
 from pensieve_ppo.gym.env import AbstractABRStateObserver
 
 register(
     name: str,
     agent_cls: Type[AbstractAgent],
     observer_cls: Type[AbstractABRStateObserver],
+    player_cls: Type[VideoPlayer],
     trainable_agent_cls: Optional[Type[AbstractTrainableAgent]] = None,
 ) -> None
 ```
 
-**Parameters**:
-- `name`: Name to register the agent under (case-sensitive). This name will be used in `create_agent()`, `create_env()`, and command-line arguments.
-- `agent_cls`: The agent class to register. Must be a subclass of `AbstractAgent`.
-- `observer_cls`: The observer class associated with this agent. Must be a subclass of `AbstractABRStateObserver`. The observer handles state observation and reward calculation for the agent.
-- `trainable_agent_cls`: Optional trainable agent class. If not provided, will be automatically set to `agent_cls` if it's a subclass of `AbstractTrainableAgent`.
+If `agent_cls` is already a subclass of `AbstractTrainableAgent`,
+`trainable_agent_cls` is detected automatically. Only trainable agents appear in
+training commands such as `train` and `imitate-exp-pool`; inference-only agents
+can still be used by `test`, as imitation teachers, or as experience-pool actors.
 
-**Example: Registering a Custom Agent**:
+**External package layout**:
+```text
+my_pensieve_ext/
+├── __init__.py
+└── registry.py
+```
+
+`my_pensieve_ext/__init__.py` can be empty. Put the registration side effect in
+`my_pensieve_ext/registry.py`:
+
 ```python
+from dataclasses import dataclass
+from typing import Optional
+
 from pensieve_ppo.agent import register
 from pensieve_ppo.agent.abc import AbstractAgent
-from pensieve_ppo.gym.env import AbstractABRStateObserver
+from pensieve_ppo.core.simulator import StepResult
+from pensieve_ppo.core.video import VideoChunkRequest
+from pensieve_ppo.gym import ABREnv, AbstractABRStateObserver, State
+from pensieve_ppo.quality_ladder import (
+    QualityLadderActionDecision,
+    QualityLadderRequest,
+    QualityLadderVideoPlayer,
+)
 
-# Define your custom agent
-class MyCustomAgent(AbstractAgent):
-    def select_action(self, state):
-        # Your implementation
-        pass
 
-# Define your custom observer
-class MyCustomObserver(AbstractABRStateObserver):
-    def reset(self, env, initial_bit_rate):
-        # Your implementation
-        pass
-    
-    def observe(self, env, bit_rate, result):
-        # Your implementation
-        pass
+@dataclass
+class MyState(State):
+    buffer_size: float
+    last_quality: float
 
-# Register the agent
-register("my-custom-agent", MyCustomAgent, MyCustomObserver)
 
-# Now you can use it with factory functions
-from pensieve_ppo.agent import create_agent, create_env
+class MyObserver(AbstractABRStateObserver):
+    def __init__(self, rebuf_penalty: float = 4.3):
+        self.rebuf_penalty = rebuf_penalty
 
-agent = create_agent(name="my-custom-agent", ...)
-env = create_env(name="my-custom-agent", ...)
+    def reset(
+        self,
+        env: ABREnv,
+        initial_chunk_request: VideoChunkRequest,
+    ) -> tuple[MyState, dict]:
+        return MyState(buffer_size=0.0, last_quality=0.0), {}
+
+    def observe(
+        self,
+        env: ABREnv,
+        chunk_request: VideoChunkRequest,
+        result: StepResult,
+    ) -> tuple[MyState, float, dict]:
+        state = MyState(
+            buffer_size=result.buffer_size,
+            last_quality=result.video_chunk_quality,
+        )
+        reward = result.video_chunk_quality - self.rebuf_penalty * result.rebuffer
+        info = {
+            "quality": result.video_chunk_quality,
+            "buffer_size": result.buffer_size,
+            "rebuffer": result.rebuffer,
+            "video_chunk_size": result.video_chunk_size,
+            "delay": result.delay,
+        }
+        return state, reward, info
+
+
+class MyPlayer(QualityLadderVideoPlayer):
+    """Use the built-in quality-ladder data loader with a custom registered name."""
+
+
+class MyAgent(AbstractAgent):
+    def __init__(self, low_buffer_level: float = 5.0, initial_level: int = 0):
+        self.low_buffer_level = low_buffer_level
+        self.initial_level = initial_level
+
+    def reset(
+        self,
+        initial_chunk_request: Optional[VideoChunkRequest] = None,
+    ) -> VideoChunkRequest:
+        return initial_chunk_request or QualityLadderRequest(self.initial_level)
+
+    def select_action(self, state: MyState) -> QualityLadderActionDecision:
+        level = 0 if state.buffer_size < self.low_buffer_level else 1
+        return QualityLadderActionDecision(QualityLadderRequest(level))
+
+
+register("my-agent", MyAgent, MyObserver, MyPlayer)
 ```
 
-**Example: Registering a Trainable Agent**:
+This example is an inference-only agent. To use the existing distributed
+training loop, implement `AbstractTrainableAgent` or a subclass such as
+`AbstractRLAgent`, and make sure the decisions and training batches carry the
+metadata your trainer needs, such as action indices and probabilities.
+
+Use the same registered name from Python:
+
 ```python
-from pensieve_ppo.agent import register
-from pensieve_ppo.agent.trainable import AbstractTrainableAgent
+import my_pensieve_ext.registry  # registers "my-agent"
 
-class MyTrainableAgent(AbstractTrainableAgent):
-    # Implement all required methods
-    pass
+from pensieve_ppo.defaults import create_env_agent
 
-# Register with trainable agent class
-register("my-trainable", MyTrainableAgent, MyCustomObserver)
-
-# Can be used for training
-from pensieve_ppo.defaults import create_env_agent_with_default
-env, agent = create_env_agent_with_default(name="my-trainable")
+env, agent = create_env_agent(
+    name="my-agent",
+    agent_kwargs={"low_buffer_level": 8.0},
+    observer_kwargs={"rebuf_penalty": 5.0},
+    player_kwargs={"name": "envivio"},
+)
 ```
 
-**Checking Available Agents**:
+Or load the extension directly from the command line:
+
+```bash
+python -m pensieve_ppo \
+    --registry-package my_pensieve_ext.registry \
+    test \
+    --agent-name my-agent \
+    --agent-options low_buffer_level=8.0 initial_level=1 \
+    --observer-options rebuf_penalty=5.0 \
+    --player-options name='envivio'
+```
+
+The module entry point is also valid when you prefer invoking one command
+module directly:
+
+```bash
+python -m pensieve_ppo.test \
+    --registry-package my_pensieve_ext.registry \
+    --agent-name my-agent
+```
+
+`--registry-package` can be repeated when you need multiple extension packages.
+Unqualified names such as `quality_ladder` are resolved under `pensieve_ppo`
+for built-ins. For external code, prefer a fully qualified dotted module path
+such as `my_pensieve_ext.registry`. If the package is not installed, make its
+parent directory visible through `PYTHONPATH` or install it with
+`pip install -e /path/to/my-extension`.
+
+To check what has been registered:
+
 ```python
 from pensieve_ppo.agent import get_available_agents, get_available_trainable_agents
 
-# Get all registered agents
-all_agents = get_available_agents()
-print(all_agents)  # ['ppo', 'bba', 'mpc', 'dqn', 'a3c', ...]
-
-# Get only trainable agents
-trainable_agents = get_available_trainable_agents()
-print(trainable_agents)  # ['ppo', 'dqn', 'a3c', ...]
+print(get_available_agents())
+print(get_available_trainable_agents())
 ```
 
-**Note**: Agent registration typically happens in the agent module's `__init__.py` file. When you import the module, the registration is automatically executed. For example, importing `pensieve_ppo.agent.rl` automatically registers all RL agents (ppo, dqn, a3c).
+### Default Quality-Ladder Environment Details
 
-### Environment Details
+The default `ppo`, `a3c`, and `dqn` registrations use
+`QualityLadderVideoPlayer` with `RLABRStateObserver`. That observer returns an
+`RLState` whose `state_matrix` has shape `(6, state_history_len)`, with
+`state_history_len=8` by default:
 
-**Observation Space** (`Box(6, 8)`):
 | Index | Description |
 |-------|-------------|
 | 0 | Last quality normalized by max quality |
@@ -502,7 +616,8 @@ print(trainable_agents)  # ['ppo', 'dqn', 'a3c', ...]
 | 4 | Next chunk sizes at each bitrate level (MB) |
 | 5 | Remaining chunks normalized by total |
 
-**Action Space** (`Discrete(6)`): Select bitrate level (0-5)
+Actions are `QualityLadderRequest(level)` values. With the built-in Envivio
+ladder there are six levels, so valid levels are `0` through `5`.
 
 **Reward**: `quality - 4.3 * rebuffer - 1.0 * |quality_change|`
 
@@ -510,25 +625,31 @@ print(trainable_agents)  # ['ppo', 'dqn', 'a3c', ...]
 
 NetLLM-style agents are registered under names such as `netllm-gpt2`,
 `netllm-llama`, and `netllm-gpt2-lora`. They use the `NetLLMABRStateObserver`
-and the model wrappers in `pensieve_ppo.agent.netllm`.
+and the model wrappers in `pensieve_ppo.quality_ladder.netllm`.
 
 When creating a NetLLM agent, provide the reward normalization range required
 by the offline RL data processing:
 
 ```bash
-python -m pensieve_ppo.imitate_exp_pool \
+python -m pensieve_ppo imitate-exp-pool \
     --agent-name netllm-gpt2 \
-    --state-history-len 6 \
-    -o min_reward=-10.0 max_reward=10.0 plm_size='small'
+    -o state_dim=(6,6) min_reward=-10.0 max_reward=10.0 plm_size='small'
 ```
 
 NetLLM currently expects a state history length of `6`, while the default PPO
-observer uses `8`. Pass `--state-history-len 6` for NetLLM runs unless you are
-using a custom NetLLM-compatible state encoder.
+observer uses `8`. Pass `state_dim=(6,6)` through `--agent-options` for NetLLM
+runs unless you are using a custom NetLLM-compatible state encoder.
 
 ## Command Line Options
 
-### Training (`pensieve_ppo.train`)
+You can run commands either through the package-level entry point
+(`python -m pensieve_ppo <command> ...`) or the module entry point
+(`python -m pensieve_ppo.<module> ...`). The package-level commands are:
+`train`, `test`, `imitate`, `generate-exp-pool`, and `imitate-exp-pool`.
+After installation, the same package-level CLI is also available as
+`pensieve-ppo <command> ...`.
+
+### Training (`python -m pensieve_ppo train`)
 
 ```
 --train-trace-folder    Training trace folder (default: ./src/train/)
@@ -540,7 +661,7 @@ using a custom NetLLM-compatible state encoder.
 --model-path            Resume from pretrained model
 ```
 
-### Testing (`pensieve_ppo.test`)
+### Testing (`python -m pensieve_ppo test`)
 
 ```
 --test-trace-folder     Test trace folder (default: ./src/test/)
@@ -551,17 +672,19 @@ using a custom NetLLM-compatible state encoder.
 ### Common Options
 
 ```
---agent-name            RL algorithm (default: ppo)
---device                PyTorch device (cuda/cpu)
---levels-quality        Bitrate levels in Kbps
---state-history-len     State history length (default: 8)
+--registry-package      Import package/module before building choices; repeatable
+--import-package        Alias of --registry-package
+--agent-name            Registered agent name (default: ppo)
 --random-seed           Random seed (default: 42)
--o, --agent-options     Extra agent kwargs (e.g., learning_rate=1e-4)
--e, --env-options       Extra env kwargs (e.g., rebuf_penalty=4.3)
+-o, --agent-options     Extra agent kwargs (e.g., learning_rate=1e-4 device='cuda')
+--observer-options      Extra observer kwargs (e.g., state_history_len=6)
+--player-options        Extra player kwargs (e.g., name='envivio')
 ```
 
-Values passed through `--agent-options` and `--env-options` are parsed as Python
-expressions. Quote string values, for example `plm_size='small'`.
+Values passed through `--agent-options`, `--observer-options`, and
+`--player-options` are parsed as Python expressions. Quote string values, for
+example `plm_size='small'`. If your shell strips inner quotes, quote the whole
+assignment, for example `"device='cuda'"`.
 
 ## TensorBoard Monitoring
 
@@ -573,7 +696,7 @@ tensorboard --logdir=./ppo
 
 ---
 
-# Original README
+# Legacy Notes From Original README
 
 ### Updates
 
@@ -592,22 +715,6 @@ tensorboard --logdir=./ppo
 Pensieve-PPO is a user-friendly PyTorch implementation of Pensieve [1], a neural adaptive video streaming system. Unlike A3C, we utilize the Proximal Policy Optimization (PPO) algorithm for training.
 
 This stable version of Pensieve-PPO includes both the training and test datasets.
-
-You can run the repository by executing the following command:
-
-```
-python train.py
-```
-
-The results will be evaluated on the test set (from HSDPA) every 300 epochs.
-
-## Tensorboard Integration
-
-To monitor the training process in real time, you can leverage Tensorboard. Simply run the following command:
-
-```
-tensorboard --logdir=./
-```
 
 ## Pretrained Model
 
@@ -635,9 +742,3 @@ For more implementations of reinforcement learning algorithms, please visit the 
 [3] Huang, Tianchi, et al. "Comyco: Quality-aware adaptive video streaming via imitation learning." Proceedings of the 27th ACM international conference on multimedia. 2019.
 
 [4] Wu, Duo, et al. "Netllm: Adapting large language models for networking." Proceedings of the ACM SIGCOMM 2024 Conference. 2024.
-
-* We use the following command to test the *entire traces* in the dataset.
-
-```
-python run_plm.py --test --plm-type llama --plm-size base --rank 128 --device cuda:0 --trace-num -1 --model-dir  data/ft_plms/try_llama2_7b
-```

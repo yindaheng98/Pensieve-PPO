@@ -1,7 +1,7 @@
 """Package command-line entry point for Pensieve PPO."""
 
 import argparse
-from typing import Callable, Sequence
+from typing import Callable, Optional, Sequence
 
 from . import generate_exp_pool, imitate, imitate_exp_pool, test, train
 from .args import prepare_registry_package
@@ -75,8 +75,13 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-if __name__ == '__main__':
+def main(argv: Optional[Sequence[str]] = None) -> None:
+    """Run the package-level command-line interface."""
     parser = argparse.ArgumentParser(prog='pensieve_ppo', description=DESCRIPTION)
     add_arguments(parser)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     args.func(args)
+
+
+if __name__ == '__main__':
+    main()

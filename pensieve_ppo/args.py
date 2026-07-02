@@ -71,10 +71,10 @@ def add_env_agent_arguments(parser: argparse.ArgumentParser, available_agents: L
                         help="Extra agent kwargs, e.g. learning_rate=1e-4 gamma=0.99 device='cuda'")
     parser.add_argument('--observer-options', type=str, nargs='*', default=[],
                         metavar='KEY=VALUE',
-                        help="Extra observer kwargs, e.g. state_history_len=6")
+                        help="Extra observer kwargs, e.g. state_history_len=6 rebuf_penalty=4.3")
     parser.add_argument('--player-options', type=str, nargs='*', default=[],
                         metavar='KEY=VALUE',
-                        help="Extra player kwargs, e.g. rebuf_penalty=4.3 smooth_penalty=1.0")
+                        help="Extra video player kwargs, e.g. name='envivio' max_chunks=48")
 
 
 def parse_options(options: list) -> Dict[str, Any]:
