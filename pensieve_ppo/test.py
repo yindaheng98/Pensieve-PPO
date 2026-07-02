@@ -10,6 +10,7 @@ Reference:
 import argparse
 import glob
 import os
+import sys
 from typing import Dict, Optional, Tuple
 
 import numpy as np
@@ -114,8 +115,9 @@ def testing(
 
     # Progress bar for testing
     total_chunks = env.simulator.video_player.total_chunks
+    interactive = sys.stderr.isatty()
     pbar = tqdm(total=len(all_file_names), desc="Testing", unit="trace", position=0)
-    pbar_step = tqdm(total=total_chunks, desc="Steps", unit="chunk", position=1, leave=False)
+    pbar_step = tqdm(total=total_chunks, desc="Steps", unit="chunk", position=1, leave=False, disable=not interactive)
 
     while True:  # serve video forever
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L69-L85
