@@ -81,6 +81,13 @@ class MPCState(State):
             return 0
         return self.video_player.get_chunk_size(QualityLadderRequest(quality), chunk_idx)
 
+    def get_chunk_length(self, chunk_idx: int) -> float:
+        """Get the playback duration of a video chunk in seconds."""
+        if chunk_idx < 0 or chunk_idx >= self.video_player.total_chunks:
+            return 0.0
+        chunk_length_ms = self.video_player.get_chunk_length(chunk_idx)
+        return chunk_length_ms / MILLISECONDS_IN_SECOND
+
     @property
     def video_chunk_counter(self) -> int:
         """Get current video chunk index from video player.

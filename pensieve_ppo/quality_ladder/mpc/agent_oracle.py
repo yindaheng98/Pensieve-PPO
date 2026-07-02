@@ -24,10 +24,6 @@ from .observer_oracle import OracleMPCState
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py#L11
 MPC_FUTURE_CHUNK_COUNT = 7
 
-# Video chunk length in seconds
-# https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py#L213
-VIDEO_CHUNK_LEN = 4.0  # seconds
-
 # Reward parameters
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc_future_bandwidth.py#L19-L21
 M_IN_K = 1000.0
@@ -56,14 +52,12 @@ class OracleMPCAgent(AbstractAgent):
         action_dim: Number of available bitrate levels.
         video_bit_rate: List of bitrate values in Kbps for each level.
         future_chunk_count: Number of future chunks to consider (default: 7).
-        video_chunk_len: Video chunk length in seconds (default: 4.0).
     """
 
     def __init__(
         self,
         action_dim: int = A_DIM,
         future_chunk_count: int = MPC_FUTURE_CHUNK_COUNT,
-        video_chunk_len: float = VIDEO_CHUNK_LEN,
         initial_level: int = DEFAULT_QUALITY,
         **kwargs,
     ):
@@ -72,13 +66,11 @@ class OracleMPCAgent(AbstractAgent):
         Args:
             action_dim: Number of discrete actions (bitrate levels).
             future_chunk_count: Number of future chunks to consider in MPC.
-            video_chunk_len: Video chunk length in seconds.
             initial_level: Initial quality level used when reset() gets no request.
             **kwargs: Additional arguments (ignored for compatibility).
         """
         self.action_dim = action_dim
         self.future_chunk_count = future_chunk_count
-        self.video_chunk_len = video_chunk_len
         self.initial_level = initial_level
 
         # Pre-compute all possible combinations of chunk bitrates
@@ -123,8 +115,8 @@ class OracleMPCAgent(AbstractAgent):
             Total reward for this combination.
         """
 
-        # calculate total rebuffer time for this combination (start with start_buffer and subtract
-        # each download time and add 2 seconds in that order)
+        # Calculate total rebuffer time for this combination: subtract each
+        # download time, then add that chunk's playback duration.
         curr_rebuffer_time = 0
         curr_buffer = start_buffer
         bitrate_sum = 0
@@ -146,7 +138,7 @@ class OracleMPCAgent(AbstractAgent):
                 curr_buffer = 0
             else:
                 curr_buffer -= download_time
-            curr_buffer += self.video_chunk_len
+            curr_buffer += state.get_chunk_length(index)
             bitrate_sum += state.levels_quality[chunk_quality]
             smoothness_diffs += abs(state.levels_quality[chunk_quality] - state.levels_quality[last_quality])
             # bitrate_sum += BITRATE_REWARD[chunk_quality]

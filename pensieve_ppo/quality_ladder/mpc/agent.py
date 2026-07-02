@@ -24,10 +24,6 @@ from .observer import MPCState
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L11
 MPC_FUTURE_CHUNK_COUNT = 5
 
-# Video chunk length in seconds
-# https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L206
-VIDEO_CHUNK_LEN = 4.0  # seconds
-
 # Reward parameters
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/mpc.py#L19-L21
 M_IN_K = 1000.0
@@ -61,7 +57,6 @@ class MPCAgent(AbstractAgent):
         action_dim: Number of available bitrate levels.
         future_chunk_count: Number of future chunks to consider (default: 5).
         bandwidth_history_len: Number of past bandwidths for harmonic mean (default: 5).
-        video_chunk_len: Video chunk length in seconds (default: 4.0).
         past_errors: List of past bandwidth prediction errors.
         past_bandwidth_ests: List of past bandwidth estimates (harmonic mean).
     """
@@ -71,7 +66,6 @@ class MPCAgent(AbstractAgent):
         action_dim: int = A_DIM,
         future_chunk_count: int = MPC_FUTURE_CHUNK_COUNT,
         bandwidth_history_len: int = BANDWIDTH_HISTORY_LEN,
-        video_chunk_len: float = VIDEO_CHUNK_LEN,
         initial_level: int = DEFAULT_QUALITY,
         **kwargs,
     ):
@@ -81,14 +75,12 @@ class MPCAgent(AbstractAgent):
             action_dim: Number of discrete actions (bitrate levels).
             future_chunk_count: Number of future chunks to consider in MPC.
             bandwidth_history_len: Number of past bandwidths for harmonic mean calculation.
-            video_chunk_len: Video chunk length in seconds.
             initial_level: Initial quality level used when reset() gets no request.
             **kwargs: Additional arguments (ignored for compatibility).
         """
         self.action_dim = action_dim
         self.future_chunk_count = future_chunk_count
         self.bandwidth_history_len = bandwidth_history_len
-        self.video_chunk_len = video_chunk_len
         self.initial_level = initial_level
 
         # Pre-compute all possible combinations of chunk bitrates
@@ -208,8 +200,8 @@ class MPCAgent(AbstractAgent):
         Returns:
             Total reward for this combination.
         """
-        # calculate total rebuffer time for this combination (start with start_buffer and subtract
-        # each download time and add 2 seconds in that order)
+        # Calculate total rebuffer time for this combination: subtract each
+        # download time, then add that chunk's playback duration.
         curr_rebuffer_time = 0
         curr_buffer = start_buffer
         bitrate_sum = 0
@@ -224,7 +216,7 @@ class MPCAgent(AbstractAgent):
                 curr_buffer = 0
             else:
                 curr_buffer -= download_time
-            curr_buffer += self.video_chunk_len
+            curr_buffer += state.get_chunk_length(index)
             bitrate_sum += state.levels_quality[chunk_quality]
             smoothness_diffs += abs(state.levels_quality[chunk_quality] - state.levels_quality[last_quality])
             # bitrate_sum += BITRATE_REWARD[chunk_quality]
