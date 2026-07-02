@@ -5,6 +5,8 @@ for creating ABREnv and Agent instances with Pensieve-PPO defaults.
 
 """
 
+import importlib
+import os
 from typing import Optional, Tuple, Union
 
 from .agent import (
@@ -15,6 +17,15 @@ from .agent import (
     create_imitation_env,
 )
 from .gym import ABREnv
+
+DEFAULT_REGISTRY_PACKAGES = ('quality_ladder',)
+REGISTRY_PACKAGES_ENV = 'PENSIEVE_PPO_REGISTRY_PACKAGES'
+
+
+def import_registry_packages(registry_packages=None) -> None:
+    """Import registry packages in the current process."""
+    for package in registry_packages or os.environ.get(REGISTRY_PACKAGES_ENV, os.pathsep.join(DEFAULT_REGISTRY_PACKAGES)).split(os.pathsep):
+        importlib.import_module(package, __package__) if package.startswith('.') else importlib.import_module(package if '.' in package else f'pensieve_ppo.{package}')
 
 
 # From src/load_trace.py and src/test.py
@@ -45,6 +56,7 @@ class PicklableEnvFactory:
         self.player_kwargs = dict(player_kwargs)
 
     def __call__(self, pid: int) -> ABREnv:
+        import_registry_packages()
         random_seed = (self.random_seed + pid) if self.random_seed is not None else None
         return create_env(
             name=self.name,
@@ -70,6 +82,7 @@ class PicklableAgentFactory:
         self.agent_kwargs = dict(agent_kwargs)
 
     def __call__(self) -> Union[AbstractAgent, AbstractTrainableAgent]:
+        import_registry_packages()
         return create_agent(
             name=self.name,
             model_path=self.model_path,
@@ -167,6 +180,7 @@ class PicklableImitationEnvFactory:
         self.player_kwargs = dict(player_kwargs)
 
     def __call__(self, pid: int) -> ABREnv:
+        import_registry_packages()
         random_seed = (self.random_seed + pid) if self.random_seed is not None else None
         return create_imitation_env(
             student_name=self.student_name,
