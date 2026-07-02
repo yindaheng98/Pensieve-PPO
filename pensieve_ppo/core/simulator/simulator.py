@@ -104,7 +104,7 @@ class Simulator:
 
         # 3. Advance to next chunk
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L131
-        end_of_video, video_chunk_remain = self.video_player.advance()
+        end_of_video, video_chunk_remain = self.video_player.advance(chunk_request)
 
         # 4. Handle video end if needed
         if end_of_video:
