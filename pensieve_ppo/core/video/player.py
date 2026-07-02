@@ -64,6 +64,23 @@ class VideoPlayer(ABC):
         """
         ...
 
+    @abstractmethod
+    def get_chunk_length(
+        self,
+        chunk_request: VideoChunkRequest,
+        chunk_idx: int,
+    ) -> float:
+        """Get the playback duration of current chunk for a video chunk request.
+
+        Args:
+            chunk_request: Request used to resolve the chunk metadata.
+            chunk_idx: Video chunk index.
+
+        Returns:
+            Chunk playback duration in milliseconds.
+        """
+        ...
+
     def advance(self, chunk_request: VideoChunkRequest) -> Tuple[bool, int]:
         """Advance to the next video chunk, recording the agent's decision.
 
