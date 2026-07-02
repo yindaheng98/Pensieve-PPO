@@ -17,7 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from .agent import AbstractTrainableAgent, Trainer, SaveModelCallback, EpochEndCallback, get_available_trainable_agents
 from .defaults import create_env_agent_factory, TRAIN_TRACES
-from .args import add_env_agent_arguments, parse_env_agent_args
+from .args import add_env_agent_arguments, parse_env_agent_args, prepare_registry_package
 from .test import run_evaluation, calculate_test_statistics, add_testing_arguments
 
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L14-L23
@@ -205,6 +205,7 @@ DESCRIPTION = 'Train Pensieve agent'
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     """Add command-line arguments for training."""
+    prepare_registry_package(parser)
     add_env_agent_arguments(parser, available_agents=get_available_trainable_agents())
     add_testing_arguments(parser)
     add_training_arguments(parser)

@@ -18,7 +18,7 @@ from tqdm import tqdm
 from .agent import AbstractAgent, get_available_agents
 from .defaults import create_env_agent
 from .gym.env import ABREnv
-from .args import add_env_agent_arguments, parse_env_agent_args
+from .args import add_env_agent_arguments, parse_env_agent_args, prepare_registry_package
 
 # Conversion constant (milliseconds to seconds)
 M_IN_K = 1000.0
@@ -272,6 +272,7 @@ DESCRIPTION = 'Test Pensieve agent'
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     """Add command-line arguments for testing."""
+    prepare_registry_package(parser)
     add_env_agent_arguments(parser, available_agents=get_available_agents())
     add_testing_arguments(parser)
 

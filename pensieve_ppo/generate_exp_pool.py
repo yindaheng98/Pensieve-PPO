@@ -22,7 +22,12 @@ from typing import Any, Dict
 
 from .agent import ImitationTrainer, get_available_agents
 from .imitate import prepare_imitation, add_teacher_arguments
-from .args import add_env_agent_arguments, parse_env_agent_args, parse_options
+from .args import (
+    add_env_agent_arguments,
+    parse_env_agent_args,
+    parse_options,
+    prepare_registry_package,
+)
 from .train import add_training_arguments
 from .exp_pool import ExperiencePool, ExpPoolWriterAgent
 
@@ -139,6 +144,7 @@ DESCRIPTION = 'Generate experience pool using actor agent rollouts'
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     """Add command-line arguments for experience pool generation."""
+    prepare_registry_package(parser)
     add_env_agent_arguments(parser, available_agents=get_available_agents())
     add_training_arguments(parser)
     # Actor arguments use --teacher-* prefix (equivalent to teacher in imitation learning)

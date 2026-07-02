@@ -21,7 +21,7 @@ from typing import Callable
 
 from .agent import AbstractTrainableAgent, EpochEndCallback, SaveModelCallback, get_available_trainable_agents
 from .defaults import PicklableAgentFactory
-from .args import add_env_agent_arguments, parse_env_agent_args
+from .args import add_env_agent_arguments, parse_env_agent_args, prepare_registry_package
 from .test import add_testing_arguments
 from .train import TestingCallback, MODEL_SAVE_INTERVAL, SUMMARY_DIR
 from .exp_pool import ExperiencePool, ExpPoolTrainer
@@ -138,6 +138,7 @@ DESCRIPTION = 'Train Pensieve agent from experience pool'
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     """Add command-line arguments for experience pool training."""
+    prepare_registry_package(parser)
     add_env_agent_arguments(parser, available_agents=get_available_trainable_agents())
     add_testing_arguments(parser)
     add_exp_pool_arguments(parser)

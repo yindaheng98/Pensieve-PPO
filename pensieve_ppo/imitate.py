@@ -22,7 +22,7 @@ from typing import Callable, Optional
 
 from .agent import AbstractTrainableAgent, ImitationTrainer, EpochEndCallback, SaveModelCallback, get_available_agents
 from .defaults import create_imitation_env_agent_factory
-from .args import add_env_agent_arguments, parse_env_agent_args, parse_options
+from .args import add_env_agent_arguments, parse_env_agent_args, parse_options, prepare_registry_package
 from .test import add_testing_arguments
 from .train import TestingCallback, add_training_arguments, NUM_AGENTS, TRAIN_SEQ_LEN, TRAIN_EPOCH, MODEL_SAVE_INTERVAL, SUMMARY_DIR
 
@@ -149,6 +149,7 @@ DESCRIPTION = 'Train Pensieve agent via imitation learning'
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
     """Add command-line arguments for imitation learning."""
+    prepare_registry_package(parser)
     add_env_agent_arguments(parser, available_agents=get_available_agents())
     add_testing_arguments(parser)
     add_training_arguments(parser)

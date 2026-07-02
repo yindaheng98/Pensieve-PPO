@@ -1,13 +1,15 @@
 """Package command-line entry point for Pensieve PPO."""
 
 import argparse
-from typing import Callable, Optional, Sequence
+from typing import Callable, Sequence
 
 from . import generate_exp_pool, imitate, imitate_exp_pool, test, train
+from .args import prepare_registry_package
 
 
 AddArguments = Callable[[argparse.ArgumentParser], None]
 RunCommand = Callable[[argparse.Namespace], None]
+DESCRIPTION = 'Pensieve PPO command line tools'
 
 
 def add_subcommand(
@@ -29,9 +31,9 @@ def add_subcommand(
     subparser.set_defaults(func=run_command)
 
 
-def main(argv: Optional[Sequence[str]] = None) -> None:
-    """Run a Pensieve PPO subcommand."""
-    parser = argparse.ArgumentParser(prog='pensieve_ppo', description='Pensieve PPO command line tools')
+def add_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add package-level subcommands."""
+    prepare_registry_package(parser)
     subparsers = parser.add_subparsers(dest='command', metavar='command', required=True)
 
     add_subcommand(
@@ -72,9 +74,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         run_command=train.main,
     )
 
-    args = parser.parse_args(argv)
-    args.func(args)
-
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(prog='pensieve_ppo', description=DESCRIPTION)
+    add_arguments(parser)
+    args = parser.parse_args()
+    args.func(args)
