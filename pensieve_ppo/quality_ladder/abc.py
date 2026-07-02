@@ -12,10 +12,16 @@ from ..core.video.player import VideoChunkRequest
 
 @dataclass(frozen=True)
 class QualityLadderData:
-    """Loaded quality ladder data with matching size and quality matrices."""
+    """Loaded quality ladder data.
+
+    `video_size` and `video_quality` are shaped as
+    [bitrate_levels, total_chunks]. `video_length` is shaped as
+    [total_chunks] and stores each chunk's playback duration in milliseconds.
+    """
 
     video_size: NDArray[np.int64]
     video_quality: NDArray[np.float64]
+    video_length: NDArray[np.float64]
 
 
 class QualityLadderLoader(Protocol):

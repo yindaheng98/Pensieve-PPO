@@ -7,8 +7,6 @@ from .abc import QualityLadderLoader, QualityLadderRequest
 from .envivio import load_envivio_video_size
 
 
-DEFAULT_CHUNK_LENGTH = 4000.0  # milliseconds
-
 LOAD_VIDEO_SIZE: dict[str, QualityLadderLoader] = {
     "envivio": load_envivio_video_size,
 }
@@ -21,7 +19,6 @@ class QualityLadderVideoPlayer(VideoPlayer):
         self,
         name: str = "envivio",
         *args,
-        chunk_length: float = DEFAULT_CHUNK_LENGTH,
         **kwargs,
     ):
         """Initialize the quality ladder video player.
@@ -29,18 +26,22 @@ class QualityLadderVideoPlayer(VideoPlayer):
         Args:
             name: Registered quality ladder loader name.
             *args: Positional arguments passed to the selected loader.
-            chunk_length: Playback duration for each chunk in milliseconds.
             **kwargs: Keyword arguments passed to the selected loader.
         """
         # Video-size loading follows the original src/core.py fixed_env data layout.
         data = LOAD_VIDEO_SIZE[name](*args, **kwargs)
-        self.chunk_length = chunk_length
         self.video_size = data.video_size
         self.video_quality = data.video_quality
+        self.video_length = data.video_length
         if self.video_size.shape != self.video_quality.shape:
             raise ValueError(
                 f"video_size shape {self.video_size.shape} must match "
                 f"video_quality shape {self.video_quality.shape}"
+            )
+        if self.video_length.shape != (self.video_size.shape[1],):
+            raise ValueError(
+                f"video_length shape {self.video_length.shape} must match "
+                f"total chunks {self.video_size.shape[1]}"
             )
         super().__init__()
 
@@ -78,7 +79,7 @@ class QualityLadderVideoPlayer(VideoPlayer):
         chunk_idx: int,
     ) -> float:
         """Get the playback duration of current chunk in milliseconds."""
-        return self.chunk_length
+        return float(self.video_length[chunk_idx])
 
     def get_chunk_sizes(self, chunk_idx: Optional[int] = None) -> List[int]:
         """Get sizes of a chunk at all quality levels.

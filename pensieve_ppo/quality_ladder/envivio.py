@@ -10,6 +10,7 @@ from .abc import QualityLadderData
 
 # From src/core.py
 TOTAL_VIDEO_CHUNKS = 48  # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L9
+VIDEO_CHUNCK_LEN = 4000.0  # millisec, every time add this amount to buffer, https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L7
 VIDEO_SIZE_FILE_PREFIX = './src/envivio/video_size_'  # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/core.py#L17
 
 # From src/env.py
@@ -74,8 +75,10 @@ def load_envivio_video_size(
         np.asarray(quality, dtype=np.float64)[:, None],
         video_size.shape,
     ).copy()
+    video_length = np.full(total_chunks, VIDEO_CHUNCK_LEN, dtype=np.float64)
 
     return QualityLadderData(
         video_size=video_size,
         video_quality=video_quality,
+        video_length=video_length,
     )
