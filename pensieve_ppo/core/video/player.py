@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,7 @@ class VideoPlayer(ABC):
 
     def __init__(self):
         """Initialize the video player."""
+        self.last_chunk_request: Optional[VideoChunkRequest] = None
         self.reset()
 
     def reset(self) -> None:
@@ -63,14 +64,19 @@ class VideoPlayer(ABC):
         """
         ...
 
-    def advance(self) -> Tuple[bool, int]:
-        """Advance to the next video chunk.
+    def advance(self, chunk_request: VideoChunkRequest) -> Tuple[bool, int]:
+        """Advance to the next video chunk, recording the agent's decision.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L131
+
+        Args:
+            chunk_request: The request that was used for the chunk that
+                was just downloaded. Stored as :attr:`last_chunk_request`.
 
         Returns:
             Tuple of (end_of_video, remaining_chunks)
         """
+        self.last_chunk_request = chunk_request
         self.video_chunk_counter += 1
         video_chunk_remain = self.total_chunks - self.video_chunk_counter
 
