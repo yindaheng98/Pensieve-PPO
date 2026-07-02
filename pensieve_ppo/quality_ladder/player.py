@@ -75,7 +75,6 @@ class QualityLadderVideoPlayer(VideoPlayer):
 
     def get_chunk_length(
         self,
-        chunk_request: QualityLadderRequest,
         chunk_idx: int,
     ) -> float:
         """Get the playback duration of current chunk in milliseconds."""

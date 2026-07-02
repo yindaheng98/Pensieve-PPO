@@ -67,13 +67,11 @@ class VideoPlayer(ABC):
     @abstractmethod
     def get_chunk_length(
         self,
-        chunk_request: VideoChunkRequest,
         chunk_idx: int,
     ) -> float:
-        """Get the playback duration of current chunk for a video chunk request.
+        """Get the playback duration of current chunk.
 
         Args:
-            chunk_request: Request used to resolve the chunk metadata.
             chunk_idx: Video chunk index.
 
         Returns:
