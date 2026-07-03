@@ -16,10 +16,9 @@ Testing strategy:
 - This accounts for potential differences in random number consumption during init
 
 Note on API differences:
-- src/env.py reset() executes the first chunk internally
-- pensieve_ppo.gym.env.ABREnv reset() only initializes state (proper Gymnasium API)
-- For gym env, the first chunk must be fetched via step() after reset()
-- Tests account for this by calling step() with DEFAULT_QUALITY after gym reset()
+- src/env.py reset() executes the first chunk internally.
+- pensieve_ppo.gym.env.ABREnv reset() only initializes state. The first chunk
+  is fetched via step(initial_action) by rollout code.
 
 Note on constants:
 - Constants are imported from pensieve_ppo.defaults and pensieve_ppo.quality_ladder.rl.observer
@@ -102,10 +101,9 @@ class TestABREnvEquivalenceBase(unittest.TestCase):
             trace_folder='./train/',
             player_kwargs={'video_size_file_prefix': './envivio/video_size_'},
         )
-        env.reset(options={'initial_chunk_request': QualityLadderRequest(initial_action)})
+        env.reset()
 
-        # Execute first chunk with initial_action to get initial state
-        # This matches src/env.py reset() which executes first chunk internally
+        # Execute first chunk with initial_action to get initial state.
         initial_state, _, _, _, _ = env.step(QualityLadderRequest(initial_action))
 
         states = [initial_state]
@@ -362,32 +360,16 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
         )
 
     def test_reset_return_format(self):
-        """Test reset return format differences.
-
-        Note: src reset() executes first chunk, gym reset() only initializes.
-        """
-        from pensieve_ppo.quality_ladder.rl.observer import RLState
-        np.random.seed(RANDOM_SEED)
-        src_abr = src_env.ABREnv(random_seed=RANDOM_SEED)
+        """Test reset return format differences."""
         gym_abr = self._create_gym_env(RANDOM_SEED)
 
-        # src returns just state (after executing first chunk)
-        src_result = src_abr.reset()
-        self.assertIsInstance(src_result, np.ndarray)
-
-        # gym returns (state, info) tuple (zero state, no chunk executed)
-        gym_result = gym_abr.reset(options={
-            'initial_chunk_request': QualityLadderRequest(1),
-        })
+        # gym returns (state, info) tuple without consuming an action.
+        gym_result = gym_abr.reset()
         self.assertIsInstance(gym_result, tuple)
         self.assertEqual(len(gym_result), 2)
-        # gym state is now RLState object
-        self.assertIsInstance(gym_result[0], RLState)
+        self.assertIsNone(gym_result[0])
         self.assertIsInstance(gym_result[1], dict)
-
-        # gym reset returns zero state (first chunk not yet executed)
-        gym_state_array = gym_result[0].state_matrix
-        np.testing.assert_array_equal(gym_state_array, np.zeros((S_INFO, S_LEN)))
+        self.assertEqual(gym_result[1]['time_stamp'], 0)
 
     def test_step_return_format(self):
         """Test step return format differences."""
@@ -395,9 +377,8 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
         src_abr = src_env.ABREnv(random_seed=RANDOM_SEED)
         src_abr.reset()
         gym_abr = self._create_gym_env(RANDOM_SEED)
-        gym_abr.reset(options={
-            'initial_chunk_request': QualityLadderRequest(1),
-        })
+        gym_abr.reset()
+        gym_abr.step(QualityLadderRequest(1))
 
         # src returns (state, reward, done, info)
         src_result = src_abr.step(2)
@@ -407,11 +388,12 @@ class TestInterfaceCompatibility(TestABREnvEquivalenceBase):
         gym_result = gym_abr.step(QualityLadderRequest(2))
         self.assertEqual(len(gym_result), 5)
 
-    def test_reset_requires_initial_chunk_request(self):
-        """Test reset requires the caller to provide the initial request."""
+    def test_reset_accepts_no_initial_chunk_request(self):
+        """Test reset does not require the caller to provide the initial request."""
         gym_abr = self._create_gym_env(RANDOM_SEED)
-        with self.assertRaises(KeyError):
-            gym_abr.reset()
+        state, info = gym_abr.reset()
+        self.assertIsNone(state)
+        self.assertEqual(info['time_stamp'], 0)
 
 
 class TestDeterminism(TestABREnvEquivalenceBase):
