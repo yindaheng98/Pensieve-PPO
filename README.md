@@ -44,8 +44,10 @@ import pensieve_ppo.quality_ladder.rl  # registers built-in RL agents
 # Create environment with default Pensieve parameters
 env = create_env(name='ppo', trace_folder='./src/train/', train=True)
 
-# Standard Gymnasium API
-obs, info = env.reset(options={"initial_chunk_request": QualityLadderRequest(1)})
+# Initialize the episode, then explicitly download the first chunk.
+initial_request = QualityLadderRequest(1)
+_, info = env.reset()
+obs, _, terminated, truncated, info = env.step(initial_request)
 while True:
     action = QualityLadderRequest(1)  # or use your agent
     obs, reward, terminated, truncated, info = env.step(action)
@@ -189,7 +191,7 @@ AbstractAgent
 - Abstract interface for state observation and reward calculation
 - Decouples state representation from environment dynamics
 - Methods:
-  - `reset(env, initial_chunk_request) -> (state, info)`: Initialize state
+  - `reset(env) -> None`: Reset observer-owned history/state
   - `observe(env, chunk_request, result) -> (state, reward, info)`: Update state and compute reward
 - Implementations:
   - `RLABRStateObserver`: For RL agents (returns `RLState` wrapping an `np.ndarray`)
@@ -198,6 +200,9 @@ AbstractAgent
 
 **ABREnv** (`pensieve_ppo.gym.env.ABREnv`):
 - Gymnasium-compatible environment wrapper
+- `reset()` only initializes environment and observer state; it returns `None`
+  plus reset metadata. The first usable observation is produced by an explicit
+  `step(initial_request)` call.
 - Uses an `AbstractABRStateObserver` instance to:
   - Observe states from simulator results
   - Compute rewards based on actions and results
@@ -333,7 +338,8 @@ imitation_observer = ImitationObserver(
 from pensieve_ppo.quality_ladder import QualityLadderRequest
 
 env = ABREnv(simulator=simulator, observer=imitation_observer)
-state, info = env.reset(options={"initial_chunk_request": QualityLadderRequest(1)})
+_, info = env.reset()
+state, _, _, _, info = env.step(QualityLadderRequest(1))
 # state.student_state: RLState for training RL agent
 # state.teacher_state: BBAState for BBA agent's decision
 ```
@@ -408,7 +414,8 @@ agent = create_agent(
 
 # Predict action
 initial_request = agent.reset(QualityLadderRequest(1))
-state, _ = env.reset(options={"initial_chunk_request": initial_request})
+_, _ = env.reset()
+state, _, _, _, _ = env.step(initial_request)
 decision = agent.select_action(state)
 action = decision.action_index
 action_prob = decision.action_prob
@@ -492,12 +499,9 @@ class MyObserver(AbstractABRStateObserver):
     def __init__(self, rebuf_penalty: float = 4.3):
         self.rebuf_penalty = rebuf_penalty
 
-    def reset(
-        self,
-        env: ABREnv,
-        initial_chunk_request: VideoChunkRequest,
-    ) -> tuple[MyState, dict]:
-        return MyState(buffer_size=0.0, last_quality=0.0), {}
+    def reset(self, env: ABREnv) -> None:
+        """Reset observer-owned history. No usable state is returned here."""
+        pass
 
     def observe(
         self,
