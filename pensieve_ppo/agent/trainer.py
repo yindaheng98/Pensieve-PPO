@@ -175,11 +175,18 @@ class Trainer:
 
         for epoch in range(1, self.train_epochs + 1):
             initial_chunk_request = actor.reset()
-            obs, _ = env.reset(options={
-                'initial_chunk_request': initial_chunk_request,
-            })
+            env.reset()
+
+            # Download the first chunk to obtain the first usable observation.
+            obs, rew, terminated, truncated, info = env.step(initial_chunk_request)
+            done = terminated or truncated
+
             trajectory: List[Step] = []
             for step in range(self.train_seq_len):
+                # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L159-160
+                if done:
+                    break
+
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L145-L150
                 action = actor.select_action_for_training(obs)
 
@@ -192,9 +199,6 @@ class Trainer:
                 trajectory.append(Step(state=obs, action=action, reward=rew, step=step, done=done))
 
                 obs = next_obs
-                # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L159-160
-                if done:
-                    break
 
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L162
             exp_queue.put((trajectory, done))
