@@ -20,7 +20,6 @@ class VideoPlayer(ABC):
 
     def __init__(self):
         """Initialize the video player."""
-        self.last_chunk_request: Optional[VideoChunkRequest] = None
         self.reset()
 
     def reset(self) -> None:
@@ -28,6 +27,7 @@ class VideoPlayer(ABC):
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L138
         """
+        self.last_chunk_request: Optional[VideoChunkRequest] = None
         self.video_chunk_counter = 0
 
     @abstractmethod
