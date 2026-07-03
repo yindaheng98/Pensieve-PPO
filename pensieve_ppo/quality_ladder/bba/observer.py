@@ -60,22 +60,6 @@ class BBAStateObserver(RLABRStateObserver):
         >>> env = ABREnv(simulator=simulator, observer=imitation_observer)
     """
 
-    def build_and_set_initial_state(
-        self,
-        env: ABREnv,
-        initial_bit_rate: int,
-    ) -> BBAState:
-        """Build initial BBAState on reset.
-
-        Args:
-            env: The ABREnv instance to observe.
-            initial_bit_rate: Initial bitrate level index.
-
-        Returns:
-            Initial BBAState with buffer_size=0.
-        """
-        return BBAState(buffer_size=0.0)
-
     def compute_and_update_state(
         self,
         env: ABREnv,

@@ -133,26 +133,22 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         """
         super().__init__(*args, state_history_len=state_history_len, **kwargs)
 
-        # Inference tracking variables (reset in build_and_set_initial_state)
+        # Inference tracking variables (reset in reset)
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L26-L27
         self.timestep: int = 0
         self.target_return_clone = target_return
         self.target_return: float = target_return
 
-        # Episode statistics tracking (reset in build_and_set_initial_state)
+        # Episode statistics tracking (reset in reset)
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L29
         self.episodes_return: float = 0.0
         self.episodes_len: int = 0
 
-    def build_and_set_initial_state(
+    def reset(
         self,
         env: ABREnv,
-        initial_bit_rate: int,
-    ) -> NetLLMState:
-        """Build initial NetLLMState on reset.
-
-        Initializes the raw data fields. For training, the initial state
-        typically has reward=0.0 and done=False.
+    ) -> None:
+        """Reset NetLLM observer state.
 
         Reference:
             https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L25-L27
@@ -160,11 +156,9 @@ class NetLLMABRStateObserver(RLABRStateObserver):
 
         Args:
             env: The ABREnv instance to observe.
-            initial_bit_rate: Initial bitrate level index.
-
-        Returns:
-            Initial NetLLMState with zero state array and initialized fields.
         """
+        super().reset(env)
+
         # Reset inference tracking variables
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L26-L27
         self.timestep = 0
@@ -174,20 +168,6 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L29
         self.episodes_return = 0.0
         self.episodes_len = 0
-
-        # Get initial state from parent (creates zero state array)
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L247
-        rl_state = super().build_and_set_initial_state(env, initial_bit_rate)
-
-        # Build NetLLMState with raw data
-        return NetLLMState(
-            state_matrix=rl_state.state_matrix,
-            action=initial_bit_rate,
-            reward=0.0,  # No reward at initial state
-            done=False,  # Episode just started
-            timestep=self.timestep,
-            target_return=self.target_return,
-        )
 
     def observe(
         self,

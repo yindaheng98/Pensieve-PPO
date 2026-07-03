@@ -26,9 +26,8 @@ Example:
     >>>
     >>> # Use in environment
     >>> env = ABREnv(simulator=simulator, observer=imitation_observer)
-    >>> state, info = env.reset()
-    >>> # state.student_state is RLState (for training RL agent)
-    >>> # state.teacher_state is BBAState (for BBA agent's decision)
+    >>> _, info = env.reset()
+    >>> # The first usable ImitationState is returned by env.step(initial_request).
 """
 
 from dataclasses import dataclass
@@ -93,31 +92,14 @@ class ImitationObserver(AbstractABRStateObserver):
     def reset(
         self,
         env: ABREnv,
-        initial_chunk_request: VideoChunkRequest,
-    ) -> Tuple[ImitationState, Dict[str, Any]]:
-        """Reset both observers and return combined initial state.
+    ) -> None:
+        """Reset both observers.
 
         Args:
             env: The ABREnv instance to observe.
-            initial_chunk_request: Initial video chunk request.
-
-        Returns:
-            Tuple of (ImitationState containing both states, combined info_dict).
         """
-        student_state, student_info = self.student_observer.reset(env, initial_chunk_request)
-        teacher_state, teacher_info = self.teacher_observer.reset(env, initial_chunk_request)
-
-        state = ImitationState(
-            student_state=student_state,
-            teacher_state=teacher_state,
-        )
-
-        info = {
-            'student_info': student_info,
-            'teacher_info': teacher_info,
-        }
-
-        return state, info
+        self.student_observer.reset(env)
+        self.teacher_observer.reset(env)
 
     def observe(
         self,

@@ -47,16 +47,11 @@ class AbstractABRStateObserver(ABC):
     def reset(
         self,
         env: "ABREnv",
-        initial_chunk_request: VideoChunkRequest,
-    ) -> Tuple[State, Dict[str, Any]]:
-        """Reset observer state and return initial observation.
+    ) -> None:
+        """Reset observer state.
 
         Args:
             env: The ABREnv instance to observe.
-            initial_chunk_request: Initial video chunk request.
-
-        Returns:
-            Tuple of (state, info_dict).
         """
         pass
 
@@ -122,13 +117,13 @@ class ABREnv(gym.Env):
         *,
         seed: Optional[int] = None,
         options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[State, Dict[str, Any]]:
+    ) -> Tuple[None, Dict[str, Any]]:
         """Reset the environment to initial state.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L42-L47
-        This method only initializes state to zeros and does NOT execute the first chunk download.
-        The first chunk should be downloaded by calling step(action) after reset().
-        This follows proper Gymnasium API separation of concerns.
+        This method only initializes environment and observer state. The first
+        chunk should be downloaded explicitly by calling step() with the request
+        returned by agent.reset().
 
         Args:
             seed: Random seed for reproducibility
@@ -136,10 +131,10 @@ class ABREnv(gym.Env):
                 - reset_time_stamp (bool): Whether to reset time_stamp to 0.
                   Default is True. Set to False for testing mode where time_stamp
                   should accumulate across traces.
-                - initial_chunk_request: Initial video chunk request. Required.
 
         Returns:
-            Tuple of (observation, info_dict)
+            Tuple of (None, info_dict). The first usable observation is
+            produced by an explicit step() call.
         """
         super().reset(seed=seed)
 
@@ -149,20 +144,17 @@ class ABREnv(gym.Env):
         # Parse options
         options = options or {}
         reset_time_stamp = options.get('reset_time_stamp', True)
-        initial_chunk_request = options['initial_chunk_request']
 
         if reset_time_stamp:
             self.time_stamp = 0
 
-        # Reset observer and get initial state
-        state, observer_info = self.observer.reset(self, initial_chunk_request)
+        self.observer.reset(self)
 
         info = {
             "time_stamp": self.time_stamp,
-            **observer_info
         }
 
-        return state, info
+        return None, info
 
     def step(
         self, action: VideoChunkRequest,

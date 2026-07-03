@@ -110,9 +110,8 @@ def create_imitation_env(
         ...     trace_folder=trace_folder,
         ...     video_size_file_prefix=video_size_file_prefix,
         ... )
-        >>> state, info = env.reset()
-        >>> # state.student_state is RLState (for training RL agent)
-        >>> # state.teacher_state is BBAState (for BBA agent's decision)
+        >>> _, info = env.reset()
+        >>> # The first usable ImitationState is returned by env.step(initial_request).
 
     Args:
         video_player: Pre-configured video player instance.

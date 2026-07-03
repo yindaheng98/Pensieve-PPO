@@ -22,7 +22,7 @@ from ...gym import ABREnv, State
 from ...core.trace import TraceSimulator
 from ...core.video import VideoPlayer
 from ..abc import QualityLadderRequest
-from ..rl.utils import get_initial_chunk_qualities, get_next_chunk_qualities
+from ..rl.utils import get_next_chunk_qualities
 
 
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/fixed_env_future_bandwidth.py#L8-L10
@@ -149,36 +149,21 @@ class MPCABRStateObserver(RLABRStateObserver):
     def __init__(self, *args, **kwargs):
         """Initialize the MPC state observer."""
         super().__init__(*args, **kwargs)
-        # Track bandwidth history for MPC bandwidth prediction
-        # Fixed length, initialized in build_and_set_initial_state
+        # Track bandwidth history for MPC bandwidth prediction.
         self.past_bandwidths: List[float] = [0.0] * self.state_history_len
 
-    def build_and_set_initial_state(
+    def reset(
         self,
         env: ABREnv,
-        initial_bit_rate: int,
-    ) -> MPCState:
-        """Build initial MPCState on reset.
+    ) -> None:
+        """Reset MPC observer state.
 
         Args:
             env: The ABREnv instance to observe.
-            initial_bit_rate: Initial bitrate level index.
-
-        Returns:
-            Initial MPCState with zero-initialized bandwidth history.
         """
+        super().reset(env)
         # Reset bandwidth history on new episode (fixed length, all zeros)
         self.past_bandwidths = [0.0] * self.state_history_len
-
-        return MPCState(
-            trace_simulator=env.simulator.trace_simulator.unwrapped,
-            video_player=env.simulator.video_player,
-            bit_rate=initial_bit_rate,
-            levels_quality=get_initial_chunk_qualities(env),
-            rebuf_penalty=self.rebuf_penalty,
-            smooth_penalty=self.smooth_penalty,
-            past_bandwidths=list(self.past_bandwidths),
-        )
 
     def compute_and_update_state(
         self,

@@ -16,9 +16,7 @@ from ...core.simulator import StepResult
 from ...gym.env import AbstractABRStateObserver, ABREnv, State
 from ..abc import QualityLadderRequest
 from .utils import (
-    get_bitrate_levels,
     get_chunk_qualities,
-    get_initial_chunk_quality,
     get_last_chunk_qualities,
     get_next_chunk_sizes,
 )
@@ -73,7 +71,8 @@ class RLABRStateObserver(AbstractABRStateObserver):
         state_history_len: Number of past observations in state.
         buffer_norm_factor: Normalization factor for buffer size.
         state: Internal state array (may differ from returned state).
-        last_bit_rate: Last selected bitrate level.
+        last_bit_rate: Last selected bitrate level, or None before the first
+            chunk of an episode has been observed.
     """
 
     def __init__(
@@ -104,72 +103,19 @@ class RLABRStateObserver(AbstractABRStateObserver):
         # Note: self._state_matrix is the internal numpy array for manipulation,
         # while methods return RLState objects wrapping this array.
         self.state_matrix: Optional[np.ndarray] = None
-        self.last_bit_rate: int = 0
-
-    def build_and_set_initial_state(
-        self,
-        env: ABREnv,
-        initial_bit_rate: int,
-    ) -> RLState:
-        """Build initial state representation on reset.
-
-        Args:
-            env: The ABREnv instance to observe.
-            initial_bit_rate: Initial bitrate level index.
-
-        Returns:
-            Initial state as RLState dataclass.
-        """
-        state_matrix = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
-        # Set internal state matrix
-        self.state_matrix = state_matrix
-        return RLState(state_matrix=state_matrix.copy())
-
-    def build_initial_info_dict(
-        self,
-        env: ABREnv,
-        initial_bit_rate: int,
-    ) -> Dict[str, Any]:
-        """Build initial info dictionary for logging on reset.
-
-        Args:
-            env: The ABREnv instance to observe.
-            initial_bit_rate: Initial bitrate level index.
-        """
-        # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
-        info = {
-            'quality': get_initial_chunk_quality(env, initial_bit_rate),
-        }
-        return info
+        self.last_bit_rate: Optional[int] = None
 
     def reset(
         self,
         env: ABREnv,
-        initial_chunk_request: QualityLadderRequest,
-    ) -> Tuple[RLState, Dict[str, Any]]:
-        """Reset observer state and return initial observation.
+    ) -> None:
+        """Reset observer state.
 
         Args:
             env: The ABREnv instance to observe.
-            initial_chunk_request: Initial video chunk request.
-
-        Returns:
-            Tuple of (state, info_dict).
         """
-        # Validate levels_quality length matches env's bitrate_levels
-        video_bitrate_levels = get_bitrate_levels(env)
-        if initial_chunk_request.level < 0 or initial_chunk_request.level >= video_bitrate_levels:
-            raise ValueError(
-                f"initial bitrate level ({initial_chunk_request.level}) must be in "
-                f"[0, {video_bitrate_levels})"
-            )
-
-        # initial_bit_rate is the bitrate level index, not the actual bitrate value.
-        initial_bit_rate = initial_chunk_request.level
-        self.last_bit_rate = initial_bit_rate
-        state = self.build_and_set_initial_state(env, initial_bit_rate)
-        info = self.build_initial_info_dict(env, initial_bit_rate)
-        return state, info
+        self.last_bit_rate = None
+        self.state_matrix = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
 
     def compute_reward(
         self,
@@ -192,7 +138,9 @@ class RLABRStateObserver(AbstractABRStateObserver):
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L83-L87
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L80-L84
         # reward is video quality - rebuffer penalty - smooth penalty
-        last_quality = get_last_chunk_qualities(env, result)[self.last_bit_rate]
+        last_quality = (get_last_chunk_qualities(env, result)[self.last_bit_rate]
+                        if self.last_bit_rate is not None
+                        else result.video_chunk_quality)
         reward = result.video_chunk_quality / M_IN_K \
             - self.rebuf_penalty * rebuf \
             - self.smooth_penalty * np.abs(result.video_chunk_quality -

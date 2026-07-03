@@ -123,26 +123,6 @@ class OracleMPCABRStateObserver(MPCABRStateObserver):
         >>> env = ABREnv(simulator=simulator, observer=imitation_observer)
     """
 
-    def build_and_set_initial_state(
-        self,
-        env: ABREnv,
-        initial_bit_rate: int,
-    ) -> OracleMPCState:
-        """Build initial OracleMPCState on reset.
-
-        Args:
-            env: The ABREnv instance to observe.
-            initial_bit_rate: Initial bitrate level index.
-
-        Returns:
-            Initial OracleMPCState with synchronized virtual pointers.
-        """
-        state = OracleMPCState(
-            **asdict(super().build_and_set_initial_state(env, initial_bit_rate)),
-        )
-        state.reset_download_time()
-        return state
-
     def compute_and_update_state(
         self,
         env: ABREnv,
