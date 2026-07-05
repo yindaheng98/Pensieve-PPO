@@ -20,7 +20,7 @@ from typing import Callable, List
 from ..gym import ImitationState
 from .abc import AbstractAgent
 from .trainable import Step, TrainingBatch
-from .trainer import Trainer
+from .trainer import Trainer, watchdog
 
 
 class ImitationTrainer(Trainer):
