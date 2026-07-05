@@ -143,9 +143,9 @@ class ImitationTrainer(Trainer):
         env = self.env_factory(agent_id)
         actor = self.teacher_agent_factory()
 
-        watchdog(signal_queue)
-
         for epoch in range(1, self.train_epochs + 1):
+            watchdog(signal_queue)
+
             initial_chunk_request = actor.reset()
             env.reset()
 
@@ -183,5 +183,3 @@ class ImitationTrainer(Trainer):
 
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L162
             exp_queue.put((trajectory, done))
-
-            watchdog(signal_queue)

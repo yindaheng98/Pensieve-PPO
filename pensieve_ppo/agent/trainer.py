@@ -183,10 +183,10 @@ class Trainer:
         env = self.env_factory(agent_id)
         actor = self.agent_factory()
 
-        actor_net_params = watchdog(net_params_queue)
-        actor.set_params(actor_net_params)
-
         for epoch in range(1, self.train_epochs + 1):
+            actor_net_params = watchdog(net_params_queue)
+            actor.set_params(actor_net_params)
+
             initial_chunk_request = actor.reset()
             env.reset()
 
@@ -215,9 +215,6 @@ class Trainer:
 
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L162
             exp_queue.put((trajectory, done))
-
-            actor_net_params = watchdog(net_params_queue)
-            actor.set_params(actor_net_params)
 
     def train(self) -> None:
         """Start distributed training.
