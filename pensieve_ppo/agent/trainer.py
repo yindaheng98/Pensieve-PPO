@@ -143,7 +143,7 @@ class Trainer:
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L102-L112
             training_batches: List[TrainingBatch] = []
             for i in range(self.num_agents):
-                trajectory, done = exp_queues[i].get()
+                trajectory, done = watchdog(exp_queues[i])
                 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L161-L165
                 training_batch = actor.produce_training_batch(trajectory, done)
                 training_batches.append(training_batch)
@@ -183,7 +183,7 @@ class Trainer:
         env = self.env_factory(agent_id)
         actor = self.agent_factory()
 
-        actor_net_params = net_params_queue.get()
+        actor_net_params = watchdog(net_params_queue)
         actor.set_params(actor_net_params)
 
         for epoch in range(1, self.train_epochs + 1):
@@ -216,7 +216,7 @@ class Trainer:
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L162
             exp_queue.put((trajectory, done))
 
-            actor_net_params = net_params_queue.get()
+            actor_net_params = watchdog(net_params_queue)
             actor.set_params(actor_net_params)
 
     def train(self) -> None:

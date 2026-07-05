@@ -99,7 +99,7 @@ class ImitationTrainer(Trainer):
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L102-L112
             training_batches: List[TrainingBatch] = []
             for i in range(self.num_agents):
-                trajectory, done = exp_queues[i].get()
+                trajectory, done = watchdog(exp_queues[i])
                 # The trajectory contains:
                 # - state: student_state (for training the student neural network)
                 # - action: teacher's action (what we want to imitate)
@@ -143,7 +143,7 @@ class ImitationTrainer(Trainer):
         env = self.env_factory(agent_id)
         actor = self.teacher_agent_factory()
 
-        signal_queue.get()
+        watchdog(signal_queue)
 
         for epoch in range(1, self.train_epochs + 1):
             initial_chunk_request = actor.reset()
@@ -184,4 +184,4 @@ class ImitationTrainer(Trainer):
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L162
             exp_queue.put((trajectory, done))
 
-            signal_queue.get()
+            watchdog(signal_queue)
