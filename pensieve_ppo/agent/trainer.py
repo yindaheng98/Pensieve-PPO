@@ -245,5 +245,26 @@ class Trainer:
         for i in range(self.num_agents):
             agents[i].start()
 
-        # wait until training is done
-        coordinator.join()
+        try:
+            while coordinator.is_alive() and all(agent.exitcode in (None, 0) for agent in agents):
+                coordinator.join(timeout=WATCHDOG_INTERVAL)
+
+            if coordinator.is_alive():  # Coordinator is still alive, so some agents failed
+                failed_agents = [agent for agent in agents if agent.exitcode not in (None, 0)]
+            else:  # Coordinator is not alive, so detect if it failed or training completed normally
+                if coordinator.exitcode != 0:
+                    raise RuntimeError(f"Coordinator exited with code {coordinator.exitcode}")
+                for agent in agents:
+                    agent.join(timeout=WATCHDOG_INTERVAL)
+                failed_agents = [agent for agent in agents if agent.exitcode != 0]
+
+            if failed_agents:
+                failed = ", ".join(f"pid={agent.pid} exitcode={agent.exitcode}" for agent in failed_agents)
+                raise RuntimeError(f"Worker agent process failed: {failed}")
+
+        finally:
+            for process in [coordinator] + agents:
+                if process.is_alive():
+                    process.terminate()
+            for process in [coordinator] + agents:
+                process.join()
