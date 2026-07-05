@@ -12,12 +12,25 @@ Reference:
 """
 
 import multiprocessing as mp
+import queue
 from typing import Callable, List
 
 import torch
 
 from ..gym import ABREnv
 from .trainable import AbstractTrainableAgent, Step, TrainingBatch, TrainBatchInfo
+
+WATCHDOG_INTERVAL = 1.0
+
+
+def watchdog(q: mp.Queue):
+    parent = mp.parent_process()
+    while parent is None or parent.is_alive():
+        try:
+            return q.get(timeout=WATCHDOG_INTERVAL)
+        except queue.Empty:
+            pass
+    raise RuntimeError("Parent process exited before queue item was available")
 
 
 class EpochEndCallback:
