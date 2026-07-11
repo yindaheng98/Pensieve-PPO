@@ -2,7 +2,6 @@
 
 from ...core.simulator import StepResult
 from ...gym.env import ABREnv
-from ..abc import QualityLadderRequest
 from ..player import QualityLadderVideoPlayer
 
 
@@ -39,21 +38,6 @@ def get_next_chunk_idx(env: ABREnv, result: StepResult) -> int:
         return 0
     video_player = get_video_player(env)
     return video_player.total_chunks - result.video_chunk_remain
-
-
-def get_initial_chunk_quality(env: ABREnv, bitrate_level: int) -> float:
-    """Get one bitrate level's quality for the current initial chunk."""
-    video_player = get_video_player(env)
-    return video_player.get_chunk_quality(
-        QualityLadderRequest(bitrate_level),
-        video_player.video_chunk_counter,
-    )
-
-
-def get_initial_chunk_qualities(env: ABREnv) -> list[float]:
-    """Get all bitrate levels' qualities for the current initial chunk."""
-    video_player = get_video_player(env)
-    return video_player.get_chunk_qualities(video_player.video_chunk_counter)
 
 
 def get_chunk_qualities(env: ABREnv, result: StepResult) -> list[float]:
