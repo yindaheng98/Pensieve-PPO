@@ -28,6 +28,7 @@ class VideoPlayer(ABC):
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L138
         """
         self.last_chunk_request: Optional[VideoChunkRequest] = None
+        self.last_buffer_size: Optional[float] = None  # milliseconds
         self.video_chunk_counter = 0
 
     @abstractmethod
@@ -35,12 +36,14 @@ class VideoPlayer(ABC):
         self,
         chunk_request: VideoChunkRequest,
         chunk_idx: int,
+        buffer_size: float,
     ) -> float:
         """Get the actual quality level for a chunk request.
 
         Args:
             chunk_request: Request used to resolve the chunk quality.
             chunk_idx: Video chunk index.
+            buffer_size: Current playback buffer size in milliseconds.
 
         Returns:
             Quality value for the selected bitrate level.
@@ -52,12 +55,14 @@ class VideoPlayer(ABC):
         self,
         chunk_request: VideoChunkRequest,
         chunk_idx: int,
+        buffer_size: float,
     ) -> int:
         """Get the size of current chunk for a video chunk request.
 
         Args:
             chunk_request: Request used to resolve the chunk quality.
             chunk_idx: Video chunk index.
+            buffer_size: Current playback buffer size in milliseconds.
 
         Returns:
             Chunk size in bytes
@@ -79,7 +84,11 @@ class VideoPlayer(ABC):
         """
         ...
 
-    def advance(self, chunk_request: VideoChunkRequest) -> Tuple[bool, int]:
+    def advance(
+        self,
+        chunk_request: VideoChunkRequest,
+        buffer_size: float,
+    ) -> Tuple[bool, int]:
         """Advance to the next video chunk, recording the agent's decision.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L131
@@ -87,11 +96,13 @@ class VideoPlayer(ABC):
         Args:
             chunk_request: The request that was used for the chunk that
                 was just downloaded. Stored as :attr:`last_chunk_request`.
+            buffer_size: Current playback buffer size in milliseconds.
 
         Returns:
             Tuple of (end_of_video, remaining_chunks)
         """
         self.last_chunk_request = chunk_request
+        self.last_buffer_size = buffer_size
         self.video_chunk_counter += 1
         video_chunk_remain = self.total_chunks - self.video_chunk_counter
 
