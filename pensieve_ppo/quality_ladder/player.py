@@ -49,6 +49,7 @@ class QualityLadderVideoPlayer(VideoPlayer):
         self,
         chunk_request: QualityLadderRequest,
         chunk_idx: int,
+        buffer_size: float,
     ) -> float:
         """Get the actual quality level for a chunk request."""
         return float(
@@ -62,6 +63,7 @@ class QualityLadderVideoPlayer(VideoPlayer):
         self,
         chunk_request: QualityLadderRequest,
         chunk_idx: int,
+        buffer_size: float,
     ) -> int:
         """Get the size of current chunk for a video chunk request.
 
