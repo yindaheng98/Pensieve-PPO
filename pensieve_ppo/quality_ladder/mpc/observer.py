@@ -79,7 +79,11 @@ class MPCState(State):
         """
         if chunk_idx < 0 or chunk_idx >= self.video_player.total_chunks:
             return 0
-        return self.video_player.get_chunk_size(QualityLadderRequest(quality), chunk_idx)
+        return self.video_player.get_chunk_size(
+            QualityLadderRequest(quality),
+            chunk_idx,
+            self.trace_simulator.get_buffer_size(),
+        )
 
     def get_chunk_length(self, chunk_idx: int) -> float:
         """Get the playback duration of a video chunk in seconds."""
@@ -117,8 +121,8 @@ class MPCState(State):
         Returns:
             Buffer size in seconds.
         """
-        buffer_size_ms = self.trace_simulator.get_buffer_size()
-        return buffer_size_ms / MILLISECONDS_IN_SECOND
+        buffer_size = self.trace_simulator.get_buffer_size()  # milliseconds
+        return buffer_size / MILLISECONDS_IN_SECOND
 
 
 class MPCABRStateObserver(RLABRStateObserver):
