@@ -81,13 +81,13 @@ class QualityLadderVideoPlayer(VideoPlayer):
         """Get the playback duration of current chunk in milliseconds."""
         return float(self.video_length[chunk_idx])
 
-    def resolve_chunk(
+    def advance_chunk(
         self,
         chunk_request: VideoChunkRequest,
         chunk_idx: int,
         buffer_size: float,
     ) -> ResolvedChunk:
-        """Resolve current chunk metadata for a quality-ladder request."""
+        """Advance current chunk metadata for a quality-ladder request."""
         if not isinstance(chunk_request, QualityLadderRequest):
             raise TypeError(
                 "QualityLadderVideoPlayer requires QualityLadderRequest, "

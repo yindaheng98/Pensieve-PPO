@@ -48,13 +48,13 @@ class VideoPlayer(ABC):
         self.video_chunk_counter = 0
 
     @abstractmethod
-    def resolve_chunk(
+    def advance_chunk(
         self,
         chunk_request: VideoChunkRequest,
         chunk_idx: int,
         buffer_size: float,
     ) -> ResolvedChunk:
-        """Resolve size, quality, and playback length for a chunk request.
+        """Advance chunk-specific state and return chunk metadata.
 
         Args:
             chunk_request: Request used to resolve the chunk quality.
@@ -84,7 +84,7 @@ class VideoPlayer(ABC):
             Resolved chunk metadata plus end-of-video progress information.
         """
         chunk_idx = self.video_chunk_counter
-        resolved_chunk = self.resolve_chunk(
+        resolved_chunk = self.advance_chunk(
             chunk_request,
             chunk_idx,
             buffer_size,
