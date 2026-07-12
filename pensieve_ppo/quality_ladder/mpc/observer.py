@@ -82,7 +82,6 @@ class MPCState(State):
         return self.video_player.get_chunk_size(
             QualityLadderRequest(quality),
             chunk_idx,
-            self.trace_simulator.get_buffer_size(),
         )
 
     def get_chunk_length(self, chunk_idx: int) -> float:

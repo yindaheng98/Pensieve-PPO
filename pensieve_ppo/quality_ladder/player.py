@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 
-from ..core.video.player import VideoPlayer
+from ..core.video.player import ResolvedChunk, VideoChunkRequest, VideoPlayer
 from .abc import QualityLadderLoader, QualityLadderRequest
 from .envivio import load_envivio_video_size
 
@@ -49,7 +49,6 @@ class QualityLadderVideoPlayer(VideoPlayer):
         self,
         chunk_request: QualityLadderRequest,
         chunk_idx: int,
-        buffer_size: float,
     ) -> float:
         """Get the actual quality level for a chunk request."""
         return float(
@@ -63,7 +62,6 @@ class QualityLadderVideoPlayer(VideoPlayer):
         self,
         chunk_request: QualityLadderRequest,
         chunk_idx: int,
-        buffer_size: float,
     ) -> int:
         """Get the size of current chunk for a video chunk request.
 
@@ -82,6 +80,24 @@ class QualityLadderVideoPlayer(VideoPlayer):
     ) -> float:
         """Get the playback duration of current chunk in milliseconds."""
         return float(self.video_length[chunk_idx])
+
+    def resolve_chunk(
+        self,
+        chunk_request: VideoChunkRequest,
+        chunk_idx: int,
+        buffer_size: float,
+    ) -> ResolvedChunk:
+        """Resolve current chunk metadata for a quality-ladder request."""
+        if not isinstance(chunk_request, QualityLadderRequest):
+            raise TypeError(
+                "QualityLadderVideoPlayer requires QualityLadderRequest, "
+                f"got {type(chunk_request).__name__}"
+            )
+        return ResolvedChunk(
+            size=self.get_chunk_size(chunk_request, chunk_idx),
+            quality=self.get_chunk_quality(chunk_request, chunk_idx),
+            length=self.get_chunk_length(chunk_idx),
+        )
 
     def get_chunk_sizes(self, chunk_idx: Optional[int] = None) -> List[int]:
         """Get sizes of a chunk at all quality levels.

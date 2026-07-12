@@ -252,7 +252,6 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
                         video_data.get_chunk_size(
                             QualityLadderRequest(bitrate),
                             chunk_idx,
-                            0.0,
                         ),
                         self.fixed_env.video_size[bitrate][chunk_idx]
                     )
@@ -268,7 +267,6 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
                         video_data.get_chunk_quality(
                             QualityLadderRequest(bitrate),
                             chunk_idx,
-                            0.0,
                         ),
                         quality,
                     )
@@ -283,11 +281,11 @@ class TestVideoLoaderMatchesOriginal(unittest.TestCase):
         video_data.video_quality[0, 1] = 222.0
 
         self.assertEqual(
-            video_data.get_chunk_size(QualityLadderRequest(0), 0, 0.0),
+            video_data.get_chunk_size(QualityLadderRequest(0), 0),
             12345,
         )
         self.assertEqual(
-            video_data.get_chunk_quality(QualityLadderRequest(0), 0, 0.0),
+            video_data.get_chunk_quality(QualityLadderRequest(0), 0),
             111.0,
         )
         self.assertEqual(video_data.get_chunk_sizes(0)[0], 12345)
@@ -388,7 +386,6 @@ class TestLoadersWithEnvironment(unittest.TestCase):
                         video_data.get_chunk_size(
                             QualityLadderRequest(bitrate),
                             chunk_idx,
-                            0.0,
                         ),
                         env.video_size[bitrate][chunk_idx]
                     )
