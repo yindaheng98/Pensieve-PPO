@@ -2,13 +2,29 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
 
 @dataclass(frozen=True)
 class VideoChunkRequest(ABC):
     """Base class for video chunk requests."""
     pass
+
+
+@dataclass(frozen=True)
+class ResolvedChunk:
+    """Chunk metadata resolved from a video chunk request."""
+    size: int
+    quality: float
+    length: float
+
+
+@dataclass(frozen=True)
+class PlayerInfo:
+    """Video player state returned after advancing playback."""
+    resolved_chunk: ResolvedChunk
+    end_of_video: bool
+    remaining_chunks: int
 
 
 class VideoPlayer(ABC):
@@ -32,13 +48,13 @@ class VideoPlayer(ABC):
         self.video_chunk_counter = 0
 
     @abstractmethod
-    def get_chunk_quality(
+    def resolve_chunk(
         self,
         chunk_request: VideoChunkRequest,
         chunk_idx: int,
         buffer_size: float,
-    ) -> float:
-        """Get the actual quality level for a chunk request.
+    ) -> ResolvedChunk:
+        """Resolve size, quality, and playback length for a chunk request.
 
         Args:
             chunk_request: Request used to resolve the chunk quality.
@@ -46,41 +62,7 @@ class VideoPlayer(ABC):
             buffer_size: Current playback buffer size in milliseconds.
 
         Returns:
-            Quality value for the selected bitrate level.
-        """
-        ...
-
-    @abstractmethod
-    def get_chunk_size(
-        self,
-        chunk_request: VideoChunkRequest,
-        chunk_idx: int,
-        buffer_size: float,
-    ) -> int:
-        """Get the size of current chunk for a video chunk request.
-
-        Args:
-            chunk_request: Request used to resolve the chunk quality.
-            chunk_idx: Video chunk index.
-            buffer_size: Current playback buffer size in milliseconds.
-
-        Returns:
-            Chunk size in bytes
-        """
-        ...
-
-    @abstractmethod
-    def get_chunk_length(
-        self,
-        chunk_idx: int,
-    ) -> float:
-        """Get the playback duration of current chunk.
-
-        Args:
-            chunk_idx: Video chunk index.
-
-        Returns:
-            Chunk playback duration in milliseconds.
+            Resolved chunk metadata.
         """
         ...
 
@@ -88,7 +70,7 @@ class VideoPlayer(ABC):
         self,
         chunk_request: VideoChunkRequest,
         buffer_size: float,
-    ) -> Tuple[bool, int]:
+    ) -> PlayerInfo:
         """Advance to the next video chunk, recording the agent's decision.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L131
@@ -99,8 +81,15 @@ class VideoPlayer(ABC):
             buffer_size: Current playback buffer size in milliseconds.
 
         Returns:
-            Tuple of (end_of_video, remaining_chunks)
+            Resolved chunk metadata plus end-of-video progress information.
         """
+        chunk_idx = self.video_chunk_counter
+        resolved_chunk = self.resolve_chunk(
+            chunk_request,
+            chunk_idx,
+            buffer_size,
+        )
+
         self.last_chunk_request = chunk_request
         self.last_buffer_size = buffer_size
         self.video_chunk_counter += 1
@@ -108,7 +97,11 @@ class VideoPlayer(ABC):
 
         end_of_video = self.video_chunk_counter >= self.total_chunks
 
-        return end_of_video, video_chunk_remain
+        return PlayerInfo(
+            resolved_chunk=resolved_chunk,
+            end_of_video=end_of_video,
+            remaining_chunks=video_chunk_remain,
+        )
 
     @property
     @abstractmethod
