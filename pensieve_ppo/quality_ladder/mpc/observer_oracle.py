@@ -17,7 +17,8 @@ from dataclasses import dataclass, asdict
 
 from .observer import MPCState, MPCABRStateObserver, B_IN_MB, BITS_IN_BYTE
 from ...core.simulator import StepResult
-from ...gym import ABREnv
+from ...gym import ABREnv, QoEState
+from ..abc import QualityLadderRequest
 
 
 @dataclass
@@ -126,21 +127,29 @@ class OracleMPCABRStateObserver(MPCABRStateObserver):
     def compute_and_update_state(
         self,
         env: ABREnv,
-        bit_rate: int,
+        chunk_request: QualityLadderRequest,
         result: StepResult,
+        qoe_state: QoEState,
     ) -> OracleMPCState:
         """Compute new OracleMPCState from simulator result.
 
         Args:
             env: The ABREnv instance to observe.
-            bit_rate: Current bitrate level selected.
+            chunk_request: Current video chunk request.
             result: Result from simulator.step().
+            qoe_state: Generic QoE observation from QoEObserver.observe().
 
         Returns:
             New OracleMPCState with synchronized virtual pointers.
         """
+        mpc_state = super().compute_and_update_state(
+            env,
+            chunk_request,
+            result,
+            qoe_state,
+        )
         state = OracleMPCState(
-            **asdict(super().compute_and_update_state(env, bit_rate, result)),
+            **asdict(mpc_state),
         )
         state.reset_download_time()
         return state
