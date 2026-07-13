@@ -17,7 +17,7 @@ from typing import List
 
 from ..rl import RLABRStateObserver
 from ...core.simulator import StepResult
-from ...gym import ABREnv, State
+from ...gym import ABREnv, QoEState, State
 
 from ...core.trace import TraceSimulator
 from ...core.video import VideoPlayer
@@ -127,13 +127,12 @@ class MPCState(State):
 class MPCABRStateObserver(RLABRStateObserver):
     """State observer for MPC algorithm.
 
-    This observer inherits from RLABRStateObserver to reuse the reward
-    calculation logic (compute_reward method). However, it returns MPCState
-    objects (which do not inherit from RLState) containing only the information
-    needed for MPC's decision making.
+    This observer inherits from RLABRStateObserver to reuse quality-ladder QoE
+    integration. However, it returns MPCState objects (which do not inherit from
+    RLState) containing only the information needed for MPC's decision making.
 
     This design enables:
-    1. Reward calculation reuse from RLABRStateObserver
+    1. QoE calculation reuse through RLABRStateObserver
     2. Clean MPCState that doesn't depend on RLState
     3. Flexible composition via ImitationObserver for imitation learning
 
@@ -171,15 +170,17 @@ class MPCABRStateObserver(RLABRStateObserver):
     def compute_and_update_state(
         self,
         env: ABREnv,
-        bit_rate: int,
+        chunk_request: QualityLadderRequest,
         result: StepResult,
+        qoe_state: QoEState,
     ) -> MPCState:
         """Compute new MPCState from simulator result.
 
         Args:
             env: The ABREnv instance to observe.
-            bit_rate: Current bitrate level selected.
+            chunk_request: Current video chunk request.
             result: Result from simulator.step().
+            qoe_state: Generic QoE observation from QoEObserver.observe().
 
         Returns:
             New MPCState with updated bandwidth history.
@@ -194,7 +195,7 @@ class MPCABRStateObserver(RLABRStateObserver):
         return MPCState(
             trace_simulator=env.simulator.trace_simulator.unwrapped,
             video_player=env.simulator.video_player,
-            bit_rate=bit_rate,
+            bit_rate=chunk_request.level,
             levels_quality=get_next_chunk_qualities(env, result),
             rebuf_penalty=self.rebuf_penalty,
             smooth_penalty=self.smooth_penalty,
