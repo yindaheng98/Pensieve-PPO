@@ -7,31 +7,32 @@ Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
 from ...core.simulator import StepResult
-from ...gym.env import AbstractABRStateObserver, ABREnv, State
+from ...gym.env import ABREnv
+from ...gym.qoe import QoEObserver, QoEState
 from ..abc import QualityLadderRequest
 from ..player import QualityLadderResolvedChunk
 from .utils import (
     get_chunk_qualities,
-    get_last_chunk_qualities,
     get_next_chunk_sizes,
 )
 
 
 @dataclass
-class RLState(State):
+class RLState(QoEState):
     """State class for RL agents.
 
     This dataclass wraps the numpy state array used by RL agents for training.
-    By inheriting from State, it ensures compatibility with other agent types
+    By inheriting from QoEState, it ensures compatibility with other agent types
     (e.g., MPC, BBA) for imitation learning scenarios.
 
     Attributes:
+        QoEState fields: Generic QoE inputs and reward.
         state_matrix: The numpy array representing the observation state.
             Shape is (S_INFO, state_history_len), e.g., (6, 8) by default.
     """
@@ -43,18 +44,12 @@ class RLState(State):
 S_INFO = 6  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
 S_LEN = 8  # take how many frames in the past
 
-# Normalization constants
+# Quality-ladder and throughput normalization constants
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L14
-BUFFER_NORM_FACTOR = 10.0
 M_IN_K = 1000.0
 
-# Reward parameters
-# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L17
-REBUF_PENALTY = 4.3  # 1 sec rebuffering penalty
-SMOOTH_PENALTY = 1.0  # penalty for bitrate changes
 
-
-class RLABRStateObserver(AbstractABRStateObserver):
+class RLABRStateObserver(QoEObserver):
     """Observer for ABR environment state and reward calculation.
 
     This class handles state representation and reward computation,
@@ -72,39 +67,28 @@ class RLABRStateObserver(AbstractABRStateObserver):
         state_history_len: Number of past observations in state.
         buffer_norm_factor: Normalization factor for buffer size.
         state: Internal state array (may differ from returned state).
-        last_bit_rate: Last selected bitrate level, or None before the first
-            chunk of an episode has been observed.
     """
 
     def __init__(
         self,
-        rebuf_penalty: float = REBUF_PENALTY,
-        smooth_penalty: float = SMOOTH_PENALTY,
         state_history_len: int = S_LEN,
-        buffer_norm_factor: float = BUFFER_NORM_FACTOR,
+        **configs: Any,
     ):
         """Initialize the ABR state observer.
 
         Args:
-            rebuf_penalty: Penalty coefficient for rebuffering (default: 4.3)
-            smooth_penalty: Penalty coefficient for quality changes (default: 1.0)
             state_history_len: Number of past observations to keep in state (default: 8)
-            buffer_norm_factor: Normalization factor for buffer size in seconds (default: 10.0)
+            **configs: QoEObserver configuration such as rebuf_penalty,
+                smooth_penalty, and buffer_norm_factor.
         """
 
-        # Store reward parameters
-        self.rebuf_penalty = rebuf_penalty
-        self.smooth_penalty = smooth_penalty
-
-        # Store normalization parameters
+        super().__init__(**configs)
         self.state_history_len = state_history_len
-        self.buffer_norm_factor = buffer_norm_factor
 
         # State tracking (initialized in reset)
         # Note: self._state_matrix is the internal numpy array for manipulation,
         # while methods return RLState objects wrapping this array.
         self.state_matrix: Optional[np.ndarray] = None
-        self.last_bit_rate: Optional[int] = None
 
     def reset(
         self,
@@ -115,58 +99,30 @@ class RLABRStateObserver(AbstractABRStateObserver):
         Args:
             env: The ABREnv instance to observe.
         """
-        self.last_bit_rate = None
+        super().reset(env)
         self.state_matrix = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
 
-    def get_resolved_quality(
+    def compute_quality(
         self,
+        env: ABREnv,
+        chunk_request: QualityLadderRequest,
         result: StepResult,
     ) -> float:
-        """Get the quality-ladder quality value for a simulator result."""
+        """Compute the quality-ladder quality value in QoE reward units."""
         resolved_chunk = result.resolved_chunk
         if not isinstance(resolved_chunk, QualityLadderResolvedChunk):
             raise TypeError(
                 "RL observers require QualityLadderResolvedChunk, "
                 f"got {type(resolved_chunk).__name__}"
             )
-        return resolved_chunk.quality
-
-    def compute_reward(
-        self,
-        env: ABREnv,
-        bit_rate: int,
-        result: StepResult,
-    ) -> float:
-        """Compute reward for the given action and simulator result.
-
-        Args:
-            env: The ABREnv instance to observe.
-            bit_rate: Current bitrate level selected.
-            result: Result from simulator.step().
-        """
-        # Unpack result (matches original variable names)
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L75-L78
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L48-L51
-        rebuf = result.rebuffer
-
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L83-L87
-        # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L80-L84
-        # reward is video quality - rebuffer penalty - smooth penalty
-        quality = self.get_resolved_quality(result)
-        last_quality = (get_last_chunk_qualities(env, result)[self.last_bit_rate]
-                        if self.last_bit_rate is not None
-                        else quality)
-        reward = quality / M_IN_K \
-            - self.rebuf_penalty * rebuf \
-            - self.smooth_penalty * np.abs(quality - last_quality) / M_IN_K
-
-        return reward
+        return resolved_chunk.quality / M_IN_K
 
     def compute_and_update_state(
         self,
         env: ABREnv,
-        bit_rate: int,
+        chunk_request: QualityLadderRequest,
         result: StepResult,
+        qoe_state: QoEState,
     ) -> RLState:
         """Compute new state representation from simulator result.
 
@@ -176,8 +132,9 @@ class RLABRStateObserver(AbstractABRStateObserver):
 
         Args:
             env: The ABREnv instance to observe.
-            bit_rate: Current bitrate level selected.
+            chunk_request: Current video chunk request.
             result: Result from simulator.step().
+            qoe_state: Generic QoE observation from QoEObserver.observe().
 
         Returns:
             The computed state as RLState dataclass.
@@ -186,11 +143,10 @@ class RLABRStateObserver(AbstractABRStateObserver):
         # Unpack result (matches original variable names)
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L75-L78
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L48-L51
-        delay, buffer_size, \
+        delay, \
             video_chunk_size, \
             video_chunk_remain = (
                 result.delay,
-                result.buffer_size,
                 result.video_chunk_size,
                 result.video_chunk_remain,
             )
@@ -201,9 +157,9 @@ class RLABRStateObserver(AbstractABRStateObserver):
         state = np.roll(self.state_matrix, -1, axis=1)
 
         # this should be S_INFO number of terms
-        state[0, -1] = self.get_resolved_quality(result) / \
+        state[0, -1] = qoe_state.quality * M_IN_K / \
             float(np.max(get_chunk_qualities(env, result)))  # last quality
-        state[1, -1] = buffer_size / self.buffer_norm_factor  # 10 sec
+        state[1, -1] = qoe_state.buffer_size_norm  # 10 sec
         state[2, -1] = float(video_chunk_size) / \
             float(delay) / M_IN_K  # kilo byte / ms
         state[3, -1] = float(delay) / M_IN_K / self.buffer_norm_factor  # 10 sec
@@ -215,29 +171,10 @@ class RLABRStateObserver(AbstractABRStateObserver):
         # Update internal state matrix
         self.state_matrix = state
 
-        return RLState(state_matrix=state.copy())
-
-    def build_info_dict(
-        self,
-        env: ABREnv,
-        bit_rate: int,
-        result: StepResult,
-    ) -> Dict[str, Any]:
-        """Build info dictionary for logging.
-
-        Args:
-            env: The ABREnv instance to observe.
-            bit_rate: Current bitrate level selected.
-            result: Result from simulator.step().
-
-        Returns:
-            Info dictionary.
-        """
-        # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
-        info = {
-            'quality': float(self.get_resolved_quality(result)),
-        }
-        return info
+        return RLState(
+            **asdict(qoe_state),
+            state_matrix=state.copy(),
+        )
 
     def observe(
         self,
@@ -261,21 +198,12 @@ class RLABRStateObserver(AbstractABRStateObserver):
             Tuple of (state_copy, reward, info_dict), where state_copy may
             differ from the internal self.state.
         """
-        # bit_rate is the bitrate level index, not the actual bitrate value.
-        bit_rate = chunk_request.level
-
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L83-L87
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L80-L84
-        reward = self.compute_reward(env, bit_rate, result)
+        qoe_state, reward, info = super().observe(env, chunk_request, result)
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L90-L104
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L52-L66
-        state = self.compute_and_update_state(env, bit_rate, result)
-
-        # Update internal state
-        self.last_bit_rate = bit_rate
-
-        # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
-        info = self.build_info_dict(env, bit_rate, result)
+        state = self.compute_and_update_state(env, chunk_request, result, qoe_state)
 
         return state, reward, info
