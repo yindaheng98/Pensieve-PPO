@@ -7,16 +7,16 @@ Reference:
     https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py
 """
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
 from ...core.simulator import StepResult
-from ...gym.env import ABREnv
-from ...gym.qoe import QoEObserver, QoEState
+from ...gym.env import ABREnv, State
+from ...gym.qoe import QoEState
 from ..abc import QualityLadderRequest
-from ..player import QualityLadderResolvedChunk
+from ..observer import M_IN_K, QualityLadderQoEObserver
 from .utils import (
     get_chunk_qualities,
     get_next_chunk_sizes,
@@ -24,15 +24,14 @@ from .utils import (
 
 
 @dataclass
-class RLState(QoEState):
+class RLState(State):
     """State class for RL agents.
 
     This dataclass wraps the numpy state array used by RL agents for training.
-    By inheriting from QoEState, it ensures compatibility with other agent types
+    By inheriting from State, it ensures compatibility with other agent types
     (e.g., MPC, BBA) for imitation learning scenarios.
 
     Attributes:
-        QoEState fields: Generic QoE inputs and reward.
         state_matrix: The numpy array representing the observation state.
             Shape is (S_INFO, state_history_len), e.g., (6, 8) by default.
     """
@@ -44,12 +43,7 @@ class RLState(QoEState):
 S_INFO = 6  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
 S_LEN = 8  # take how many frames in the past
 
-# Quality-ladder and throughput normalization constants
-# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L14
-M_IN_K = 1000.0
-
-
-class RLABRStateObserver(QoEObserver):
+class RLABRStateObserver(QualityLadderQoEObserver):
     """Observer for ABR environment state and reward calculation.
 
     This class handles state representation and reward computation,
@@ -101,21 +95,6 @@ class RLABRStateObserver(QoEObserver):
         """
         super().reset(env)
         self.state_matrix = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
-
-    def compute_quality(
-        self,
-        env: ABREnv,
-        chunk_request: QualityLadderRequest,
-        result: StepResult,
-    ) -> float:
-        """Compute the quality-ladder quality value in QoE reward units."""
-        resolved_chunk = result.resolved_chunk
-        if not isinstance(resolved_chunk, QualityLadderResolvedChunk):
-            raise TypeError(
-                "RL observers require QualityLadderResolvedChunk, "
-                f"got {type(resolved_chunk).__name__}"
-            )
-        return resolved_chunk.quality / M_IN_K
 
     def compute_and_update_state(
         self,
@@ -172,7 +151,6 @@ class RLABRStateObserver(QoEObserver):
         self.state_matrix = state
 
         return RLState(
-            **asdict(qoe_state),
             state_matrix=state.copy(),
         )
 
