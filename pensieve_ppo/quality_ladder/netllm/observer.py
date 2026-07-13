@@ -179,11 +179,9 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         """Collect raw data from environment step.
 
         This method collects raw data needed for both training and inference:
-        1. Computes raw reward (using last_bit_rate from previous step)
-        2. Updates state array (roll and fill new values)
-        3. Updates return-to-go for inference (subtract processed reward)
-        4. Updates last_bit_rate
-        5. Increments timestep
+        1. Reuses RLABRStateObserver for QoE reward and RL state array
+        2. Updates return-to-go for inference (subtract processed reward)
+        3. Increments timestep
 
         Note: The reward stored in NetLLMState is the RAW reward. Reward
         normalization and return computation for training is done in
@@ -207,17 +205,14 @@ class NetLLMABRStateObserver(RLABRStateObserver):
         # bit_rate is the bitrate level index, not the actual bitrate value.
         bit_rate = chunk_request.level
 
-        # Step 1: Compute raw reward
+        # Step 1: Reuse RL observer to compute QoE reward and state matrix.
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L260-L262
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L39-L41
-        reward = self.compute_reward(env, bit_rate, result)
-
-        # Step 2: Update state array (roll and fill new values)
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L273-L283
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L46-L54
-        rl_state = self.compute_and_update_state(env, bit_rate, result)
+        rl_state, reward, info = super().observe(env, chunk_request, result)
 
-        # Step 3: Update return-to-go for inference (skip first timestep like Pensieve)
+        # Step 2: Update return-to-go for inference (skip first timestep like Pensieve)
         # Also accumulate episode statistics
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L56-L60
         if self.timestep > 0:
@@ -225,10 +220,6 @@ class NetLLMABRStateObserver(RLABRStateObserver):
             self.target_return -= processed_reward
             self.episodes_return += processed_reward
             self.episodes_len += 1
-
-        # Step 4: Update last_bit_rate for next step's reward calculation
-        # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L264
-        self.last_bit_rate = bit_rate
 
         # Get done flag from result
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/generate_exp_pool.py#L252-L254
@@ -247,13 +238,12 @@ class NetLLMABRStateObserver(RLABRStateObserver):
             target_return=self.target_return,
         )
 
-        # Step 5: Increment timestep AFTER building state
+        # Step 3: Increment timestep AFTER building state
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L63
         self.timestep += 1
 
-        # Build info dict with episode statistics
+        # Build info dict with episode statistics.
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L76-L80
-        info = self.build_info_dict(env, bit_rate, result)
         info['episodes_return'] = self.episodes_return
         info['episodes_len'] = self.episodes_len
 

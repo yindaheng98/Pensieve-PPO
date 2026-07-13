@@ -6,6 +6,7 @@ from .abc import (
     QualityLadderLoader,
     QualityLadderRequest,
 )
+from .observer import M_IN_K, QualityLadderQoEObserver
 from .player import QualityLadderResolvedChunk, QualityLadderVideoPlayer
 
 # Import algorithm packages for their registry side effects.
@@ -16,6 +17,8 @@ __all__ = [
     'QualityLadderData',
     'QualityLadderLoader',
     'QualityLadderRequest',
+    'QualityLadderQoEObserver',
+    'M_IN_K',
     'QualityLadderResolvedChunk',
     'QualityLadderVideoPlayer',
     'bba',
