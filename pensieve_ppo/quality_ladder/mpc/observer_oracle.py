@@ -13,11 +13,12 @@ Reference:
 """
 
 from dataclasses import dataclass, asdict
+from typing import Any, Dict, Tuple
 
 
 from .observer import MPCState, MPCABRStateObserver, B_IN_MB, BITS_IN_BYTE
 from ...core.simulator import StepResult
-from ...gym import ABREnv, QoEState
+from ...gym import ABREnv
 from ..abc import QualityLadderRequest
 
 
@@ -124,32 +125,29 @@ class OracleMPCABRStateObserver(MPCABRStateObserver):
         >>> env = ABREnv(simulator=simulator, observer=imitation_observer)
     """
 
-    def compute_and_update_state(
+    def observe(
         self,
         env: ABREnv,
         chunk_request: QualityLadderRequest,
         result: StepResult,
-        qoe_state: QoEState,
-    ) -> OracleMPCState:
-        """Compute new OracleMPCState from simulator result.
+    ) -> Tuple[OracleMPCState, float, Dict[str, Any]]:
+        """Process simulator result and build OracleMPCState.
 
         Args:
             env: The ABREnv instance to observe.
             chunk_request: Current video chunk request.
             result: Result from simulator.step().
-            qoe_state: Generic QoE observation from QoEObserver.observe().
 
         Returns:
-            New OracleMPCState with synchronized virtual pointers.
+            Tuple of (state, reward, info_dict).
         """
-        mpc_state = super().compute_and_update_state(
+        mpc_state, reward, info = super().observe(
             env,
             chunk_request,
             result,
-            qoe_state,
         )
         state = OracleMPCState(
             **asdict(mpc_state),
         )
         state.reset_download_time()
-        return state
+        return state, reward, info

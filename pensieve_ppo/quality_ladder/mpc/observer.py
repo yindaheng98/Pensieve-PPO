@@ -12,7 +12,7 @@ Reference:
 """
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import Any, Dict, List, Tuple
 
 
 from ...core.simulator import StepResult
@@ -172,13 +172,13 @@ class MPCABRStateObserver(QualityLadderQoEObserver):
         # Reset bandwidth history on new episode (fixed length, all zeros)
         self.past_bandwidths = [0.0] * self.state_history_len
 
-    def compute_state(
+    def observe(
         self,
         env: ABREnv,
         chunk_request: QualityLadderRequest,
         result: StepResult,
-    ) -> MPCState:
-        """Compute new MPCState from simulator result.
+    ) -> Tuple[MPCState, float, Dict[str, Any]]:
+        """Process simulator result and build MPCState.
 
         Args:
             env: The ABREnv instance to observe.
@@ -186,8 +186,10 @@ class MPCABRStateObserver(QualityLadderQoEObserver):
             result: Result from simulator.step().
 
         Returns:
-            New MPCState with updated bandwidth history.
+            Tuple of (state, reward, info_dict).
         """
+        _, reward, info = super().observe(env, chunk_request, result)
+
         # Compute bandwidth: video_chunk_size / delay / M_IN_K (in MB/s)
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L56-L57
         bandwidth = float(result.video_chunk_size) / float(result.delay) / M_IN_K
@@ -195,7 +197,7 @@ class MPCABRStateObserver(QualityLadderQoEObserver):
         # Roll and update bandwidth history (like np.roll with -1)
         self.past_bandwidths = self.past_bandwidths[1:] + [bandwidth]
 
-        return MPCState(
+        state = MPCState(
             trace_simulator=env.simulator.trace_simulator.unwrapped,
             video_player=env.simulator.video_player,
             bit_rate=chunk_request.level,
@@ -204,13 +206,4 @@ class MPCABRStateObserver(QualityLadderQoEObserver):
             smooth_penalty=self.smooth_penalty,
             past_bandwidths=list(self.past_bandwidths),
         )
-
-    def observe(
-        self,
-        env: ABREnv,
-        chunk_request: QualityLadderRequest,
-        result: StepResult,
-    ):
-        """Process simulator result and build MPCState."""
-        _, reward, info = super().observe(env, chunk_request, result)
-        return self.compute_state(env, chunk_request, result), reward, info
+        return state, reward, info
