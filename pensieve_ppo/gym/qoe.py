@@ -70,7 +70,7 @@ class QoEObserver(AbstractABRStateObserver):
         chunk_request: VideoChunkRequest,
         result: StepResult,
     ) -> float:
-        """Compute the concrete quality value for a simulator result."""
+        """Compute the concrete quality value in QoE reward units."""
         pass
 
     def observe(
