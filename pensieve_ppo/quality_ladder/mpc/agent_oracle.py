@@ -13,6 +13,7 @@ from typing import  Optional, Tuple
 
 
 from ...core.video import VideoChunkRequest
+from ...gym import State
 from ..abc import QualityLadderRequest
 from ..envivio import A_DIM, DEFAULT_QUALITY
 from ...agent.abc import AbstractAgent
@@ -152,7 +153,7 @@ class OracleMPCAgent(AbstractAgent):
 
         return reward
 
-    def select_action(self, state: OracleMPCState) -> RLActionDecision:
+    def select_action(self, state: State) -> RLActionDecision:
         """Select an action using MPC algorithm with future bandwidth.
 
         This method iterates through all possible combinations of bitrate

@@ -12,6 +12,7 @@ import logging
 from typing import Optional
 
 from ...core.video import VideoChunkRequest
+from ...gym import State
 from ..abc import QualityLadderRequest
 from ..envivio import A_DIM, DEFAULT_QUALITY
 from ...agent.abc import AbstractAgent
@@ -94,7 +95,7 @@ class BBAAgent(AbstractAgent):
             bit_rate = (self.action_dim - 1) * (buffer_size - self.reservoir) / float(self.cushion)
         return int(bit_rate)
 
-    def select_action(self, state: BBAState) -> RLActionDecision:
+    def select_action(self, state: State) -> RLActionDecision:
         """Select an action for a given state.
 
         BBA uses the buffer size from the state to determine the action.
@@ -108,6 +109,12 @@ class BBAAgent(AbstractAgent):
             Selected quality ladder action.
             Action probability is one-hot for BBA (deterministic algorithm).
         """
+        if not isinstance(state, BBAState):
+            raise TypeError(
+                f"BBAAgent requires BBAState, got {type(state).__name__}. "
+                "Use BBAStateObserver with this agent."
+            )
+
         # Extract buffer size from BBAState (already in seconds, not normalized)
         buffer_size = state.buffer_size
 

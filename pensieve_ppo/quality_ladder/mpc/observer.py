@@ -19,10 +19,10 @@ from ...core.simulator import StepResult
 from ...gym import ABREnv, State
 
 from ...core.trace import TraceSimulator
-from ...core.video import VideoPlayer
 from ..abc import QualityLadderRequest
 from ..observer import QualityLadderQoEObserver
-from ..rl.utils import get_next_chunk_qualities
+from ..player import QualityLadderVideoPlayer
+from ..rl.utils import get_next_chunk_qualities, get_video_player
 
 
 # https://github.com/hongzimao/pensieve/blob/1120bb173958dc9bc9f2ebff1a8fe688b6f4e93c/test/fixed_env_future_bandwidth.py#L8-L10
@@ -61,7 +61,7 @@ class MPCState(State):
             Values roll left, with new values appended at the end.
     """
     trace_simulator: TraceSimulator
-    video_player: VideoPlayer
+    video_player: QualityLadderVideoPlayer
     bit_rate: int
     levels_quality: list[float]
     rebuf_penalty: float
@@ -196,10 +196,11 @@ class MPCABRStateObserver(QualityLadderQoEObserver):
 
         # Roll and update bandwidth history (like np.roll with -1)
         self.past_bandwidths = self.past_bandwidths[1:] + [bandwidth]
+        video_player = get_video_player(env)
 
         state = MPCState(
             trace_simulator=env.simulator.trace_simulator.unwrapped,
-            video_player=env.simulator.video_player,
+            video_player=video_player,
             bit_rate=chunk_request.level,
             levels_quality=get_next_chunk_qualities(env, result),
             rebuf_penalty=self.rebuf_penalty,

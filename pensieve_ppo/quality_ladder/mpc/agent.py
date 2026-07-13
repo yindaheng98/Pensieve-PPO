@@ -14,6 +14,7 @@ from typing import List, Optional, Tuple
 
 from ...agent.abc import AbstractAgent
 from ...core.video import VideoChunkRequest
+from ...gym import State
 from ..abc import QualityLadderRequest
 from ..envivio import A_DIM, DEFAULT_QUALITY
 from ..rl.abc import RLActionDecision
@@ -230,7 +231,7 @@ class MPCAgent(AbstractAgent):
 
         return reward
 
-    def select_action(self, state: MPCState) -> RLActionDecision:
+    def select_action(self, state: State) -> RLActionDecision:
         """Select an action using MPC algorithm with predicted bandwidth.
 
         This method iterates through all possible combinations of bitrate

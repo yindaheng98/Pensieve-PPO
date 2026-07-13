@@ -28,6 +28,7 @@ import torch.nn as nn
 
 from ...agent.trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
 from ...core.video import VideoChunkRequest
+from ...gym import State
 from ..abc import QualityLadderRequest
 from ..envivio import DEFAULT_QUALITY
 from ..rl.abc import RLActionDecision
@@ -274,7 +275,7 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
     # AbstractTrainableAgent Interface Implementation
     # =========================================================================
 
-    def select_action(self, state: NetLLMState) -> RLActionDecision:
+    def select_action(self, state: State) -> RLActionDecision:
         """Select an action for inference using model.sample().
 
         This method implements the inference process from evaluate.py:
@@ -293,6 +294,13 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
             Selected quality ladder action.
             Action probability is one-hot for NetLLM (argmax action selection).
         """
+        if not isinstance(state, NetLLMState):
+            raise TypeError(
+                f"{type(self).__name__} requires NetLLMState, "
+                f"got {type(state).__name__}. "
+                "Use NetLLMABRStateObserver with this agent."
+            )
+
         # Convert numpy state to torch tensor with shape (1, 1, S_INFO, S_LEN)
         # https://github.com/duowuyms/NetLLM/blob/105bcf070f2bec808f7b14f8f5a953de6e4e6e54/adaptive_bitrate_streaming/plm_special/evaluate.py#L25
         state_tensor = torch.as_tensor(
@@ -317,7 +325,7 @@ class AbstractNetLLMAgent(AbstractTrainableAgent):
 
         return RLActionDecision.from_index(action, action_prob)
 
-    def select_action_for_training(self, state: NetLLMState) -> RLActionDecision:
+    def select_action_for_training(self, state: State) -> RLActionDecision:
         """Select an action for training.
 
         For NetLLM, training uses offline datasets with supervised learning,
