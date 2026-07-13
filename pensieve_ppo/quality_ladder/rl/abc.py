@@ -15,13 +15,14 @@ Reference:
 
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import numpy as np
 
 
 from ...core.video import VideoChunkRequest
 from ...agent.trainable import Step, TrainingBatch, TrainBatchInfo, AbstractTrainableAgent
+from ...gym import State
 from ..abc import QualityLadderActionDecision, QualityLadderRequest
 from ..envivio import DEFAULT_QUALITY
 from .observer import RLState
@@ -90,6 +91,46 @@ class AbstractRLAgent(AbstractTrainableAgent):
         """Reset stateless RL agents and return the initial request."""
         return super().reset(initial_chunk_request or QualityLadderRequest(self.initial_level))
 
+    def select_action(self, state: State) -> RLActionDecision:
+        """Validate state type and select an inference action."""
+        if not isinstance(state, RLState):
+            raise TypeError(
+                f"{type(self).__name__} requires RLState, "
+                f"got {type(state).__name__}. "
+                "Use RLABRStateObserver with this agent."
+            )
+        return self.select_rl_action(state)
+
+    def select_action_for_training(
+        self,
+        state: State,
+        *args: Any,
+        **kwargs: Any,
+    ) -> RLActionDecision:
+        """Validate state type and select a training action."""
+        if not isinstance(state, RLState):
+            raise TypeError(
+                f"{type(self).__name__} requires RLState, "
+                f"got {type(state).__name__}. "
+                "Use RLABRStateObserver with this agent."
+            )
+        return self.select_rl_action_for_training(state, *args, **kwargs)
+
+    @abstractmethod
+    def select_rl_action(self, state: RLState) -> RLActionDecision:
+        """Select an inference action from an RLState."""
+        pass
+
+    @abstractmethod
+    def select_rl_action_for_training(
+        self,
+        state: RLState,
+        *args: Any,
+        **kwargs: Any,
+    ) -> RLActionDecision:
+        """Select a training action from an RLState."""
+        pass
+
     @abstractmethod
     def train(
         self,
@@ -155,14 +196,26 @@ class AbstractRLAgent(AbstractTrainableAgent):
         """
         # Extract data from steps
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L143
-        # Note: step.state is State (Any), but for RL agents it should be RLState (np.ndarray)
-        s_batch: List[RLState] = [step.state for step in trajectory]  # type: ignore[assignment]
+        s_batch: List[RLState] = []
+        for idx, step in enumerate(trajectory):
+            if not isinstance(step.state, RLState):
+                raise TypeError(
+                    f"{type(self).__name__}.produce_training_batch requires "
+                    f"RLState for trajectory[{idx}].state, "
+                    f"got {type(step.state).__name__}."
+                )
+            s_batch.append(step.state)
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L156-L157
         a_batch: List[List[int]] = []
         p_batch: List[List[float]] = []
-        for step in trajectory:
-            action: RLActionDecision = step.action
-            assert isinstance(action, RLActionDecision), "step.action must be RLActionDecision"
+        for idx, step in enumerate(trajectory):
+            action = step.action
+            if not isinstance(action, RLActionDecision):
+                raise TypeError(
+                    f"{type(self).__name__}.produce_training_batch requires "
+                    f"RLActionDecision for trajectory[{idx}].action, "
+                    f"got {type(action).__name__}."
+                )
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/train.py#L154-L155
             action_vec = [0] * len(action.action_prob)
             action_vec[action.action_index] = 1

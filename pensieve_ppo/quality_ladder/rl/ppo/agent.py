@@ -199,7 +199,7 @@ class PPOAgent(AbstractRLAgent):
             pi = self.actor.forward(state)[0]
             return pi.cpu().tolist()
 
-    def select_action(self, state: RLState) -> RLActionDecision:
+    def select_rl_action(self, state: RLState) -> RLActionDecision:
         """Select an action using Gumbel-softmax sampling.
 
         This method uses Gumbel noise for action selection, which has been
@@ -220,7 +220,7 @@ class PPOAgent(AbstractRLAgent):
         action = np.argmax(np.log(action_prob) + noise)
         return RLActionDecision.from_index(int(action), action_prob)
 
-    def select_action_for_training(self, state: RLState) -> RLActionDecision:
+    def select_rl_action_for_training(self, state: RLState) -> RLActionDecision:
         """Select an action using Gumbel-softmax sampling for exploration.
 
         This implements the action selection strategy used in the original

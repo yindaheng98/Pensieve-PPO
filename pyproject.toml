@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pensieve-ppo"
-version = "3.8.0"
+version = "3.8.1"
 description = "A PyTorch implementation of Pensieve using Proximal Policy Optimization (PPO) for neural adaptive video streaming"
 readme = "README.md"
 license = {text = "MIT"}

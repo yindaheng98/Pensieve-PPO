@@ -311,7 +311,7 @@ class DQNAgent(AbstractRLAgent):
             # return action[0]
             return q_values.cpu().numpy()
 
-    def select_action(self, state: RLState) -> RLActionDecision:
+    def select_rl_action(self, state: RLState) -> RLActionDecision:
         """Select an action using greedy policy (for testing).
 
         Reference:
@@ -331,7 +331,7 @@ class DQNAgent(AbstractRLAgent):
         action = int(np.argmax(q_values))
         return RLActionDecision.from_index(action, q_values.tolist())
 
-    def select_action_for_training(
+    def select_rl_action_for_training(
         self,
         state: RLState,
         epsilon: float = 0.0,

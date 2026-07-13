@@ -222,7 +222,7 @@ class A3CAgent(AbstractRLAgent):
             action_prob = self.actor(state)[0]
             return action_prob.cpu().tolist()
 
-    def select_action(self, state: RLState) -> RLActionDecision:
+    def select_rl_action(self, state: RLState) -> RLActionDecision:
         """Select an action using probability-based sampling.
 
         This method uses cumulative distribution function sampling as in the
@@ -246,7 +246,7 @@ class A3CAgent(AbstractRLAgent):
         action = (action_cumsum > np.random.randint(1, RAND_RANGE) / float(RAND_RANGE)).argmax()
         return RLActionDecision.from_index(int(action), action_prob)
 
-    def select_action_for_training(self, state: RLState) -> RLActionDecision:
+    def select_rl_action_for_training(self, state: RLState) -> RLActionDecision:
         """Select an action using probability-based sampling for training.
 
         Same as select_action for A3C (no separate exploration strategy like Gumbel noise).
@@ -260,7 +260,7 @@ class A3CAgent(AbstractRLAgent):
         Returns:
             Selected quality ladder action.
         """
-        return self.select_action(state)
+        return self.select_rl_action(state)
 
     def compute_v(
         self,
