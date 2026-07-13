@@ -1,8 +1,8 @@
 """BBA State Observer.
 
 This module provides a state observer for the BBA (Buffer-Based Adaptive)
-algorithm. The observer inherits from RLABRStateObserver to reuse reward
-calculation logic, but BBAState is independent (does not inherit from RLState).
+algorithm. The observer inherits from RLABRStateObserver to reuse quality-ladder
+QoE integration, but BBAState is independent (does not inherit from RLState).
 
 For imitation learning (e.g., training RL from BBA demonstrations), use
 ImitationObserver from pensieve_ppo.gym.imitate to combine BBAStateObserver
@@ -14,9 +14,11 @@ Reference:
 
 from dataclasses import dataclass
 
+from ..abc import QualityLadderRequest
 from ..rl.observer import RLABRStateObserver
 from ...core.simulator import StepResult
 from ...gym.env import ABREnv, State
+from ...gym.qoe import QoEState
 
 
 @dataclass
@@ -38,13 +40,12 @@ class BBAState(State):
 class BBAStateObserver(RLABRStateObserver):
     """State observer for BBA algorithm.
 
-    This observer inherits from RLABRStateObserver to reuse the reward
-    calculation logic (compute_reward method). However, it returns BBAState
-    objects (which do not inherit from RLState) containing only the information
-    needed for BBA's decision making.
+    This observer inherits from RLABRStateObserver to reuse quality-ladder QoE
+    integration. However, it returns BBAState objects (which do not inherit from
+    RLState) containing only the information needed for BBA's decision making.
 
     This design enables:
-    1. Reward calculation reuse from RLABRStateObserver
+    1. QoE calculation reuse through RLABRStateObserver
     2. Clean BBAState that doesn't depend on RLState
     3. Flexible composition via ImitationObserver for imitation learning
 
@@ -63,15 +64,17 @@ class BBAStateObserver(RLABRStateObserver):
     def compute_and_update_state(
         self,
         env: ABREnv,
-        bit_rate: int,
+        chunk_request: QualityLadderRequest,
         result: StepResult,
+        qoe_state: QoEState,
     ) -> BBAState:
         """Compute new BBAState from simulator result.
 
         Args:
             env: The ABREnv instance to observe.
-            bit_rate: Current bitrate level selected.
+            chunk_request: Current video chunk request.
             result: Result from simulator.step().
+            qoe_state: Generic QoE observation from QoEObserver.observe().
 
         Returns:
             New BBAState with updated buffer_size.
