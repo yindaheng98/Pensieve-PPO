@@ -6,7 +6,7 @@ from .abc import (
     QualityLadderLoader,
     QualityLadderRequest,
 )
-from .player import QualityLadderVideoPlayer
+from .player import QualityLadderResolvedChunk, QualityLadderVideoPlayer
 
 # Import algorithm packages for their registry side effects.
 from . import bba, mpc, netllm, rl  # noqa: F401
@@ -16,6 +16,7 @@ __all__ = [
     'QualityLadderData',
     'QualityLadderLoader',
     'QualityLadderRequest',
+    'QualityLadderResolvedChunk',
     'QualityLadderVideoPlayer',
     'bba',
     'mpc',

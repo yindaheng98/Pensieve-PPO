@@ -191,7 +191,6 @@ class ABREnv(gym.Env):
             "buffer_size": result.buffer_size,
             "rebuffer": result.rebuffer,
             "video_chunk_size": result.video_chunk_size,
-            "video_chunk_quality": result.video_chunk_quality,
             "video_chunk_remain": result.video_chunk_remain,
             "end_of_video": result.end_of_video,
             **observer_info

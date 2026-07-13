@@ -1,6 +1,7 @@
 """Quality ladder video player implementation."""
 
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
 
 from ..core.video.player import ResolvedChunk, VideoChunkRequest, VideoPlayer
 from .abc import QualityLadderLoader, QualityLadderRequest
@@ -10,6 +11,12 @@ from .envivio import load_envivio_video_size
 LOAD_VIDEO_SIZE: dict[str, QualityLadderLoader] = {
     "envivio": load_envivio_video_size,
 }
+
+
+@dataclass(frozen=True)
+class QualityLadderResolvedChunk(ResolvedChunk):
+    """Quality-ladder metadata resolved from a video chunk request."""
+    quality: float
 
 
 class QualityLadderVideoPlayer(VideoPlayer):
@@ -86,17 +93,19 @@ class QualityLadderVideoPlayer(VideoPlayer):
         chunk_request: VideoChunkRequest,
         chunk_idx: int,
         buffer_size: float,
-    ) -> ResolvedChunk:
+    ) -> Tuple[int, float, ResolvedChunk]:
         """Advance current chunk metadata for a quality-ladder request."""
         if not isinstance(chunk_request, QualityLadderRequest):
             raise TypeError(
                 "QualityLadderVideoPlayer requires QualityLadderRequest, "
                 f"got {type(chunk_request).__name__}"
             )
-        return ResolvedChunk(
-            size=self.get_chunk_size(chunk_request, chunk_idx),
-            quality=self.get_chunk_quality(chunk_request, chunk_idx),
-            length=self.get_chunk_length(chunk_idx),
+        return (
+            self.get_chunk_size(chunk_request, chunk_idx),
+            self.get_chunk_length(chunk_idx),
+            QualityLadderResolvedChunk(
+                quality=self.get_chunk_quality(chunk_request, chunk_idx),
+            ),
         )
 
     def get_chunk_sizes(self, chunk_idx: Optional[int] = None) -> List[int]:

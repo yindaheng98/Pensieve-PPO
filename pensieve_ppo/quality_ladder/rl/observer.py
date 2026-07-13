@@ -15,6 +15,7 @@ import numpy as np
 from ...core.simulator import StepResult
 from ...gym.env import AbstractABRStateObserver, ABREnv, State
 from ..abc import QualityLadderRequest
+from ..player import QualityLadderResolvedChunk
 from .utils import (
     get_chunk_qualities,
     get_last_chunk_qualities,
@@ -117,6 +118,19 @@ class RLABRStateObserver(AbstractABRStateObserver):
         self.last_bit_rate = None
         self.state_matrix = np.zeros((S_INFO, self.state_history_len), dtype=np.float32)
 
+    def get_resolved_quality(
+        self,
+        result: StepResult,
+    ) -> float:
+        """Get the quality-ladder quality value for a simulator result."""
+        resolved_chunk = result.resolved_chunk
+        if not isinstance(resolved_chunk, QualityLadderResolvedChunk):
+            raise TypeError(
+                "RL observers require QualityLadderResolvedChunk, "
+                f"got {type(resolved_chunk).__name__}"
+            )
+        return resolved_chunk.quality
+
     def compute_reward(
         self,
         env: ABREnv,
@@ -138,13 +152,13 @@ class RLABRStateObserver(AbstractABRStateObserver):
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L83-L87
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L80-L84
         # reward is video quality - rebuffer penalty - smooth penalty
+        quality = self.get_resolved_quality(result)
         last_quality = (get_last_chunk_qualities(env, result)[self.last_bit_rate]
                         if self.last_bit_rate is not None
-                        else result.video_chunk_quality)
-        reward = result.video_chunk_quality / M_IN_K \
+                        else quality)
+        reward = quality / M_IN_K \
             - self.rebuf_penalty * rebuf \
-            - self.smooth_penalty * np.abs(result.video_chunk_quality -
-                                           last_quality) / M_IN_K
+            - self.smooth_penalty * np.abs(quality - last_quality) / M_IN_K
 
         return reward
 
@@ -187,7 +201,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         state = np.roll(self.state_matrix, -1, axis=1)
 
         # this should be S_INFO number of terms
-        state[0, -1] = float(result.video_chunk_quality) / \
+        state[0, -1] = self.get_resolved_quality(result) / \
             float(np.max(get_chunk_qualities(env, result)))  # last quality
         state[1, -1] = buffer_size / self.buffer_norm_factor  # 10 sec
         state[2, -1] = float(video_chunk_size) / \
@@ -221,7 +235,7 @@ class RLABRStateObserver(AbstractABRStateObserver):
         """
         # Info dict with quality for logging (matching VIDEO_BIT_RATE[bit_rate] in src/test.py)
         info = {
-            'quality': float(result.video_chunk_quality),
+            'quality': float(self.get_resolved_quality(result)),
         }
         return info
 

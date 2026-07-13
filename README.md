@@ -484,6 +484,7 @@ from pensieve_ppo.core.video import VideoChunkRequest
 from pensieve_ppo.gym import ABREnv, AbstractABRStateObserver, State
 from pensieve_ppo.quality_ladder import (
     QualityLadderActionDecision,
+    QualityLadderResolvedChunk,
     QualityLadderRequest,
     QualityLadderVideoPlayer,
 )
@@ -509,13 +510,16 @@ class MyObserver(AbstractABRStateObserver):
         chunk_request: VideoChunkRequest,
         result: StepResult,
     ) -> tuple[MyState, float, dict]:
+        if not isinstance(result.resolved_chunk, QualityLadderResolvedChunk):
+            raise TypeError(f"expected QualityLadderResolvedChunk, got {type(result.resolved_chunk).__name__}")
+        quality = result.resolved_chunk.quality
         state = MyState(
             buffer_size=result.buffer_size,
-            last_quality=result.video_chunk_quality,
+            last_quality=quality,
         )
-        reward = result.video_chunk_quality - self.rebuf_penalty * result.rebuffer
+        reward = quality - self.rebuf_penalty * result.rebuffer
         info = {
-            "quality": result.video_chunk_quality,
+            "quality": quality,
             "buffer_size": result.buffer_size,
             "rebuffer": result.rebuffer,
             "video_chunk_size": result.video_chunk_size,

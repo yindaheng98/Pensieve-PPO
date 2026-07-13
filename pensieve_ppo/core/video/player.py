@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -13,15 +13,15 @@ class VideoChunkRequest(ABC):
 
 @dataclass(frozen=True)
 class ResolvedChunk:
-    """Chunk metadata resolved from a video chunk request."""
-    size: int
-    quality: float
-    length: float
+    """Base class for implementation-specific resolved chunk metadata."""
+    pass
 
 
 @dataclass(frozen=True)
 class PlayerInfo:
     """Video player state returned after advancing playback."""
+    size: int
+    length: float
     resolved_chunk: ResolvedChunk
     end_of_video: bool
     remaining_chunks: int
@@ -53,16 +53,17 @@ class VideoPlayer(ABC):
         chunk_request: VideoChunkRequest,
         chunk_idx: int,
         buffer_size: float,
-    ) -> ResolvedChunk:
-        """Advance chunk-specific state and return chunk metadata.
+    ) -> Tuple[int, float, ResolvedChunk]:
+        """Advance chunk-specific state and return chunk download metadata.
 
         Args:
-            chunk_request: Request used to resolve the chunk quality.
+            chunk_request: Request used to resolve chunk metadata.
             chunk_idx: Video chunk index.
             buffer_size: Current playback buffer size in milliseconds.
 
         Returns:
-            Resolved chunk metadata.
+            Tuple of chunk size in bytes, chunk playback length in milliseconds,
+            and implementation-specific resolved chunk metadata.
         """
         ...
 
@@ -81,10 +82,10 @@ class VideoPlayer(ABC):
             buffer_size: Current playback buffer size in milliseconds.
 
         Returns:
-            Resolved chunk metadata plus end-of-video progress information.
+            Chunk download metadata plus end-of-video progress information.
         """
         chunk_idx = self.video_chunk_counter
-        resolved_chunk = self.advance_chunk(
+        size, length, resolved_chunk = self.advance_chunk(
             chunk_request,
             chunk_idx,
             buffer_size,
@@ -98,6 +99,8 @@ class VideoPlayer(ABC):
         end_of_video = self.video_chunk_counter >= self.total_chunks
 
         return PlayerInfo(
+            size=size,
+            length=length,
             resolved_chunk=resolved_chunk,
             end_of_video=end_of_video,
             remaining_chunks=video_chunk_remain,
