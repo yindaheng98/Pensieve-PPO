@@ -2,6 +2,7 @@
 
 from .env import ABREnv, AbstractABRStateObserver, State
 from .imitate import ImitationObserver, ImitationState
+from .qoe import QoEObserver, QoEState
 from .combinations import (
     create_env,
     create_env_with_class,
@@ -15,6 +16,8 @@ __all__ = [
     'State',
     'ImitationObserver',
     'ImitationState',
+    'QoEObserver',
+    'QoEState',
     'create_env',
     'create_env_with_class',
     'create_imitation_env',
