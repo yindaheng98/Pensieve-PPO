@@ -18,8 +18,8 @@ class ResolvedChunk:
 
 
 @dataclass(frozen=True)
-class PlayerInfo:
-    """Video player state returned after advancing playback."""
+class PlayedChunk:
+    """Downloaded chunk metadata returned after advancing playback."""
     size: int
     length: float
     resolved_chunk: ResolvedChunk
@@ -71,7 +71,7 @@ class VideoPlayer(ABC):
         self,
         chunk_request: VideoChunkRequest,
         buffer_size: float,
-    ) -> PlayerInfo:
+    ) -> PlayedChunk:
         """Advance to the next video chunk, recording the agent's decision.
 
         https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L131
@@ -98,7 +98,7 @@ class VideoPlayer(ABC):
 
         end_of_video = self.video_chunk_counter >= self.total_chunks
 
-        return PlayerInfo(
+        return PlayedChunk(
             size=size,
             length=length,
             resolved_chunk=resolved_chunk,

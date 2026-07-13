@@ -36,6 +36,7 @@ class StepResult:
     buffer_size: float                  # [sec] Current buffer size
     rebuffer: float                     # [sec] Rebuffering/stall time
     video_chunk_size: int               # [bytes] Size of downloaded chunk
+    video_chunk_length: float           # [millisec] Playback length of downloaded chunk
     resolved_chunk: ResolvedChunk       # Implementation-specific chunk metadata
     end_of_video: bool                  # Whether video has ended
     video_chunk_remain: int             # Number of remaining chunks
@@ -91,21 +92,21 @@ class Simulator:
 
         # 1. Advance to next chunk
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L131
-        player_info = self.video_player.advance(
+        played_chunk = self.video_player.advance(
             chunk_request,
             buffer_size,
         )
 
         # 2. Simulate network download, update buffer, handle overflow
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L55-L129
-        result = self.trace_simulator.step(player_info.size, player_info.length)
+        result = self.trace_simulator.step(played_chunk.size, played_chunk.length)
         delay = result.delay
         rebuf = result.rebuf
         sleep_time = result.sleep_time
         return_buffer_size = result.buffer_size
 
         # 3. Handle video end if needed
-        if player_info.end_of_video:
+        if played_chunk.end_of_video:
             self.video_player.reset()
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/fixed_env.py#L137-L150
             self.trace_simulator.on_video_finished()
@@ -115,8 +116,9 @@ class Simulator:
             sleep_time=sleep_time,                                  # [millisec] - keep as is
             buffer_size=return_buffer_size / MILLISECONDS_IN_SECOND,  # [millisec] -> [sec]
             rebuffer=rebuf / MILLISECONDS_IN_SECOND,                  # [millisec] -> [sec]
-            video_chunk_size=player_info.size,                   # [bytes]
-            resolved_chunk=player_info.resolved_chunk,
-            end_of_video=player_info.end_of_video,
-            video_chunk_remain=player_info.remaining_chunks,
+            video_chunk_size=played_chunk.size,                   # [bytes]
+            video_chunk_length=played_chunk.length,                # [millisec]
+            resolved_chunk=played_chunk.resolved_chunk,
+            end_of_video=played_chunk.end_of_video,
+            video_chunk_remain=played_chunk.remaining_chunks,
         )

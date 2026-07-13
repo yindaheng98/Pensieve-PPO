@@ -1,9 +1,9 @@
 """Video data loading module."""
 
-from .player import PlayerInfo, ResolvedChunk, VideoChunkRequest, VideoPlayer
+from .player import PlayedChunk, ResolvedChunk, VideoChunkRequest, VideoPlayer
 
 __all__ = [
-    'PlayerInfo',
+    'PlayedChunk',
     'ResolvedChunk',
     'VideoChunkRequest',
     'VideoPlayer',
