@@ -15,13 +15,13 @@ from dataclasses import dataclass, field
 from typing import List
 
 
-from ..rl import RLABRStateObserver
 from ...core.simulator import StepResult
-from ...gym import ABREnv, QoEState, State
+from ...gym import ABREnv, State
 
 from ...core.trace import TraceSimulator
 from ...core.video import VideoPlayer
 from ..abc import QualityLadderRequest
+from ..observer import QualityLadderQoEObserver
 from ..rl.utils import get_next_chunk_qualities
 
 
@@ -33,6 +33,10 @@ BITS_IN_BYTE = 8.0
 # Normalization constant for throughput calculation
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L14
 M_IN_K = 1000.0
+
+# Bandwidth history length
+# https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/env.py#L9
+S_LEN = 8
 
 
 @dataclass
@@ -124,15 +128,15 @@ class MPCState(State):
         return buffer_size / MILLISECONDS_IN_SECOND
 
 
-class MPCABRStateObserver(RLABRStateObserver):
+class MPCABRStateObserver(QualityLadderQoEObserver):
     """State observer for MPC algorithm.
 
-    This observer inherits from RLABRStateObserver to reuse quality-ladder QoE
-    integration. However, it returns MPCState objects (which do not inherit from
-    RLState) containing only the information needed for MPC's decision making.
+    This observer inherits from QualityLadderQoEObserver to reuse QoE reward
+    calculation. However, it returns MPCState objects containing only the
+    information needed for MPC's decision making.
 
     This design enables:
-    1. QoE calculation reuse through RLABRStateObserver
+    1. QoE calculation reuse without depending on RL state handling
     2. Clean MPCState that doesn't depend on RLState
     3. Flexible composition via ImitationObserver for imitation learning
 
@@ -148,9 +152,10 @@ class MPCABRStateObserver(RLABRStateObserver):
         >>> env = ABREnv(simulator=simulator, observer=imitation_observer)
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, state_history_len: int = S_LEN, **kwargs):
         """Initialize the MPC state observer."""
         super().__init__(*args, **kwargs)
+        self.state_history_len = state_history_len
         # Track bandwidth history for MPC bandwidth prediction.
         self.past_bandwidths: List[float] = [0.0] * self.state_history_len
 
@@ -167,12 +172,11 @@ class MPCABRStateObserver(RLABRStateObserver):
         # Reset bandwidth history on new episode (fixed length, all zeros)
         self.past_bandwidths = [0.0] * self.state_history_len
 
-    def compute_and_update_state(
+    def compute_state(
         self,
         env: ABREnv,
         chunk_request: QualityLadderRequest,
         result: StepResult,
-        qoe_state: QoEState,
     ) -> MPCState:
         """Compute new MPCState from simulator result.
 
@@ -180,7 +184,6 @@ class MPCABRStateObserver(RLABRStateObserver):
             env: The ABREnv instance to observe.
             chunk_request: Current video chunk request.
             result: Result from simulator.step().
-            qoe_state: Generic QoE observation from QoEObserver.observe().
 
         Returns:
             New MPCState with updated bandwidth history.
@@ -201,3 +204,13 @@ class MPCABRStateObserver(RLABRStateObserver):
             smooth_penalty=self.smooth_penalty,
             past_bandwidths=list(self.past_bandwidths),
         )
+
+    def observe(
+        self,
+        env: ABREnv,
+        chunk_request: QualityLadderRequest,
+        result: StepResult,
+    ):
+        """Process simulator result and build MPCState."""
+        _, reward, info = super().observe(env, chunk_request, result)
+        return self.compute_state(env, chunk_request, result), reward, info
