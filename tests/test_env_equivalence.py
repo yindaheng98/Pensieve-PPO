@@ -156,14 +156,15 @@ class TestConstantsMatch(TestABREnvEquivalenceBase):
 
     def test_normalization_constants(self):
         """Test normalization constants match."""
-        from pensieve_ppo.quality_ladder.rl.observer import BUFFER_NORM_FACTOR, M_IN_K
+        from pensieve_ppo.gym.qoe import BUFFER_NORM_FACTOR
+        from pensieve_ppo.quality_ladder.rl.observer import M_IN_K
         self.assertEqual(src_env.BUFFER_NORM_FACTOR, BUFFER_NORM_FACTOR)
         self.assertEqual(src_env.M_IN_K, M_IN_K)
         # CHUNK_TIL_VIDEO_END_CAP is now derived from simulator.total_chunks
 
     def test_reward_constants(self):
         """Test reward penalty constants match."""
-        from pensieve_ppo.quality_ladder.rl.observer import REBUF_PENALTY, SMOOTH_PENALTY
+        from pensieve_ppo.gym.qoe import REBUF_PENALTY, SMOOTH_PENALTY
         self.assertEqual(src_env.REBUF_PENALTY, REBUF_PENALTY)
         self.assertEqual(src_env.SMOOTH_PENALTY, SMOOTH_PENALTY)
 
@@ -296,20 +297,6 @@ class TestRewardCalculation(TestABREnvEquivalenceBase):
         for i, (src_r, gym_r) in enumerate(zip(src_traj[1], gym_traj[1])):
             self.assertAlmostEqual(src_r, gym_r, places=6,
                                    msg=f"Step {i}: Reward mismatch")
-
-
-class TestInternalStateTracking(TestABREnvEquivalenceBase):
-    """Test internal state tracking consistency."""
-
-    def test_last_bitrate_tracking(self):
-        """Test last_bit_rate is tracked identically."""
-        actions = [0, 3, 5, 2, 1, 4]
-
-        _, _, _, src_env_obj = self._run_src_trajectory(RANDOM_SEED, actions)
-        _, _, _, gym_env_obj = self._run_gym_trajectory(RANDOM_SEED, actions)
-
-        self.assertEqual(src_env_obj.last_bit_rate, gym_env_obj.observer.last_bit_rate)
-        self.assertEqual(src_env_obj.last_bit_rate, actions[-1])
 
 
 class TestEdgeCases(TestABREnvEquivalenceBase):

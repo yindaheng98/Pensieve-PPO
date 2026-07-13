@@ -39,4 +39,6 @@ class QualityLadderQoEObserver(QoEObserver):
         result: StepResult,
     ) -> Tuple[QoEState, float, Dict[str, Any]]:
         """Process quality-ladder simulator result and compute QoE reward."""
-        return super().observe(env, chunk_request, result)
+        state, reward, info = super().observe(env, chunk_request, result)
+        info['quality'] = float(state.quality * M_IN_K)
+        return state, reward, info
