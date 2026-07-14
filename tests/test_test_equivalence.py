@@ -12,6 +12,7 @@ Testing strategy:
 - Compare the generated log files line by line
 """
 
+import json
 import os
 import shutil
 import subprocess
@@ -22,7 +23,7 @@ import unittest
 import numpy as np
 
 # Import our implementation
-from pensieve_ppo.test import prepare_testing, testing as run_testing
+from pensieve_ppo.test import M_IN_K, prepare_testing, testing as run_testing
 
 # Paths
 SRC_DIR = os.path.join(os.path.dirname(__file__), '..', 'src')
@@ -32,6 +33,15 @@ TEST_TRACES = os.path.join(SRC_DIR, 'test')
 # Constants matching src/test.py
 # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L23
 RANDOM_SEED = 42
+
+
+def _plain_log_files(log_dir: str, prefix: str = 'log_sim_ppo_') -> list[str]:
+    """Return legacy TSV log files, excluding companion JSONL logs."""
+    return sorted([
+        f
+        for f in os.listdir(log_dir)
+        if f.startswith(prefix) and not f.endswith('.jsonl')
+    ])
 
 
 class TestTestEquivalence(unittest.TestCase):
@@ -232,8 +242,8 @@ class TestTestEquivalence(unittest.TestCase):
         self._run_our_test(self.our_log_dir)
 
         # Get list of log files
-        src_logs = sorted([f for f in os.listdir(self.src_log_dir) if f.startswith('log_sim_ppo_')])
-        our_logs = sorted([f for f in os.listdir(self.our_log_dir) if f.startswith('log_sim_ppo_')])
+        src_logs = _plain_log_files(self.src_log_dir)
+        our_logs = _plain_log_files(self.our_log_dir)
 
         # Should have same number of log files
         self.assertEqual(len(src_logs), len(our_logs),
@@ -273,8 +283,8 @@ class TestTestEquivalence(unittest.TestCase):
         self._run_our_test(self.our_log_dir)
 
         # Compare first log file
-        src_logs = sorted([f for f in os.listdir(self.src_log_dir) if f.startswith('log_sim_ppo_')])
-        our_logs = sorted([f for f in os.listdir(self.our_log_dir) if f.startswith('log_sim_ppo_')])
+        src_logs = _plain_log_files(self.src_log_dir)
+        our_logs = _plain_log_files(self.our_log_dir)
 
         self.assertTrue(len(src_logs) > 0, "No src log files generated")
         self.assertTrue(len(our_logs) > 0, "No our log files generated")
@@ -363,7 +373,7 @@ class TestLogFormat(unittest.TestCase):
         run_testing(env=env, agent=agent, log_file_prefix=log_prefix)
 
         # Read first log file
-        log_files = sorted(os.listdir(log_dir))
+        log_files = _plain_log_files(log_dir)
         self.assertTrue(len(log_files) > 0)
 
         with open(os.path.join(log_dir, log_files[0]), 'r') as f:
@@ -406,7 +416,7 @@ class TestLogFormat(unittest.TestCase):
         run_testing(env=env, agent=agent, log_file_prefix=log_prefix)
 
         # Check each log file
-        log_files = os.listdir(log_dir)
+        log_files = _plain_log_files(log_dir)
         for log_file in log_files:
             with open(os.path.join(log_dir, log_file), 'r') as f:
                 lines = f.readlines()
@@ -414,6 +424,68 @@ class TestLogFormat(unittest.TestCase):
             non_empty_lines = [l for l in lines if l.strip()]
             self.assertEqual(len(non_empty_lines), 48,
                              f"{log_file}: Expected 48 lines, got {len(non_empty_lines)}")
+
+    def test_jsonl_log_matches_tsv_log(self):
+        """Test that companion JSONL logs contain reward and full info per chunk."""
+        os.chdir(SRC_DIR)
+        np.random.seed(RANDOM_SEED)
+
+        log_dir = os.path.join(self.temp_dir, 'jsonl_test')
+        os.makedirs(log_dir, exist_ok=True)
+
+        env, agent = prepare_testing(
+            trace_folder='./test/',
+            model_path=PRETRAINED_MODEL,
+            name='ppo',
+            player_kwargs={'video_size_file_prefix': './envivio/video_size_'},
+        )
+
+        log_prefix = os.path.join(log_dir, 'log_sim_ppo')
+        run_testing(env=env, agent=agent, log_file_prefix=log_prefix)
+
+        log_files = _plain_log_files(log_dir)
+        self.assertTrue(len(log_files) > 0, "No TSV log files created")
+
+        for log_file in log_files:
+            tsv_path = os.path.join(log_dir, log_file)
+            jsonl_path = f"{tsv_path}.jsonl"
+            self.assertTrue(os.path.exists(jsonl_path), f"Missing JSONL log: {jsonl_path}")
+
+            with open(tsv_path, 'r') as tsv_file:
+                tsv_lines = [line.strip() for line in tsv_file if line.strip()]
+            with open(jsonl_path, 'r') as jsonl_file:
+                jsonl_records = [json.loads(line) for line in jsonl_file if line.strip()]
+
+            self.assertEqual(
+                len(tsv_lines),
+                len(jsonl_records),
+                f"{log_file}: JSONL line count does not match TSV data lines"
+            )
+
+            for line_index, (tsv_line, record) in enumerate(zip(tsv_lines, jsonl_records), start=1):
+                parts = tsv_line.split('\t')
+                self.assertEqual(set(record.keys()), {'reward', 'info'})
+                self.assertIn('time_stamp', record['info'])
+                self.assertIn('quality', record['info'])
+                self.assertIn('buffer_size', record['info'])
+                self.assertIn('rebuffer', record['info'])
+                self.assertIn('video_chunk_size', record['info'])
+                self.assertIn('delay', record['info'])
+
+                self.assertTrue(np.isclose(record['info']['time_stamp'] / M_IN_K, float(parts[0])),
+                                f"{log_file}:{line_index}: time_stamp mismatch")
+                self.assertTrue(np.isclose(record['info']['quality'], float(parts[1])),
+                                f"{log_file}:{line_index}: quality mismatch")
+                self.assertTrue(np.isclose(record['info']['buffer_size'], float(parts[2])),
+                                f"{log_file}:{line_index}: buffer_size mismatch")
+                self.assertTrue(np.isclose(record['info']['rebuffer'], float(parts[3])),
+                                f"{log_file}:{line_index}: rebuffer mismatch")
+                self.assertTrue(np.isclose(record['info']['video_chunk_size'], float(parts[4])),
+                                f"{log_file}:{line_index}: video_chunk_size mismatch")
+                self.assertTrue(np.isclose(record['info']['delay'], float(parts[5])),
+                                f"{log_file}:{line_index}: delay mismatch")
+                self.assertTrue(np.isclose(record['reward'], float(parts[6])),
+                                f"{log_file}:{line_index}: reward mismatch")
 
 
 class TestReproducibility(unittest.TestCase):

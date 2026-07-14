@@ -9,6 +9,7 @@ Reference:
 
 import argparse
 import glob
+import json
 import os
 import sys
 from typing import Dict, Optional, Tuple
@@ -93,8 +94,11 @@ def testing(
 
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L41-L42
     log_path = log_file_prefix + '_' + all_file_names[trace_progress.trace_index]
+    jsonl_path = f"{log_path}.jsonl"
     # First time open with 'w' to clear the file
     with open(log_path, 'w'):
+        pass
+    with open(jsonl_path, 'w'):
         pass
 
     # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L53
@@ -142,6 +146,8 @@ def testing(
                            str(info['video_chunk_size']) + '\t' +
                            str(info['delay']) + '\t' +
                            str(reward) + '\n')
+        with open(jsonl_path, 'a') as jsonl_file:
+            jsonl_file.write(json.dumps({'reward': reward, 'info': info}) + '\n')
 
         # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L117-L123
         decision = agent.select_action(state)
@@ -185,7 +191,10 @@ def testing(
             # https://github.com/godka/Pensieve-PPO/blob/a1b2579ca325625a23fe7d329a186ef09e32a3f1/src/test.py#L149-L150
             trace_progress = env.simulator.trace_simulator.get_trace_progress()
             log_path = log_file_prefix + '_' + all_file_names[trace_progress.trace_index]
+            jsonl_path = f"{log_path}.jsonl"
             with open(log_path, 'w'):
+                pass
+            with open(jsonl_path, 'w'):
                 pass
 
 
@@ -203,7 +212,11 @@ def calculate_test_statistics(log_file_prefix: str) -> Dict[str, float]:
         95th percentile, and max rewards.
     """
     rewards = []
-    test_log_files = glob.glob(log_file_prefix + "*")
+    test_log_files = [
+        test_log_file
+        for test_log_file in glob.glob(log_file_prefix + "*")
+        if not test_log_file.endswith(".jsonl")
+    ]
     for test_log_file in test_log_files:
         reward = []
         with open(test_log_file, 'rb') as f:
